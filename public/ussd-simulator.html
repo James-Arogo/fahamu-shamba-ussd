@@ -441,6 +441,10 @@
                     <span class="info-value" id="phoneNumber">254712345678</span>
                 </div>
                 <div class="info-item">
+                    <span class="info-label">Standard USSD Code:</span>
+                    <span class="info-value" id="standardUssdCode">*123#</span>
+                </div>
+                <div class="info-item">
                     <span class="info-label">Language:</span>
                     <span class="info-value" id="language">Not selected</span>
                 </div>
@@ -481,6 +485,7 @@
     </div>
 
     <script>
+        const STANDARD_USSD_CODE = '*123#';
         let sessionId = `test-${Date.now()}`;
         let phoneNumber = '254712345678';
         let currentText = '';
@@ -490,6 +495,7 @@
         // Initialize
         window.addEventListener('load', () => {
             document.getElementById('sessionId').textContent = sessionId;
+            document.getElementById('standardUssdCode').textContent = STANDARD_USSD_CODE;
             document.getElementById('ussdInput').focus();
         });
 
@@ -522,7 +528,7 @@
                         sessionId,
                         phoneNumber,
                         text: currentText,
-                        serviceCode: '123'
+                        serviceCode: STANDARD_USSD_CODE
                     })
                 });
 
@@ -619,7 +625,7 @@
             document.getElementById('language').textContent = 'Not selected';
             document.getElementById('selectedDataSection').style.display = 'none';
             
-            addMessage('Welcome to Fahamu Shamba\nChoose language:\n1. English\n2. Kiswahili\n3. Dholuo', 'incoming');
+            addMessage(`Dialed ${STANDARD_USSD_CODE}\nWelcome to Fahamu Shamba\nChoose language:\n1. English\n2. Kiswahili\n3. Dholuo`, 'incoming');
             document.getElementById('ussdInput').focus();
         }
 

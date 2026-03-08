@@ -191,11 +191,9 @@ function t(key, language = 'english') {
 export function handleUSSD(sessionId, phoneNumber, text, serviceCode) {
   // CRITICAL: Validate USSD code - MUST be *123# ONLY
   const normalizedCode = (serviceCode || '').trim().toUpperCase();
-  
-  // Accept: *123#, 123, or empty (for backward compatibility with simulator)
-  const isValidCode = !normalizedCode || normalizedCode === '123' || normalizedCode === '*123#';
-  
-  if (normalizedCode && !isValidCode) {
+
+  // Strict enforcement: only the fixed global code is accepted.
+  if (normalizedCode !== VALID_USSD_CODE) {
     // Reject any other USSD code - security measure
     console.log(`[USSD] REJECTED: Invalid service code "${serviceCode}" from phone ${phoneNumber}`);
     return {
@@ -205,9 +203,7 @@ export function handleUSSD(sessionId, phoneNumber, text, serviceCode) {
     };
   }
   
-  if (normalizedCode) {
-    console.log(`[USSD] ACCEPTED: Valid service code from phone ${phoneNumber}`);
-  }
+  console.log(`[USSD] ACCEPTED: Valid service code ${VALID_USSD_CODE} from phone ${phoneNumber}`);
 
   // Initialize new session if first interaction (empty text = initial dial)
   if (!text || text === '') {
@@ -615,4 +611,3 @@ export default {
   handleUSSD,
   SESSION_STATES,
 };
-
