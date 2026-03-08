@@ -405,7 +405,7 @@
                         <input 
                             type="text" 
                             id="ussdInput" 
-                            placeholder="Enter option..."
+                            placeholder="Enter menu option (e.g., 1, 2)..."
                             autocomplete="off"
                         >
                         <button id="sendBtn" onclick="sendUSSD()">Send</button>
@@ -502,6 +502,18 @@
         // Send USSD request
         async function sendUSSD() {
             const input = document.getElementById('ussdInput').value.trim();
+
+            // Prevent confusion: this field is for menu options, not dialing a USSD code.
+            if (/^\*.*#$/.test(input)) {
+                if (input !== STANDARD_USSD_CODE) {
+                    addMessage(`Invalid code in input field: ${input}. Only ${STANDARD_USSD_CODE} is supported.`, 'system');
+                } else {
+                    addMessage(`Code ${STANDARD_USSD_CODE} is already fixed for this simulator. Enter menu options like 1, 2, 3.`, 'system');
+                }
+                document.getElementById('ussdInput').value = '';
+                document.getElementById('ussdInput').focus();
+                return;
+            }
             
             if (!input && currentText !== '') {
                 alert('Please enter an option');
