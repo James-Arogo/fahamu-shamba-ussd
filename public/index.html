@@ -1099,7 +1099,7 @@
                     <button class="language-btn" data-lang="luo" onclick="changeLanguage('luo')" title="Dholuo">🌍 LUO</button>
                 </div>
                 <div class="nav-buttons">
-                    <a href="/dashboard.html" class="nav-btn nav-ussd" title="Test USSD for feature phones">
+                    <a href="/ussd-simulator" class="nav-btn nav-ussd" title="Test USSD for feature phones">
                         <i class="fas fa-mobile-alt"></i> <span data-i18n="nav.ussd">USSD Test</span>
                     </a>
                     <a href="/login.html" class="nav-btn nav-login" title="Already have an account? Log in here">
@@ -1387,10 +1387,21 @@
             }
         }
         
-        // Load saved language preference
+        // Force Swahili on first visit for this page version, then keep user preference.
+        const langInitKey = 'fahamu-language-init-v2';
         const savedLang = localStorage.getItem('fahamu-language');
-        if (savedLang) {
+        const hasInitializedLang = localStorage.getItem(langInitKey) === '1';
+        const supportedLangs = ['en', 'sw', 'luo'];
+
+        if (!hasInitializedLang) {
+            localStorage.setItem('fahamu-language', 'sw');
+            localStorage.setItem(langInitKey, '1');
+            changeLanguage('sw');
+        } else if (savedLang && supportedLangs.includes(savedLang)) {
             changeLanguage(savedLang);
+        } else {
+            localStorage.setItem('fahamu-language', 'sw');
+            changeLanguage('sw');
         }
 
         // Smooth scroll for links
