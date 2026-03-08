@@ -30,6 +30,7 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const IS_VERCEL = process.env.VERCEL === '1' || process.env.VERCEL === 'true';
 
 // Enhanced CORS configuration
 app.use(cors({
@@ -97,8 +98,11 @@ console.log('📧 Initializing email service...');
 initializeEmailService();
 
 // Initialize database with error handling
-const db = new Database('./fahamu_shamba.db');
-console.log('✅ Connected to SQLite database');
+const databasePath = IS_VERCEL
+  ? (process.env.SQLITE_DB_PATH || '/tmp/fahamu_shamba.db')
+  : path.join(__dirname, 'fahamu_shamba.db');
+const db = new Database(databasePath);
+console.log(`✅ Connected to SQLite database at ${databasePath}`);
 
 // Wrapper for better-sqlite3 to match async patterns (MUST be before initializeDatabase)
 const dbAsync = {
@@ -2411,6 +2415,7 @@ process.on('SIGINT', () => {
 });
 
 // Start server
+if (!IS_VERCEL) {
 app.listen(PORT, () => {
   console.log(`\n🌱 Fahamu Shamba MVP Server Running\n`);
   console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
@@ -2453,3 +2458,6 @@ app.listen(PORT, () => {
   console.log(`   🚀 User Dashboard: http://localhost:${PORT}/farmer-dashboard`);
   console.log(`   🔐 Admin Dashboard: http://localhost:${PORT}/admin\n`);
 });
+}
+
+export default app;
