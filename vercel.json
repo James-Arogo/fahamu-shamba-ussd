@@ -1,6 +1,5 @@
 {
   "version": 2,
-  "name": "fahamu-shamba",
   "builds": [
     {
       "src": "backend/server.js",
@@ -16,12 +15,5 @@
       "src": "/(.*)",
       "dest": "/backend/server.js"
     }
-  ],
-  "functions": {
-    "backend/server.js": {
-      "memory": 1024,
-      "maxDuration": 30,
-      "includeFiles": "public/**"
-    }
-  }
+  ]
 }
