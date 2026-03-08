@@ -936,7 +936,10 @@
                     <option value="sw">Kiswahili</option>
                     <option value="luo">Dholuo</option>
                 </select>
-                <a href="/farmer-dashboard" class="nav-btn nav-login">
+                <a href="/ussd-simulator" class="nav-btn nav-login" id="nav-ussd-link">
+                    <i class="fas fa-mobile-alt"></i> USSD Demo
+                </a>
+                <a href="/farmer-dashboard" class="nav-btn nav-login" id="nav-login-link">
                     <i class="fas fa-sign-in-alt"></i> Login
                 </a>
                 <a href="#signup" class="nav-btn nav-signup">
@@ -1200,8 +1203,10 @@
             const logoTagline = document.querySelector('.logo-text p');
             if (logoTagline) logoTagline.textContent = t.header?.tagline || logoTagline.textContent;
 
-            const navLogin = document.querySelector('.nav-login');
+            const navLogin = document.getElementById('nav-login-link');
             if (navLogin) navLogin.innerHTML = `<i class="fas fa-sign-in-alt"></i> ${t.nav?.login || 'Login'}`;
+            const navUssd = document.getElementById('nav-ussd-link');
+            if (navUssd) navUssd.innerHTML = `<i class="fas fa-mobile-alt"></i> ${t.nav?.ussd || 'USSD Demo'}`;
             const navSignup = document.querySelector('.nav-signup');
             if (navSignup) navSignup.innerHTML = `<i class="fas fa-user-plus"></i> ${t.nav?.signup || 'Sign Up'}`;
 

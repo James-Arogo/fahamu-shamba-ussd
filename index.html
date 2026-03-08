@@ -1060,7 +1060,7 @@
       els.feedback.noBtn.addEventListener('click', () => submitFeedback(false));
       els.closeResultBtn.addEventListener('click', () => toggleResultDrawer(false));
       els.dashboardBtn.addEventListener('click', () => window.location.href = '/dashboard');
-      els.ussdBtn.addEventListener('click', () => showToast('Dial *384*86# on your phone to access the USSD menu.'));
+      els.ussdBtn.addEventListener('click', () => window.location.href = '/ussd-simulator');
     }
 
     function hydrateFromStorage() {
