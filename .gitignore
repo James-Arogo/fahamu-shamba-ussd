@@ -6,3 +6,7 @@ frontend/node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+android-studio/FahamuShamba/.gradle/
+android-studio/FahamuShamba/build/
+android-studio/FahamuShamba/local.properties
+android-studio/FahamuShamba/.idea/deviceManager.xml

@@ -1,100 +1,145 @@
 {
-  "header": {
-    "tagline": "Pachi Mabith"
-  },
-  "nav": {
-    "login": "Donyo",
-    "signup": "Yie Akaunti"
-  },
-  "hero": {
-    "headline": "Yie Pachi gi AI",
-    "subtext": "Kaw yie ma oketo gi udongo, polo kod chiro. Med yie gi 30% kendo podo gonyo gi 25%.",
-    "createAccount": "Yie Akaunti",
-    "learnMore": "Donyo"
-  },
-  "features": {
-    "title": "Kinde Itimogo",
-    "crops": {
-      "name": "Yie Pachi",
-      "desc": "Yie ma AI oketo gi kit udongo, polo kod duong shamba."
-    },
-    "weather": {
-      "name": "Utabiri Polo",
-      "desc": "Tije polo ma oketo gi saa gi utabiri kuom sub-county 5 e Siaya."
-    },
-    "market": {
-      "name": "Yie Chiro",
-      "desc": "Rito chiro ma oketo gi chiro 6 mondo med faida."
-    },
-    "soil": {
-      "name": "Yie Udongo",
-      "desc": "Yie maber kuom kit udongo gi yie mag gonyo nutrient."
-    },
-    "languages": {
-      "name": "Yie Lugha",
-      "desc": "Chag lugha: English, Kiswahili, kata Dholuo. Elewa Fahamu Shamba kwa lugha mong."
-    },
-    "security": {
-      "name": "Salama",
-      "desc": "Yie shamba limn iprotektido. Ok ni wadhi taarifa."
-    }
-  },
-  "howItWorks": {
-    "title": "Ndiko Tije e 4",
-    "steps": [
-      { "num": "1", "title": "Profaili", "desc": "Chik yie shamba" },
-      { "num": "2", "title": "Uchambuzi AI", "desc": "ML yie" },
-      { "num": "3", "title": "Yie ma Oketo", "desc": "Kaw pachi maber" },
-      { "num": "4", "title": "Med yie & Faida", "desc": "Med yie" }
-    ]
-  },
-  "stats": {
-    "title": "Yie ma Otiek",
-    "yield": { "number": "30%", "label": "Med Yie", "desc": "Med yie moyweyo gi yie magi" },
-    "cost": { "number": "25%", "label": "Pod Gonyo", "desc": "Podo gonyo pembejeo" },
-    "counties": { "number": "5", "label": "Sub-county", "desc": "Nowuok magi mokwongo Siaya" },
-    "free": { "number": "100%", "label": "Oketo gi Bure", "desc": "Ponge pesa mabire" }
-  },
-  "testimonials": {
-    "title": "Janyaka Wanosey",
-    "james": {
-      "text": "Fahamu Shamba oduogo yie maharagwe gi 40%. Sani atiyo gi data, ok gi buo.",
-      "name": "James Ochieng",
-      "location": "Bondo"
-    },
-    "mary": {
-      "text": "Utabiri polo en maber. Oduogo hasara ma oketo gi polo mar lweny.",
-      "name": "Mary Kipchoge",
-      "location": "Ugunja"
-    },
-    "peter": {
-      "text": "Chiro ma oketo gi soko oduogo ni ok apande gi yie ma oketo gi buo. Faida ema med gi 35% e mwaka ma oketo!",
-      "name": "Peter Mwangi",
-      "location": "Yala"
-    }
-  },
-  "instructions": {
-    "title": "🚀 Kuom ni Rahisi!",
-    "subtitle": "Chag ranyaka:",
-    "new": "Janyaka Maboth? Dhi e kitufe cha Yie Akaunti mondo ipile akaunti. Itim profaili e dakika 2 tu.",
-    "existing": "Una akaunti tayari? Dhi e kitufe cha Donyo mondo idonyo dashibodi.",
-    "first": "Kare mokwongo? Angʼo sehemu ya Vipengele mondo ione kinde Fahamu Shamba itimoyo.",
-    "after": "Erokwondo idho, ikabed e Dashibodi ambapo inaweza kupata yie, rito polo, kod chiro."
-  },
-  "cta": {
-    "title": "Je, Upo Tayari Rubak Pachi?",
-    "subtitle": "Dhi kodgi makuom wakulima e Siaya County matiyo data mochiemo yie.",
-    "createAccount": "Yie Akaunti Mabure",
-    "login": "Donyo e Dashboard"
-  },
-  "footer": {
-    "about": "Kuom",
-    "aboutLinks": ["Kuom Fahamu Shamba", "Ranyaka magi", "Blog"],
-    "resources": "Yie",
-    "resourceLinks": ["Yie Pachi", "Chiro Chako", "Helpu"],
-    "legal": "Shderia",
-    "legalLinks": ["Sera", "Mahera", "Wasiliana"],
-    "languages": "Lugha",
-    "copyright": "© 2025 Fahamu Shamba. Haki mokwongo. Kuduogo janyaka Siaya gi AI."
-  }
+    "header":  {
+                   "tagline":  "Pachi Mabith"
+               },
+    "nav":  {
+                "login":  "Donyo",
+                "signup":  "Yie Akaunti"
+            },
+    "hero":  {
+                 "headline":  "Yie Pachi gi AI",
+                 "subtext":  "Kaw yie ma oketo gi udongo, polo kod chiro. Med yie gi 30% kendo podo gonyo gi 25%.",
+                 "createAccount":  "Yie Akaunti",
+                 "learnMore":  "Donyo"
+             },
+    "features":  {
+                     "title":  "Kinde Itimogo",
+                     "crops":  {
+                                   "name":  "Yie Pachi",
+                                   "desc":  "Yie ma AI oketo gi kit udongo, polo kod duong shamba."
+                               },
+                     "weather":  {
+                                     "name":  "Utabiri Polo",
+                                     "desc":  "Tije polo ma oketo gi saa gi utabiri kuom sub-county 5 e Siaya."
+                                 },
+                     "market":  {
+                                    "name":  "Yie Chiro",
+                                    "desc":  "Rito chiro ma oketo gi chiro 6 mondo med faida."
+                                },
+                     "soil":  {
+                                  "name":  "Yie Udongo",
+                                  "desc":  "Yie maber kuom kit udongo gi yie mag gonyo nutrient."
+                              },
+                     "languages":  {
+                                       "name":  "Yie Lugha",
+                                       "desc":  "Chag lugha: English, Kiswahili, kata Dholuo. Elewa Fahamu Shamba kwa lugha mong."
+                                   },
+                     "security":  {
+                                      "name":  "Salama",
+                                      "desc":  "Yie shamba limn iprotektido. Ok ni wadhi taarifa."
+                                  }
+                 },
+    "howItWorks":  {
+                       "title":  "Ndiko Tije e 4",
+                       "steps":  [
+                                     {
+                                         "num":  "1",
+                                         "title":  "Profaili",
+                                         "desc":  "Chik yie shamba"
+                                     },
+                                     {
+                                         "num":  "2",
+                                         "title":  "Uchambuzi AI",
+                                         "desc":  "ML yie"
+                                     },
+                                     {
+                                         "num":  "3",
+                                         "title":  "Yie ma Oketo",
+                                         "desc":  "Kaw pachi maber"
+                                     },
+                                     {
+                                         "num":  "4",
+                                         "title":  "Med yie \u0026 Faida",
+                                         "desc":  "Med yie"
+                                     }
+                                 ]
+                   },
+    "stats":  {
+                  "title":  "Yie ma Otiek",
+                  "yield":  {
+                                "number":  "30%",
+                                "label":  "Med Yie",
+                                "desc":  "Med yie moyweyo gi yie magi"
+                            },
+                  "cost":  {
+                               "number":  "25%",
+                               "label":  "Pod Gonyo",
+                               "desc":  "Podo gonyo pembejeo"
+                           },
+                  "counties":  {
+                                   "number":  "5",
+                                   "label":  "Sub-county",
+                                   "desc":  "Nowuok magi mokwongo Siaya"
+                               },
+                  "free":  {
+                               "number":  "100%",
+                               "label":  "Oketo gi Bure",
+                               "desc":  "Ponge pesa mabire"
+                           }
+              },
+    "testimonials":  {
+                         "title":  "Janyaka Wanosey",
+                         "james":  {
+                                       "text":  "Fahamu Shamba oduogo yie maharagwe gi 40%. Sani atiyo gi data, ok gi buo.",
+                                       "name":  "James Ochieng",
+                                       "location":  "Bondo"
+                                   },
+                         "mary":  {
+                                      "text":  "Utabiri polo en maber. Oduogo hasara ma oketo gi polo mar lweny.",
+                                      "name":  "Mary Kipchoge",
+                                      "location":  "Ugunja"
+                                  },
+                         "peter":  {
+                                       "text":  "Chiro ma oketo gi soko oduogo ni ok apande gi yie ma oketo gi buo. Faida ema med gi 35% e mwaka ma oketo!",
+                                       "name":  "Peter Mwangi",
+                                       "location":  "Yala"
+                                   }
+                     },
+    "instructions":  {
+                         "title":  "🚀 Kuom ni Rahisi!",
+                         "subtitle":  "Chag ranyaka:",
+                         "new":  "Janyaka Maboth? Dhi e kitufe cha Yie Akaunti mondo ipile akaunti. Itim profaili e dakika 2 tu.",
+                         "existing":  "Una akaunti tayari? Dhi e kitufe cha Donyo mondo idonyo dashibodi.",
+                         "first":  "Kare mokwongo? Angʼo sehemu ya Vipengele mondo ione kinde Fahamu Shamba itimoyo.",
+                         "after":  "Erokwondo idho, ikabed e Dashibodi ambapo inaweza kupata yie, rito polo, kod chiro."
+                     },
+    "cta":  {
+                "title":  "Je, Upo Tayari Rubak Pachi?",
+                "subtitle":  "Dhi kodgi makuom wakulima e Siaya County matiyo data mochiemo yie.",
+                "createAccount":  "Yie Akaunti Mabure",
+                "login":  "Donyo e Dashboard"
+            },
+    "footer":  {
+                   "about":  "Kuom",
+                   "aboutLinks":  [
+                                      "Kuom Fahamu Shamba",
+                                      "Ranyaka magi",
+                                      "Blog"
+                                  ],
+                   "resources":  "Yie",
+                   "resourceLinks":  [
+                                         "Yie Pachi",
+                                         "Chiro Chako",
+                                         "Helpu"
+                                     ],
+                   "legal":  "Shderia",
+                   "legalLinks":  [
+                                      "Sera",
+                                      "Mahera",
+                                      "Wasiliana"
+                                  ],
+                   "languages":  "Lugha",
+                   "copyright":  "? 2025 Fahamu Shamba. Twero duto ochenjore.",
+                   "description":  "Wakonyo jodongo matin e Siaya gi paro mar cham ma AI omiyo gi ngeyo mar soko."
+               }
 }

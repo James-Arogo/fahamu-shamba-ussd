@@ -109,6 +109,15 @@
             align-items: center;
         }
 
+        .language-select {
+            padding: 10px 12px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            background: #fff;
+            color: var(--text);
+            font-weight: 600;
+        }
+
         .nav-btn {
             padding: 10px 20px;
             border: none;
@@ -921,6 +930,12 @@
                 </div>
             </a>
             <div class="nav-buttons">
+                <select id="langSelect" class="language-select" aria-label="Language selector">
+                    <option value="" disabled selected>Chagua Lugha</option>
+                    <option value="en">English</option>
+                    <option value="sw">Kiswahili</option>
+                    <option value="luo">Dholuo</option>
+                </select>
                 <a href="/farmer-dashboard" class="nav-btn nav-login">
                     <i class="fas fa-sign-in-alt"></i> Login
                 </a>
@@ -1161,8 +1176,173 @@
     </footer>
 
     <script>
-        // Scroll animations on page load
-        window.addEventListener('load', () => {
+        const LANDING_LANG_STORAGE_KEY = 'preferredLang';
+        const LANDING_SELECTOR_LABELS = {
+            en: { placeholder: 'Choose Language', en: 'English', sw: 'Kiswahili', luo: 'Dholuo' },
+            sw: { placeholder: 'Chagua Lugha', en: 'Kiingereza', sw: 'Kiswahili', luo: 'Dholuo' },
+            luo: { placeholder: 'Yer Dhok', en: 'Ingereza', sw: 'Kiswahili', luo: 'Dholuo' }
+        };
+
+        function setSelectLabels(langCode) {
+            const selector = document.getElementById('langSelect');
+            const labels = LANDING_SELECTOR_LABELS[langCode] || LANDING_SELECTOR_LABELS.sw;
+            if (!selector) return;
+            const options = selector.querySelectorAll('option');
+            if (options.length < 4) return;
+            options[0].textContent = labels.placeholder;
+            options[1].textContent = labels.en;
+            options[2].textContent = labels.sw;
+            options[3].textContent = labels.luo;
+        }
+
+        function applyLandingTranslations(t) {
+            const logoTagline = document.querySelector('.logo-text p');
+            if (logoTagline) logoTagline.textContent = t.header?.tagline || logoTagline.textContent;
+
+            const navLogin = document.querySelector('.nav-login');
+            if (navLogin) navLogin.innerHTML = `<i class="fas fa-sign-in-alt"></i> ${t.nav?.login || 'Login'}`;
+            const navSignup = document.querySelector('.nav-signup');
+            if (navSignup) navSignup.innerHTML = `<i class="fas fa-user-plus"></i> ${t.nav?.signup || 'Sign Up'}`;
+
+            const heroTitle = document.querySelector('.hero h1');
+            if (heroTitle) heroTitle.textContent = t.hero?.headline || heroTitle.textContent;
+            const heroSubtext = document.querySelector('.hero p');
+            if (heroSubtext) heroSubtext.textContent = t.hero?.subtext || heroSubtext.textContent;
+            const heroButtons = document.querySelectorAll('.hero .btn');
+            if (heroButtons[0]) heroButtons[0].innerHTML = `<i class="fas fa-sign-in-alt"></i> ${t.cta?.login || t.hero?.learnMore || 'Log In to Dashboard'}`;
+            if (heroButtons[1]) heroButtons[1].innerHTML = `<i class="fas fa-user-plus"></i> ${t.cta?.createAccount || t.hero?.createAccount || 'Create Free Account'}`;
+
+            const featuresSectionTitle = document.querySelector('.features .section-title');
+            if (featuresSectionTitle) featuresSectionTitle.textContent = t.features?.title || featuresSectionTitle.textContent;
+            const featureCards = document.querySelectorAll('.features .feature-card');
+            const featureMap = [
+                t.features?.crops,
+                t.features?.weather,
+                t.features?.market,
+                t.features?.soil,
+                t.features?.security,
+                t.features?.languages
+            ];
+            featureCards.forEach((card, i) => {
+                const heading = card.querySelector('h3');
+                const body = card.querySelector('p');
+                if (heading && featureMap[i]?.name) heading.textContent = featureMap[i].name;
+                if (body && featureMap[i]?.desc) body.textContent = featureMap[i].desc;
+            });
+
+            const howTitle = document.querySelector('.how-it-works .section-title');
+            if (howTitle) howTitle.textContent = t.howItWorks?.title || howTitle.textContent;
+            const howSteps = document.querySelectorAll('.how-it-works .flow-step');
+            if (Array.isArray(t.howItWorks?.steps)) {
+                howSteps.forEach((stepEl, idx) => {
+                    const step = t.howItWorks.steps[idx];
+                    if (!step) return;
+                    const heading = stepEl.querySelector('h4');
+                    const body = stepEl.querySelector('p');
+                    if (heading && step.title) heading.textContent = step.title;
+                    if (body && step.desc) body.textContent = step.desc;
+                });
+            }
+
+            const statsTitle = document.querySelector('.impact .section-title');
+            if (statsTitle) statsTitle.textContent = t.stats?.title || statsTitle.textContent;
+            const statsItems = document.querySelectorAll('.impact .stat-item');
+            const statMap = [t.stats?.yield, t.stats?.cost, t.stats?.counties, t.stats?.free];
+            statsItems.forEach((item, i) => {
+                const label = item.querySelector('.stat-label');
+                const desc = item.querySelector('.stat-description');
+                if (label && statMap[i]?.label) label.textContent = statMap[i].label;
+                if (desc && statMap[i]?.desc) desc.textContent = statMap[i].desc;
+            });
+
+            const testimonialsTitle = document.querySelector('.testimonials .section-title');
+            if (testimonialsTitle) testimonialsTitle.textContent = t.testimonials?.title || testimonialsTitle.textContent;
+            const testimonialCards = document.querySelectorAll('.testimonials .testimonial-card');
+            const testimonialMap = [t.testimonials?.james, t.testimonials?.mary, t.testimonials?.peter];
+            testimonialCards.forEach((card, i) => {
+                const text = card.querySelector('.testimonial-text');
+                const name = card.querySelector('.testimonial-info h4');
+                const location = card.querySelector('.testimonial-info p');
+                if (text && testimonialMap[i]?.text) text.textContent = `"${testimonialMap[i].text}"`;
+                if (name && testimonialMap[i]?.name) name.textContent = testimonialMap[i].name;
+                if (location && testimonialMap[i]?.location) location.textContent = testimonialMap[i].location;
+            });
+
+            const ctaTitle = document.querySelector('.cta-section h2');
+            const ctaSubtext = document.querySelector('.cta-section p');
+            if (ctaTitle) ctaTitle.textContent = t.cta?.title || ctaTitle.textContent;
+            if (ctaSubtext) ctaSubtext.textContent = t.cta?.subtitle || ctaSubtext.textContent;
+            const ctaButtons = document.querySelectorAll('.cta-section .btn');
+            if (ctaButtons[0]) ctaButtons[0].innerHTML = `<i class="fas fa-sign-in-alt"></i> ${t.cta?.login || 'Log In to Dashboard'}`;
+            if (ctaButtons[1]) ctaButtons[1].innerHTML = `<i class="fas fa-user-plus"></i> ${t.cta?.createAccount || 'Create Free Account'}`;
+
+            const footerSections = document.querySelectorAll('.footer-section');
+            if (footerSections[0]) {
+                const h = footerSections[0].querySelector('h3');
+                const p = footerSections[0].querySelector('p');
+                if (h && t.footer?.aboutLinks?.[0]) h.textContent = t.footer.aboutLinks[0];
+                if (p && t.footer?.description) p.textContent = t.footer.description;
+            }
+            if (footerSections[1]) {
+                const h = footerSections[1].querySelector('h3');
+                if (h && t.footer?.about) h.textContent = t.footer.about;
+                const links = footerSections[1].querySelectorAll('a');
+                if (links[0] && t.footer?.aboutLinks?.[0]) links[0].textContent = t.footer.aboutLinks[0];
+                if (links[1] && t.footer?.aboutLinks?.[1]) links[1].textContent = t.footer.aboutLinks[1];
+                if (links[2] && t.footer?.aboutLinks?.[2]) links[2].textContent = t.footer.aboutLinks[2];
+            }
+            if (footerSections[2]) {
+                const h = footerSections[2].querySelector('h3');
+                if (h && t.footer?.resources) h.textContent = t.footer.resources;
+                const links = footerSections[2].querySelectorAll('a');
+                if (links[0] && t.footer?.resourceLinks?.[0]) links[0].textContent = t.footer.resourceLinks[0];
+                if (links[1] && t.footer?.resourceLinks?.[1]) links[1].textContent = t.footer.resourceLinks[1];
+                if (links[2] && t.footer?.resourceLinks?.[2]) links[2].textContent = t.footer.resourceLinks[2];
+            }
+            if (footerSections[3]) {
+                const h = footerSections[3].querySelector('h3');
+                if (h && t.footer?.legal) h.textContent = t.footer.legal;
+                const links = footerSections[3].querySelectorAll('a');
+                if (links[0] && t.footer?.legalLinks?.[0]) links[0].textContent = t.footer.legalLinks[0];
+                if (links[1] && t.footer?.legalLinks?.[1]) links[1].textContent = t.footer.legalLinks[1];
+                if (links[2] && t.footer?.legalLinks?.[2]) links[2].textContent = t.footer.legalLinks[2];
+            }
+
+            const bottomLinks = document.querySelectorAll('.footer-bottom p a');
+            if (bottomLinks[0] && t.footer?.legalLinks?.[0]) bottomLinks[0].textContent = t.footer.legalLinks[0];
+            if (bottomLinks[1] && t.footer?.legalLinks?.[1]) bottomLinks[1].textContent = t.footer.legalLinks[1];
+            if (bottomLinks[2] && t.footer?.legalLinks?.[2]) bottomLinks[2].textContent = t.footer.legalLinks[2];
+            const bottomText = document.querySelector('.footer-bottom p');
+            if (bottomText && t.footer?.copyright) bottomText.textContent = t.footer.copyright;
+        }
+
+        async function loadLandingLanguage(langCode) {
+            const map = { en: 'en', sw: 'sw', luo: 'luo' };
+            const safeLang = map[langCode] || 'sw';
+            const response = await fetch(`/translations/${safeLang}.json`);
+            const translations = await response.json();
+            applyLandingTranslations(translations);
+            setSelectLabels(safeLang);
+            localStorage.setItem(LANDING_LANG_STORAGE_KEY, safeLang);
+            document.documentElement.lang = safeLang === 'sw' ? 'sw' : safeLang;
+        }
+
+        function scrollToSignup() {
+            const cta = document.querySelector('.cta-section');
+            cta.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        window.addEventListener('load', async () => {
+            const selector = document.getElementById('langSelect');
+            const savedLang = localStorage.getItem(LANDING_LANG_STORAGE_KEY) || 'sw';
+            if (selector) selector.value = savedLang;
+
+            try {
+                await loadLandingLanguage(savedLang);
+            } catch (err) {
+                console.error('Failed to load translations:', err);
+            }
+
             document.querySelectorAll('.fade-in').forEach((el, index) => {
                 setTimeout(() => {
                     el.style.animation = 'fadeInUp 0.8s ease forwards';
@@ -1170,10 +1350,9 @@
             });
         });
 
-        function scrollToSignup() {
-            const cta = document.querySelector('.cta-section');
-            cta.scrollIntoView({ behavior: 'smooth' });
-        }
+        document.getElementById('langSelect')?.addEventListener('change', async function () {
+            await loadLandingLanguage(this.value);
+        });
 
         // Smooth scroll for anchor links
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {

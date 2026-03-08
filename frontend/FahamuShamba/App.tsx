@@ -130,7 +130,10 @@ export default function App() {
 
     setLoading(true);
     try {
-      // Use your local backend URL
+      // Use your deployed backend URL
+      // For Vercel: https://your-vercel-domain.com/api/predict
+      // For local testing: http://localhost:5000/api/predict
+      // For Android local network: http://192.168.x.x:5000/api/predict
       const API_URL = 'http://localhost:5000/api/predict';
       
       const response = await fetch(API_URL, {

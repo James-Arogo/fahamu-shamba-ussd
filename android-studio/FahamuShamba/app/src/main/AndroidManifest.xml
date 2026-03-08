@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.fahamu.shamba"
-    android:usesPermission="android.permission.INTERNET"
-    android:usesPermission="android.permission.ACCESS_NETWORK_STATE">
+    package="com.fahamu.shamba">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application
         android:allowBackup="true"
@@ -27,4 +28,3 @@
     </application>
 
 </manifest>
-

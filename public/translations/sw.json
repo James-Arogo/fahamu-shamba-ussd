@@ -1,100 +1,145 @@
 {
-  "header": {
-    "tagline": "Kilimo Mahiri"
-  },
-  "nav": {
-    "login": "Ingia",
-    "signup": "Fungua Akaunti"
-  },
-  "hero": {
-    "headline": "Maamuzi ya Kilimo Mahiri, Yanayowezeshwa na AI",
-    "subtext": "Pata mapendekezo ya mazao kulingana na udongo, hali ya hewa na soko. Ongeza mavuno kwa 30% na punguza upotevu wa pembejeo kwa 25%.",
-    "createAccount": "Fungua Akaunti",
-    "learnMore": "Ingia"
-  },
-  "features": {
-    "title": "Kile Utapata",
-    "crops": {
-      "name": "Mapendekezo ya Mazao",
-      "desc": "Mapendekezo yanayotolewa na AI kulingana na aina ya udongo, hali ya hewa na ukubwa wa shamba."
-    },
-    "weather": {
-      "name": "Utabiri wa Hali ya Hewa",
-      "desc": "Taarifa za hali ya hewa kwa wakati halisi na utabiri kwa kaunti ndogo 5 za Siaya."
-    },
-    "market": {
-      "name": "Habari za Soko",
-      "desc": "Fuata bei za mazao katika masoko 6 ili kuongeza faida yako."
-    },
-    "soil": {
-      "name": "Uchambuzi wa Udongo",
-      "desc": "Ripoti za kina za ubora wa udongo na mapendekezo ya usimamizi wa virutubishi."
-    },
-    "languages": {
-      "name": "Usaidizi wa Lugha Nyingi",
-      "desc": "Chagua lugha yako: Kiingereza, Kiswahili, au Dholuo. Elewa Fahamu Shamba kwa lugha unayoijua vizuri."
-    },
-    "security": {
-      "name": "Salama na Siri",
-      "desc": "Taarifa za shamba lako zimefungwa kwa njia salama. Hatuwezi kushiriki taarifa zako."
-    }
-  },
-  "howItWorks": {
-    "title": "Jinsi Inavyofanya Kazi kwa Hatua 4",
-    "steps": [
-      { "num": "1", "title": "Profaili Yako", "desc": "Ingiza maelezo ya shamba" },
-      { "num": "2", "title": "Uchambuzi wa AI", "desc": "Miundombinu ya ML inachambua" },
-      { "num": "3", "title": "Mapendekezo", "desc": "Pata mazao ya juu" },
-      { "num": "4", "title": "Kua na Pata Faida", "desc": "Ongeza mavuno" }
-    ]
-  },
-  "stats": {
-    "title": "Matokeo Yaliyothibitika",
-    "yield": { "number": "30%", "label": "Mavuno Zaidi", "desc": "Ongezeko la wastani kwa mapendekezo yetu" },
-    "cost": { "number": "25%", "label": "Akiba ya Gharama", "desc": "Upotevu mdogo wa pembejeo" },
-    "counties": { "number": "5", "label": "Kaunti Ndogo", "desc": "Tunawatumikia wakote wa Siaya" },
-    "free": { "number": "100%", "label": "Ufikiaji wa Bure", "desc": "Hakuna malipo mabisi" }
-  },
-  "testimonials": {
-    "title": "Wakulima Wanasema Nini",
-    "james": {
-      "text": "Fahamu Shamba ilinisaidia kuongeza mavuno ya maharagwe kwa 40%. Sasa natumia data badala ya kubahatisha.",
-      "name": "James Ochieng",
-      "location": "Bondo"
-    },
-    "mary": {
-      "text": "Utabiri wa hali ya hewa ni sahihi sana. Niliepuka hasara ya mazao wakati wa kiangazi.",
-      "name": "Mary Kipchoge",
-      "location": "Ugunja"
-    },
-    "peter": {
-      "text": "Chombo cha bei za soko kiliniokoa nisipande mazao yasiyo sahihi. Mapato yangu yameongezeka kwa 35% mwaka huu!",
-      "name": "Peter Mwangi",
-      "location": "Yala"
-    }
-  },
-  "instructions": {
-    "title": "🚀 Kuanza ni Rahisi!",
-    "subtitle": "Chagua njia yako:",
-    "new": "Wakulima Wapya? Bonyeza kitufe cha Fungua Akaunti ili kuunda akaunti. Utakamilisha profaili yako kwa dakika 2 tu.",
-    "existing": "Una akaunti tayari? Bonyeza kitufe cha Ingia ili kupata dashibodi yako ya kibinafsi.",
-    "first": "Njia ya kwanza? Angalia sehemu ya Vipengele hapo juu ili kuona kile Fahamu Shamba kinatoa.",
-    "after": "Baada ya kuingia, utapata Dashibodi ya Wakulima ambapo unaweza kupata mapendekezo ya mazao, kuangalia utabiri wa hali ya hewa, na kufuatilia bei za soko."
-  },
-  "cta": {
-    "title": "Je, Upo Tayari Kubadilisha Kilimo Chako?",
-    "subtitle": "Jiunge na mamia ya wakulima katika Siaya County wanachotumia data kufanya maamuzi mahiri.",
-    "createAccount": "Fungua Akaunti ya Bure",
-    "login": "Ingia kwenye Dashibodi"
-  },
-  "footer": {
-    "about": "Kuhusu",
-    "aboutLinks": ["Kuhusu Fahamu Shamba", "Lengo Letu", "Blogi"],
-    "resources": "Rasilimali",
-    "resourceLinks": ["Mwongozo wa Mazao", "Mwito wa Soko", "Kituo cha Usaidizi"],
-    "legal": "Kisheria",
-    "legalLinks": ["Sera ya Faragha", "Masharti ya Huduma", "Wasiliana"],
-    "languages": "Lugha",
-    "copyright": "© 2025 Fahamu Shamba. Haki zote zimehifadhiwa. Kumwezesha wakulima wa Siaya kwa ujinga unaotolewa na AI."
-  }
+    "header":  {
+                   "tagline":  "Kilimo Mahiri"
+               },
+    "nav":  {
+                "login":  "Ingia",
+                "signup":  "Fungua Akaunti"
+            },
+    "hero":  {
+                 "headline":  "Maamuzi ya Kilimo Mahiri, Yanayowezeshwa na AI",
+                 "subtext":  "Pata mapendekezo ya mazao kulingana na udongo, hali ya hewa na soko. Ongeza mavuno kwa 30% na punguza upotevu wa pembejeo kwa 25%.",
+                 "createAccount":  "Fungua Akaunti",
+                 "learnMore":  "Ingia"
+             },
+    "features":  {
+                     "title":  "Kile Utapata",
+                     "crops":  {
+                                   "name":  "Mapendekezo ya Mazao",
+                                   "desc":  "Mapendekezo yanayotolewa na AI kulingana na aina ya udongo, hali ya hewa na ukubwa wa shamba."
+                               },
+                     "weather":  {
+                                     "name":  "Utabiri wa Hali ya Hewa",
+                                     "desc":  "Taarifa za hali ya hewa kwa wakati halisi na utabiri kwa kaunti ndogo 5 za Siaya."
+                                 },
+                     "market":  {
+                                    "name":  "Habari za Soko",
+                                    "desc":  "Fuata bei za mazao katika masoko 6 ili kuongeza faida yako."
+                                },
+                     "soil":  {
+                                  "name":  "Uchambuzi wa Udongo",
+                                  "desc":  "Ripoti za kina za ubora wa udongo na mapendekezo ya usimamizi wa virutubishi."
+                              },
+                     "languages":  {
+                                       "name":  "Usaidizi wa Lugha Nyingi",
+                                       "desc":  "Chagua lugha yako: Kiingereza, Kiswahili, au Dholuo. Elewa Fahamu Shamba kwa lugha unayoijua vizuri."
+                                   },
+                     "security":  {
+                                      "name":  "Salama na Siri",
+                                      "desc":  "Taarifa za shamba lako zimefungwa kwa njia salama. Hatuwezi kushiriki taarifa zako."
+                                  }
+                 },
+    "howItWorks":  {
+                       "title":  "Jinsi Inavyofanya Kazi kwa Hatua 4",
+                       "steps":  [
+                                     {
+                                         "num":  "1",
+                                         "title":  "Profaili Yako",
+                                         "desc":  "Ingiza maelezo ya shamba"
+                                     },
+                                     {
+                                         "num":  "2",
+                                         "title":  "Uchambuzi wa AI",
+                                         "desc":  "Miundombinu ya ML inachambua"
+                                     },
+                                     {
+                                         "num":  "3",
+                                         "title":  "Mapendekezo",
+                                         "desc":  "Pata mazao ya juu"
+                                     },
+                                     {
+                                         "num":  "4",
+                                         "title":  "Kua na Pata Faida",
+                                         "desc":  "Ongeza mavuno"
+                                     }
+                                 ]
+                   },
+    "stats":  {
+                  "title":  "Matokeo Yaliyothibitika",
+                  "yield":  {
+                                "number":  "30%",
+                                "label":  "Mavuno Zaidi",
+                                "desc":  "Ongezeko la wastani kwa mapendekezo yetu"
+                            },
+                  "cost":  {
+                               "number":  "25%",
+                               "label":  "Akiba ya Gharama",
+                               "desc":  "Upotevu mdogo wa pembejeo"
+                           },
+                  "counties":  {
+                                   "number":  "5",
+                                   "label":  "Kaunti Ndogo",
+                                   "desc":  "Tunawatumikia wakote wa Siaya"
+                               },
+                  "free":  {
+                               "number":  "100%",
+                               "label":  "Ufikiaji wa Bure",
+                               "desc":  "Hakuna malipo mabisi"
+                           }
+              },
+    "testimonials":  {
+                         "title":  "Wakulima Wanasema Nini",
+                         "james":  {
+                                       "text":  "Fahamu Shamba ilinisaidia kuongeza mavuno ya maharagwe kwa 40%. Sasa natumia data badala ya kubahatisha.",
+                                       "name":  "James Ochieng",
+                                       "location":  "Bondo"
+                                   },
+                         "mary":  {
+                                      "text":  "Utabiri wa hali ya hewa ni sahihi sana. Niliepuka hasara ya mazao wakati wa kiangazi.",
+                                      "name":  "Mary Kipchoge",
+                                      "location":  "Ugunja"
+                                  },
+                         "peter":  {
+                                       "text":  "Chombo cha bei za soko kiliniokoa nisipande mazao yasiyo sahihi. Mapato yangu yameongezeka kwa 35% mwaka huu!",
+                                       "name":  "Peter Mwangi",
+                                       "location":  "Yala"
+                                   }
+                     },
+    "instructions":  {
+                         "title":  "🚀 Kuanza ni Rahisi!",
+                         "subtitle":  "Chagua njia yako:",
+                         "new":  "Wakulima Wapya? Bonyeza kitufe cha Fungua Akaunti ili kuunda akaunti. Utakamilisha profaili yako kwa dakika 2 tu.",
+                         "existing":  "Una akaunti tayari? Bonyeza kitufe cha Ingia ili kupata dashibodi yako ya kibinafsi.",
+                         "first":  "Njia ya kwanza? Angalia sehemu ya Vipengele hapo juu ili kuona kile Fahamu Shamba kinatoa.",
+                         "after":  "Baada ya kuingia, utapata Dashibodi ya Wakulima ambapo unaweza kupata mapendekezo ya mazao, kuangalia utabiri wa hali ya hewa, na kufuatilia bei za soko."
+                     },
+    "cta":  {
+                "title":  "Je, Upo Tayari Kubadilisha Kilimo Chako?",
+                "subtitle":  "Jiunge na mamia ya wakulima katika Siaya County wanachotumia data kufanya maamuzi mahiri.",
+                "createAccount":  "Fungua Akaunti Bure",
+                "login":  "Ingia kwenye Dashibodi"
+            },
+    "footer":  {
+                   "about":  "Kuhusu",
+                   "aboutLinks":  [
+                                      "Kuhusu Fahamu Shamba",
+                                      "Lengo Letu",
+                                      "Blogi"
+                                  ],
+                   "resources":  "Rasilimali",
+                   "resourceLinks":  [
+                                         "Mwongozo wa Mazao",
+                                         "Mwito wa Soko",
+                                         "Kituo cha Usaidizi"
+                                     ],
+                   "legal":  "Kisheria",
+                   "legalLinks":  [
+                                      "Sera ya Faragha",
+                                      "Masharti ya Huduma",
+                                      "Wasiliana Nasi"
+                                  ],
+                   "languages":  "Lugha",
+                   "copyright":  "? 2025 Fahamu Shamba. Haki zote zimehifadhiwa.",
+                   "description":  "Tunawawezesha wakulima wadogo wa Siaya kwa mapendekezo ya mazao yanayoendeshwa na AI na maarifa ya soko."
+               }
 }
