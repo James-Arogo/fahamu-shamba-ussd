@@ -3,13 +3,30 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const LOGS_DIR = path.join(__dirname, 'logs');
+const IS_VERCEL = process.env.VERCEL === '1' || process.env.VERCEL === 'true';
+const LOGS_DIR = process.env.LOGS_DIR || (IS_VERCEL ? '/tmp/fahamu-shamba-logs' : path.join(__dirname, 'logs'));
 const AUDIT_LOG_FILE = path.join(LOGS_DIR, 'admin-audit.log');
 const SECURITY_LOG_FILE = path.join(LOGS_DIR, 'admin-security.log');
+let logsWritable = true;
 
 // Ensure logs directory exists
-if (!fs.existsSync(LOGS_DIR)) {
-  fs.mkdirSync(LOGS_DIR, { recursive: true });
+try {
+  if (!fs.existsSync(LOGS_DIR)) {
+    fs.mkdirSync(LOGS_DIR, { recursive: true });
+  }
+} catch (error) {
+  logsWritable = false;
+  console.warn(`Audit logs disabled: ${error.message}`);
+}
+
+function appendLogSafe(logFile, logLine) {
+  if (!logsWritable) return;
+  try {
+    fs.appendFileSync(logFile, logLine, { encoding: 'utf8' });
+  } catch (error) {
+    logsWritable = false;
+    console.error(`Failed writing audit log to ${logFile}:`, error.message);
+  }
 }
 
 /**
@@ -30,7 +47,7 @@ export function logAuditEvent(adminId, email, action, details, status = 'success
   };
 
   const logLine = JSON.stringify(logEntry) + '\n';
-  fs.appendFileSync(AUDIT_LOG_FILE, logLine, { encoding: 'utf8' });
+  appendLogSafe(AUDIT_LOG_FILE, logLine);
 
   if (status === 'failure') {
     logSecurityEvent('audit_failure', logEntry);
@@ -51,7 +68,7 @@ export function logSecurityEvent(eventType, details, severity = 'warning') {
   };
 
   const logLine = JSON.stringify(logEntry) + '\n';
-  fs.appendFileSync(SECURITY_LOG_FILE, logLine, { encoding: 'utf8' });
+  appendLogSafe(SECURITY_LOG_FILE, logLine);
 
   // Alert on critical events
   if (severity === 'critical') {
