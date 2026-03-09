@@ -8,9 +8,9 @@
  * Enhanced Farmer Database Schema
  */
 export function initializeEnhancedFarmerDatabase(db) {
-  db.serialize(() => {
+  try {
     // Main farmers profile table
-    db.run(`CREATE TABLE IF NOT EXISTS farmer_profiles (
+    db.exec(`CREATE TABLE IF NOT EXISTS farmer_profiles (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       farmer_id TEXT UNIQUE NOT NULL,
       phone_number TEXT UNIQUE NOT NULL,
@@ -48,13 +48,11 @@ export function initializeEnhancedFarmerDatabase(db) {
       login_count INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`, (err) => {
-      if (err) console.error('Error creating farmer_profiles table:', err);
-      else console.log('✅ Enhanced farmer_profiles table ready');
-    });
+    )`);
+    console.log('✅ Enhanced farmer_profiles table ready');
 
     // Farmer activity log
-    db.run(`CREATE TABLE IF NOT EXISTS farmer_activity_logs (
+    db.exec(`CREATE TABLE IF NOT EXISTS farmer_activity_logs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       farmer_id TEXT NOT NULL,
       activity_type TEXT NOT NULL,
@@ -62,13 +60,11 @@ export function initializeEnhancedFarmerDatabase(db) {
       metadata TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY(farmer_id) REFERENCES farmer_profiles(farmer_id) ON DELETE CASCADE
-    )`, (err) => {
-      if (err) console.error('Error creating farmer_activity_logs table:', err);
-      else console.log('✅ farmer_activity_logs table ready');
-    });
+    )`);
+    console.log('✅ farmer_activity_logs table ready');
 
     // Farmer farm details table
-    db.run(`CREATE TABLE IF NOT EXISTS farmer_farms (
+    db.exec(`CREATE TABLE IF NOT EXISTS farmer_farms (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       farmer_id TEXT NOT NULL,
       farm_name TEXT,
@@ -83,20 +79,22 @@ export function initializeEnhancedFarmerDatabase(db) {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY(farmer_id) REFERENCES farmer_profiles(farmer_id) ON DELETE CASCADE
-    )`, (err) => {
-      if (err) console.error('Error creating farmer_farms table:', err);
-      else console.log('✅ farmer_farms table ready');
-    });
+    )`);
+    console.log('✅ farmer_farms table ready');
 
     // Create indexes for performance
-    db.run(`CREATE INDEX IF NOT EXISTS idx_farmer_profiles_phone ON farmer_profiles(phone_number)`);
-    db.run(`CREATE INDEX IF NOT EXISTS idx_farmer_profiles_email ON farmer_profiles(email)`);
-    db.run(`CREATE INDEX IF NOT EXISTS idx_farmer_profiles_subcounty ON farmer_profiles(sub_county)`);
-    db.run(`CREATE INDEX IF NOT EXISTS idx_farmer_profiles_active ON farmer_profiles(is_active)`);
-    db.run(`CREATE INDEX IF NOT EXISTS idx_farmer_profiles_farmer_id ON farmer_profiles(farmer_id)`);
-    db.run(`CREATE INDEX IF NOT EXISTS idx_farmer_activity_logs_farmer ON farmer_activity_logs(farmer_id)`);
-    db.run(`CREATE INDEX IF NOT EXISTS idx_farmer_farms_farmer ON farmer_farms(farmer_id)`);
-  });
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_farmer_profiles_phone ON farmer_profiles(phone_number)`);
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_farmer_profiles_email ON farmer_profiles(email)`);
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_farmer_profiles_subcounty ON farmer_profiles(sub_county)`);
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_farmer_profiles_active ON farmer_profiles(is_active)`);
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_farmer_profiles_farmer_id ON farmer_profiles(farmer_id)`);
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_farmer_activity_logs_farmer ON farmer_activity_logs(farmer_id)`);
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_farmer_farms_farmer ON farmer_farms(farmer_id)`);
+    
+    console.log('✅ All farmer_profiles indexes created');
+  } catch (err) {
+    console.error('Error initializing enhanced farmer database:', err.message);
+  }
 }
 
 /**
