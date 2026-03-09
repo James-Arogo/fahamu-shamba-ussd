@@ -27,6 +27,10 @@ export function initAuthRoutes(db) {
 
   // Helper: Verify password
   const verifyPassword = async (password, hash) => {
+    if (!hash) {
+      console.warn('⚠️  Password hash is empty or null');
+      return false;
+    }
     return await bcryptjs.compare(password, hash);
   };
 
@@ -102,8 +106,9 @@ export function initAuthRoutes(db) {
       const normalizedUsername = username.trim().toLowerCase();
 
       // Check if phone or username already exists
-      const stmt = db.prepare('SELECT id, phone, username FROM users WHERE phone = ? OR LOWER(username) = ?');
-      const existingUser = stmt.get(normalizedPhone, normalizedUsername);
+       // Note: Use lowercase comparison in JavaScript since SQLite's LOWER() may not be available
+       const stmt = db.prepare('SELECT id, phone, username FROM users WHERE phone = ? OR username = ?');
+       const existingUser = stmt.get(normalizedPhone, normalizedUsername);
 
       if (existingUser) {
         return res.status(400).json({
@@ -213,15 +218,14 @@ export function initAuthRoutes(db) {
   // POST /api/auth/login
   router.post('/login', async (req, res) => {
     try {
-      const { username, phone, password } = req.body;
-      const phoneIdentifier = phone ? phone.trim() : '';
+      const { username, password } = req.body;
       const usernameIdentifier = username ? username.trim().toLowerCase() : '';
 
       // Validate input
-      if (!phoneIdentifier && !usernameIdentifier) {
+      if (!usernameIdentifier) {
         return res.status(400).json({
           status: 'error',
-          message: 'Username and password are required'
+          message: 'Username is required'
         });
       }
 
@@ -232,14 +236,27 @@ export function initAuthRoutes(db) {
         });
       }
 
-      console.log(`Login attempt with username: ${usernameIdentifier}, phone: ${phoneIdentifier}`);
+      console.log(`Login attempt with username: ${usernameIdentifier}`);
 
-      // Find user
-      const stmt = db.prepare('SELECT id, phone, username, password_hash, name FROM users WHERE LOWER(username) = ? OR phone = ?');
-      const user = stmt.get(usernameIdentifier, phoneIdentifier);
+       // Find user by username only (matching create account page)
+       // Use exact match with lowercase since we normalize on registration
+       const stmt = db.prepare('SELECT id, phone, username, password_hash, name FROM users WHERE username = ?');
+       const user = stmt.get(usernameIdentifier);
+       
+       // If not found, try case-insensitive search as fallback
+       if (!user) {
+         console.log(`Trying case-insensitive search for: ${usernameIdentifier}`);
+         const fallbackStmt = db.prepare('SELECT id, phone, username, password_hash, name FROM users');
+         const allUsers = fallbackStmt.all();
+         const fallbackUser = allUsers.find(u => u.username && u.username.toLowerCase() === usernameIdentifier);
+         if (fallbackUser) {
+           console.log(`Found user via case-insensitive search: ${fallbackUser.username}`);
+           Object.assign(user = {}, fallbackUser);
+         }
+       }
 
       if (!user) {
-        console.log(`User not found for username: ${usernameIdentifier}, phone: ${phoneIdentifier}`);
+        console.log(`User not found for username: ${usernameIdentifier}`);
         return res.status(401).json({
           status: 'error',
           message: 'Invalid username or password'

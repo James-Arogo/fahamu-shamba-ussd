@@ -34,8 +34,16 @@ allUsers.forEach((user, index) => {
 console.log('\n🧪 TESTING LOGIN QUERY\n');
 
 const testUsername = 'testfarm';
-const stmt = db.prepare('SELECT id, phone, username, password_hash, name FROM users WHERE LOWER(username) = ?');
-const user = stmt.get(testUsername.toLowerCase());
+const normalizedTestUsername = testUsername.trim().toLowerCase();
+const stmt = db.prepare('SELECT id, phone, username, password_hash, name FROM users WHERE username = ?');
+let user = stmt.get(normalizedTestUsername);
+
+// Fallback: case-insensitive search
+if (!user) {
+  const fallbackStmt = db.prepare('SELECT id, phone, username, password_hash, name FROM users');
+  const allUsers = fallbackStmt.all();
+  user = allUsers.find(u => u.username && u.username.toLowerCase() === normalizedTestUsername);
+}
 
 if (user) {
   console.log(`✅ Query found user: ${user.username}`);

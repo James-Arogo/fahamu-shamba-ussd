@@ -268,7 +268,7 @@
         document.getElementById('loginForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
-            let username = document.getElementById('username').value.trim();
+            const username = document.getElementById('username').value.trim();
             const password = document.getElementById('password').value;
             const submitBtn = document.querySelector('#loginForm .btn');
             
@@ -277,27 +277,8 @@
                 return;
             }
 
-            // Normalize phone number if it looks like a phone (contains only digits)
-            function normalizeKenyaPhone(phone) {
-                const digits = (phone || '').replace(/\D/g, '');
-                if (digits.startsWith('0') && digits.length === 10) return `254${digits.slice(1)}`;
-                if (digits.startsWith('7') && digits.length === 9) return `254${digits}`;
-                if (digits.startsWith('254') && digits.length === 12) return digits;
-                return phone;
-            }
-
-            // Check if input looks like a phone number (starts with 0 or 7 or 254)
-            const looksLikePhone = /^(\+|0|254)/.test(username);
-            let loginData;
-            
-            if (looksLikePhone) {
-                // Normalize phone and send as phone field
-                const normalizedPhone = normalizeKenyaPhone(username);
-                loginData = { phone: normalizedPhone, password };
-            } else {
-                // Send as username field
-                loginData = { username: username.toLowerCase(), password };
-            }
+            // Strictly use username for login (matching create account page)
+            const loginData = { username: username.toLowerCase(), password };
 
             try {
                 submitBtn.disabled = true;

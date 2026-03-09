@@ -19,8 +19,8 @@ export function initializeAuthTables(db) {
       CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         phone VARCHAR(20) UNIQUE NOT NULL,
-        username VARCHAR(50) UNIQUE,
-        password_hash VARCHAR(255) NOT NULL,
+        username VARCHAR(50) UNIQUE COLLATE NOCASE,
+        password_hash VARCHAR(255),
         name VARCHAR(100),
         email VARCHAR(100),
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,

@@ -4,38 +4,40 @@
  */
 
 function setWeatherBackground(condition) {
-    const bg = document.querySelector('.weather-dashboard');
-    if (!bg) return;
-    
-    // Remove all background classes
-    bg.classList.remove('sunny-bg', 'cloudy-bg', 'rainy-bg', 'stormy-bg', 'foggy-bg', 'default-bg');
-    
-    // Add appropriate background
-    switch ((condition || '').toLowerCase()) {
-        case 'rain':
-        case 'drizzle':
-        case 'thunderstorm':
-            bg.classList.add('rainy-bg');
-            break;
-        case 'clouds':
-        case 'overcast':
-            bg.classList.add('cloudy-bg');
-            break;
-        case 'clear':
-        case 'sunny':
-            bg.classList.add('sunny-bg');
-            break;
-        case 'snow':
-            bg.classList.add('snowy-bg');
-            break;
-        case 'mist':
-        case 'fog':
-            bg.classList.add('foggy-bg');
-            break;
-        default:
-            bg.classList.add('default-bg');
-    }
-}
+     const bg = document.querySelector('.weather-dashboard');
+     if (!bg) return;
+     
+     // Remove all background classes
+     bg.classList.remove('sunny-bg', 'cloudy-bg', 'rainy-bg', 'stormy-bg', 'foggy-bg', 'snowy-bg', 'default-bg');
+     
+     // Add appropriate background
+     switch ((condition || '').toLowerCase()) {
+         case 'thunderstorm':
+             bg.classList.add('stormy-bg');
+             break;
+         case 'rain':
+         case 'drizzle':
+             bg.classList.add('rainy-bg');
+             break;
+         case 'clouds':
+         case 'overcast':
+             bg.classList.add('cloudy-bg');
+             break;
+         case 'clear':
+         case 'sunny':
+             bg.classList.add('sunny-bg');
+             break;
+         case 'snow':
+             bg.classList.add('snowy-bg');
+             break;
+         case 'mist':
+         case 'fog':
+             bg.classList.add('foggy-bg');
+             break;
+         default:
+             bg.classList.add('default-bg');
+     }
+ }
 
 function renderHourlyStrip(hourly = []) {
     const strip = document.getElementById('hourlyStrip');
@@ -127,20 +129,26 @@ function updateDetailsCards(current, daily = []) {
 }
 
 function getWeatherIcon(condition) {
-    if (!condition) return '🌡';
-    
-    const cond = (condition || '').toLowerCase();
-    
-    if (cond.includes('rain') || cond.includes('drizzle')) return '🌧';
-    if (cond.includes('cloud') || cond.includes('overcast')) return '☁️';
-    if (cond.includes('clear') || cond.includes('sunny')) return '☀️';
-    if (cond.includes('snow')) return '❄️';
-    if (cond.includes('thunder')) return '⛈️';
-    if (cond.includes('wind')) return '💨';
-    if (cond.includes('fog') || cond.includes('mist')) return '🌫️';
-    
-    return '🌡';
-}
+     if (!condition) return '🌡';
+     
+     const cond = (condition || '').toLowerCase();
+     
+     if (cond.includes('thunder')) return '⛈️';
+     if (cond.includes('rain') || cond.includes('drizzle')) return '🌧️';
+     if (cond.includes('cloud') || cond.includes('overcast')) return '☁️';
+     if (cond.includes('clear') || cond.includes('sunny')) return '☀️';
+     if (cond.includes('snow')) return '❄️';
+     if (cond.includes('wind')) return '💨';
+     if (cond.includes('fog') || cond.includes('mist')) return '🌫️';
+     
+     return '🌡';
+ }
+
+function updateHeroWeatherIcon(condition) {
+     const icon = getWeatherIcon(condition);
+     const heroIcon = document.getElementById('heroWeatherIcon');
+     if (heroIcon) heroIcon.textContent = icon;
+ }
 
 // Export functions for global use
 window.setWeatherBackground = setWeatherBackground;
@@ -148,3 +156,4 @@ window.renderHourlyStrip = renderHourlyStrip;
 window.renderDailyForecast = renderDailyForecast;
 window.updateDetailsCards = updateDetailsCards;
 window.getWeatherIcon = getWeatherIcon;
+window.updateHeroWeatherIcon = updateHeroWeatherIcon;

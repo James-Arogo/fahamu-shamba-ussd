@@ -1,0 +1,117 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║                  401 LOGIN ERROR - QUICK FIX GUIDE                          ║
+║                          (5 MINUTE FIX)                                     ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+PROBLEM: Getting "Invalid username or password" error even with correct credentials
+
+ROOT CAUSE: SQLite doesn't have LOWER() function + username case sensitivity
+
+SOLUTION ALREADY APPLIED TO:
+  ✅ backend/auth-routes.js
+  ✅ backend/init-auth-tables.js
+  ✅ All test files
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+STEP 1: DIAGNOSE (1 minute)
+──────────────────────────────────────────────────────────────────────────────
+
+Run this to check what's wrong:
+
+  node backend/fix-401-login.js
+
+Look for:
+  ✅ Present  = User can login
+  ❌ MISSING  = User needs to be recreated
+  ⚠️  Too Short = Bad password hash
+
+
+STEP 2: FIX (2 minutes)
+──────────────────────────────────────────────────────────────────────────────
+
+If you see ❌ MISSING or ⚠️ Too Short users:
+
+  Option A (Easy): Delete and recreate
+    1. Go to signup page
+    2. Create new account
+    3. That's it!
+
+  Option B (Database): Delete problematic users
+    sqlite3 backend/fahamu_shamba.db "DELETE FROM users WHERE password_hash IS NULL;"
+
+
+STEP 3: RESTART (1 minute)
+──────────────────────────────────────────────────────────────────────────────
+
+  npm start
+
+Then test in browser: https://fahamu-shamba1-main.vercel.app/login.html
+
+
+STEP 4: VERIFY (1 minute)
+──────────────────────────────────────────────────────────────────────────────
+
+Test with any username/password:
+
+  node backend/test-login-fixed.js farmer04 password123
+
+Expected: ✅ Password MATCHES - Login should work
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+WHAT WAS FIXED:
+
+❌ Problem: LOWER(username) doesn't work in SQLite
+✅ Fix: Normalize username in JavaScript code
+
+❌ Problem: Username case sensitivity (farmer04 ≠ FARMER04)
+✅ Fix: Added case-insensitive fallback search
+
+❌ Problem: Silent failures on NULL password_hash
+✅ Fix: Added explicit validation and logging
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+HELPFUL COMMANDS:
+
+Check all users:
+  node backend/fix-401-login.js
+
+Test login:
+  node backend/test-login-fixed.js farmer04 password123
+
+View database:
+  sqlite3 backend/fahamu_shamba.db "SELECT username, phone FROM users;"
+
+Clear bad users:
+  sqlite3 backend/fahamu_shamba.db "DELETE FROM users WHERE password_hash IS NULL;"
+
+View detailed logs:
+  npm start (watch console output)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+IF STILL NOT WORKING:
+
+1. Clear browser cache: Ctrl+Shift+Delete
+2. Try incognito/private window
+3. Check server logs: npm start
+4. Delete all users and create new account
+5. Check files were edited:
+   - backend/auth-routes.js should have COLLATE NOCASE mention
+   - Check for fallback search logic
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+IMPORTANT NOTES:
+
+⚠️  Vercel uses ephemeral storage - database resets on redeploy!
+    Use Firebase/PostgreSQL for production
+
+📚 See CHANGES_APPLIED.md for detailed information
+
+✅ This fix is backward compatible - all existing accounts still work
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

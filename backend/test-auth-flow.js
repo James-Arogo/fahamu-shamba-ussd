@@ -58,8 +58,16 @@ const loginPassword = 'password123';
 
 console.log(`  Attempting login with username: "${loginUsername}"\n`);
 
-const stmt = db.prepare('SELECT id, phone, username, password_hash, name FROM users WHERE LOWER(username) = ? OR phone = ?');
-const user = stmt.get(loginUsername.toLowerCase(), loginUsername);
+const normalizedLoginUsername = loginUsername.trim().toLowerCase();
+const stmt = db.prepare('SELECT id, phone, username, password_hash, name FROM users WHERE username = ? OR phone = ?');
+let user = stmt.get(normalizedLoginUsername, loginUsername);
+
+// Fallback: case-insensitive search
+if (!user) {
+  const fallbackStmt = db.prepare('SELECT id, phone, username, password_hash, name FROM users');
+  const allUsers = fallbackStmt.all();
+  user = allUsers.find(u => u.username && u.username.toLowerCase() === normalizedLoginUsername);
+}
 
 if (!user) {
   console.log('❌ User not found in database\n');

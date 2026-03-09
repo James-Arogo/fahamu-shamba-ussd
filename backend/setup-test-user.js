@@ -56,8 +56,15 @@ for (const testUser of testUsers) {
   const normalizedUsername = testUser.username.trim().toLowerCase();
 
   // Check if user already exists
-  const existingStmt = db.prepare('SELECT id FROM users WHERE LOWER(username) = ? OR phone = ?');
-  const existing = existingStmt.get(normalizedUsername, normalizedPhone);
+  const existingStmt = db.prepare('SELECT id FROM users WHERE username = ? OR phone = ?');
+  let existing = existingStmt.get(normalizedUsername, normalizedPhone);
+  
+  // Fallback: case-insensitive search
+  if (!existing) {
+    const fallbackStmt = db.prepare('SELECT id FROM users');
+    const allUsers = fallbackStmt.all();
+    existing = allUsers.find(u => u.username && u.username.toLowerCase() === normalizedUsername);
+  }
 
   if (existing) {
     console.log(`⏭️  SKIPPED: ${testUser.username} (already exists)`);
@@ -100,8 +107,15 @@ console.log(`📊 SUMMARY: Created ${createdCount}, Skipped ${skippedCount}\n`);
 if (createdCount > 0) {
   console.log('🔐 TESTING LOGIN WITH TEST CREDENTIALS\n');
 
-  const stmt = db.prepare('SELECT id, phone, username, password_hash, name FROM users WHERE LOWER(username) = ?');
-  const user = stmt.get('testfarm');
+  const stmt = db.prepare('SELECT id, phone, username, password_hash, name FROM users WHERE username = ?');
+  let user = stmt.get('testfarm');
+  
+  // Fallback: case-insensitive search
+  if (!user) {
+    const fallbackStmt = db.prepare('SELECT id, phone, username, password_hash, name FROM users');
+    const allUsers = fallbackStmt.all();
+    user = allUsers.find(u => u.username && u.username.toLowerCase() === 'testfarm');
+  }
 
   if (user) {
     const password = 'password123';
