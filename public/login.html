@@ -288,8 +288,15 @@
 
             // Check if input looks like a phone number (starts with 0 or 7 or 254)
             const looksLikePhone = /^(\+|0|254)/.test(username);
+            let loginData;
+            
             if (looksLikePhone) {
-                username = normalizeKenyaPhone(username);
+                // Normalize phone and send as phone field
+                const normalizedPhone = normalizeKenyaPhone(username);
+                loginData = { phone: normalizedPhone, password };
+            } else {
+                // Send as username field
+                loginData = { username: username.toLowerCase(), password };
             }
 
             try {
@@ -299,7 +306,7 @@
                 const response = await fetch('/api/auth/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password })
+                    body: JSON.stringify(loginData)
                 });
 
                 const result = await response.json();
