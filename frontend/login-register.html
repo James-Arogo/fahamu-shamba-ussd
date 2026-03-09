@@ -441,6 +441,12 @@
                 </div>
 
                 <div class="form-group">
+                    <label for="registerUsername" data-i18n="username">Username</label>
+                    <input type="text" id="registerUsername" name="username" data-i18n="enter_username" placeholder="3-30 characters, letters, numbers, ._-" required>
+                    <div class="error-message" id="registerUsernameError"></div>
+                </div>
+
+                <div class="form-group">
                     <label for="registerPassword" data-i18n="password">Password</label>
                     <input type="password" id="registerPassword" name="password" placeholder="Minimum 6 characters" required>
                     <div class="error-message" id="registerPasswordError"></div>
@@ -631,15 +637,17 @@
             e.preventDefault();
 
             const phone = document.getElementById('registerPhone').value.trim();
+            const username = document.getElementById('registerUsername').value.trim();
             const password = document.getElementById('registerPassword').value;
             const confirmPassword = document.getElementById('registerConfirmPassword').value;
 
             showError('registerPhoneError', '');
+            showError('registerUsernameError', '');
             showError('registerPasswordError', '');
             showError('registerConfirmPasswordError', '');
             showError('registerFormError', '');
 
-            if (!phone || !password || !confirmPassword) {
+            if (!phone || !username || !password || !confirmPassword) {
                 showError('registerFormError', 'All fields are required');
                 return;
             }
@@ -660,7 +668,7 @@
                 const response = await fetch(`${API_URL}/register`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ phone, password })
+                    body: JSON.stringify({ phone, username, password })
                 });
 
                 const data = await response.json();
