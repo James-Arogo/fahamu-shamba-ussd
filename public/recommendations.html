@@ -647,7 +647,7 @@
             spinner.style.display = 'inline-block';
             
             try {
-                const response = await fetch('/api/predict', {
+                const response = await fetch('/api/recommend', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -660,12 +660,12 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    const recommendations = data.suggestions || [];
+                    const recommendations = data.data.recommendations || [];
                     displayRecommendations(recommendations);
                     loadRecommendationHistory();
                     showToast('Recommendations generated successfully!', 'success');
                 } else {
-                    showToast(data.error || 'Failed to generate recommendations', 'error');
+                    showToast(data.message || data.error || 'Failed to generate recommendations', 'error');
                 }
             } catch (error) {
                 console.error('Error:', error);
@@ -689,7 +689,7 @@
             
             const container = document.getElementById('recommendationsContainer');
             container.innerHTML = recommendations.map((rec, idx) => {
-                const confidence = rec.confidence || 75;
+                const confidence = rec.confidence || rec.score || 75;
                 const confClass = confidence >= 80 ? 'confidence-high' : confidence >= 60 ? 'confidence-medium' : 'confidence-low';
                 
                 return `
@@ -697,8 +697,8 @@
                         <div class="recommendation-header">
                             <div class="recommendation-icon">🌾</div>
                             <div class="recommendation-info">
-                                <div class="recommendation-name">${rec.crop || 'Unknown Crop'}</div>
-                                <div class="recommendation-subtitle">${rec.soil || 'Recommended'} • ${rec.season || 'Any Season'}</div>
+                                <div class="recommendation-name">${rec.name || 'Unknown Crop'}</div>
+                                <div class="recommendation-subtitle">${rec.conditions?.soil || 'Recommended'} • ${rec.conditions?.season || 'Any Season'}</div>
                             </div>
                         </div>
                         
@@ -715,27 +715,27 @@
                                 <span class="detail-label">✓ Why This Crop?</span>
                             </div>
                             <div style="color: var(--text); font-size: 0.9rem; margin-bottom: 10px;">
-                                Perfect for ${rec.soil || 'your'} soil and ${rec.season || 'current'} season
+                                ${rec.reasons?.english || `Perfect for ${rec.conditions?.soil || 'your'} soil and ${rec.conditions?.season || 'current'} season`}
                             </div>
                             <div class="detail-row">
                                 <span class="detail-label">📊 Expected Yield:</span>
-                                <span class="detail-value">${rec.expectedYield || '50-70'} bags/acre</span>
+                                <span class="detail-value">${rec.yieldRange || '50-70 bags/acre'}</span>
                             </div>
                             <div class="detail-row">
                                 <span class="detail-label">💰 Est. Returns:</span>
-                                <span class="detail-value">KES ${rec.estimatedReturns || '50,000-70,000'}</span>
+                                <span class="detail-value">KES ${rec.marketPrice ? rec.marketPrice * 1000 : '50,000-70,000'}</span>
                             </div>
                             <div class="detail-row">
                                 <span class="detail-label">⏱️ Growing Period:</span>
-                                <span class="detail-value">${rec.growingPeriod || '3-4'} months</span>
+                                <span class="detail-value">${rec.plantingWindow || '3-4 months'}</span>
                             </div>
                         </div>
                         
                         <div class="recommendation-actions">
-                            <button class="btn btn-primary btn-sm" onclick="viewCropDetails('${rec.crop}')">
+                            <button class="btn btn-primary btn-sm" onclick="viewCropDetails('${rec.name}')">
                                 <i class="fas fa-info-circle"></i> Details
                             </button>
-                            <button class="btn btn-secondary btn-sm" onclick="getFarmInputs('${rec.crop}')">
+                            <button class="btn btn-secondary btn-sm" onclick="getFarmInputs('${rec.name}')">
                                 <i class="fas fa-tools"></i> Inputs
                             </button>
                         </div>
