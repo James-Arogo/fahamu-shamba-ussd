@@ -37,12 +37,26 @@
         .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 999; }
 
         .main-content { margin-left: var(--sidebar-width); min-height: 100vh; }
-        .top-header { background: #fff; padding: 15px 24px; box-shadow: var(--shadow-sm); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 90; }
-        .mobile-menu-btn { display: none; background: none; border: none; font-size: 1.4rem; color: var(--primary); cursor: pointer; }
+        .top-header { background: #fff; padding: 15px 24px; box-shadow: var(--shadow-sm); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 90; gap: 12px; }
+        .mobile-menu-btn { display: inline-flex; align-items: center; justify-content: center; background: #eef4ef; border: 1px solid #dce9de; width: 40px; height: 40px; border-radius: 8px; font-size: 1.1rem; color: var(--primary); cursor: pointer; }
         .dashboard-wrap { padding: 24px; }
         .hero { background: linear-gradient(135deg, rgba(45,118,73,0.08), rgba(74,157,111,0.08)); border-left: 5px solid var(--secondary); border-radius: 12px; padding: 24px; margin-bottom: 20px; }
         .hero h1 { color: var(--primary-dark); margin-bottom: 8px; font-size: 1.8rem; }
         .hero p { color: var(--text-light); }
+        .weather-card { background: radial-gradient(circle at top right, #2d7649 0%, #1e5631 68%); color: #fff; border-radius: 14px; box-shadow: var(--shadow-md); padding: 20px; margin-bottom: 20px; }
+        .weather-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; }
+        .weather-now { display: flex; align-items: center; gap: 14px; }
+        .weather-now-temp { font-size: 2.3rem; font-weight: 700; line-height: 1; }
+        .weather-now-meta { opacity: 0.95; font-size: 0.92rem; }
+        .weather-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+        .weather-tab { border: 1px solid rgba(255,255,255,0.35); background: rgba(255,255,255,0.1); color: #fff; padding: 8px 12px; border-radius: 20px; font-weight: 600; cursor: pointer; }
+        .weather-tab.active { background: #fff; color: var(--primary-dark); }
+        .weather-grid { display: grid; grid-template-columns: repeat(7, minmax(110px, 1fr)); gap: 10px; }
+        .forecast-pill { background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.18); border-radius: 10px; padding: 10px; text-align: center; }
+        .forecast-pill .day { font-size: 0.78rem; opacity: 0.9; margin-bottom: 5px; }
+        .forecast-pill .icon { font-size: 1.2rem; margin-bottom: 4px; }
+        .forecast-pill .temp { font-size: 0.86rem; font-weight: 600; }
+        .weather-fallback { font-size: 0.86rem; opacity: 0.9; }
         .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
         .stat { background: #fff; border-radius: 12px; border: 1px solid var(--border); padding: 18px; box-shadow: var(--shadow-sm); }
         .stat-value { font-size: 1.8rem; font-weight: 700; color: var(--primary); margin-bottom: 4px; }
@@ -55,7 +69,7 @@
             .sidebar.mobile-open { transform: translateX(0); }
             .sidebar-overlay.mobile-open { display: block; }
             .main-content { margin-left: 0 !important; }
-            .mobile-menu-btn { display: inline-flex; }
+            .weather-grid { grid-template-columns: repeat(4, minmax(100px, 1fr)); }
             .stats-grid { grid-template-columns: repeat(2, 1fr); }
         }
         @media (max-width: 640px) {
@@ -63,6 +77,9 @@
             .top-header { padding: 12px 14px; }
             .hero { padding: 16px; }
             .hero h1 { font-size: 1.3rem; }
+            .weather-card { padding: 14px; }
+            .weather-now-temp { font-size: 1.8rem; }
+            .weather-grid { grid-template-columns: repeat(2, minmax(100px, 1fr)); }
             .stats-grid { grid-template-columns: 1fr; }
         }
     </style>
@@ -113,6 +130,29 @@
                 <p>Use the same sidebar to move across recommendations, market prices, community, feedback, and profile without changing dashboard structure.</p>
             </section>
 
+            <section class="weather-card">
+                <div class="weather-top">
+                    <div class="weather-now">
+                        <div class="weather-now-temp" id="weatherNowTemp">--°C</div>
+                        <div>
+                            <div style="font-weight:700;" id="weatherNowDesc">Loading weather...</div>
+                            <div class="weather-now-meta" id="weatherNowMeta">Siaya • Humidity --% • Wind -- km/h</div>
+                        </div>
+                    </div>
+                    <div style="text-align:right; font-size:0.85rem; opacity:0.9;">
+                        <div>Forecast</div>
+                        <div id="weatherUpdated">Updating...</div>
+                    </div>
+                </div>
+                <div class="weather-tabs">
+                    <button class="weather-tab active" data-mode="day" onclick="renderWeatherMode('day')">Day</button>
+                    <button class="weather-tab" data-mode="week" onclick="renderWeatherMode('week')">Week</button>
+                    <button class="weather-tab" data-mode="month" onclick="renderWeatherMode('month')">Month</button>
+                </div>
+                <div class="weather-grid" id="weatherForecastGrid"></div>
+                <div class="weather-fallback" id="weatherNote"></div>
+            </section>
+
             <section class="stats-grid">
                 <div class="stat">
                     <div class="stat-value">3</div>
@@ -140,6 +180,11 @@
     </div>
 
     <script>
+        let weatherState = {
+            current: null,
+            forecast: []
+        };
+
         function toggleMobileSidebar() {
             const sidebar = document.getElementById('sidebar');
             const overlay = document.getElementById('sidebarOverlay');
@@ -168,7 +213,118 @@
             window.location.href = '/login.html';
         }
 
-        window.addEventListener('DOMContentLoaded', loadUserData);
+        function formatDayLabel(dateStr, idx) {
+            const d = new Date(dateStr);
+            if (idx === 0) return 'Today';
+            return d.toLocaleDateString('en-US', { weekday: 'short' });
+        }
+
+        function weatherIcon(desc) {
+            const text = String(desc || '').toLowerCase();
+            if (text.includes('rain') || text.includes('showers')) return '🌧️';
+            if (text.includes('storm')) return '⛈️';
+            if (text.includes('cloud')) return '⛅';
+            if (text.includes('fog')) return '🌫️';
+            return '☀️';
+        }
+
+        function renderWeatherMode(mode = 'day') {
+            document.querySelectorAll('.weather-tab').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.mode === mode);
+            });
+
+            const grid = document.getElementById('weatherForecastGrid');
+            const list = weatherState.forecast || [];
+            if (!list.length) {
+                grid.innerHTML = '<div class="forecast-pill">No forecast data yet</div>';
+                return;
+            }
+
+            if (mode === 'day') {
+                const today = list.slice(0, 1);
+                grid.innerHTML = today.map((d, i) => `
+                    <div class="forecast-pill">
+                        <div class="day">${formatDayLabel(d.date, i)}</div>
+                        <div class="icon">${weatherIcon(d.description)}</div>
+                        <div class="temp">${d.temperature.max}° / ${d.temperature.min}°</div>
+                        <div style="font-size:0.75rem;opacity:0.88;">Rain ${Math.round(d.rain_probability || 0)}%</div>
+                    </div>
+                `).join('');
+                return;
+            }
+
+            if (mode === 'week') {
+                const week = list.slice(0, 7);
+                grid.innerHTML = week.map((d, i) => `
+                    <div class="forecast-pill">
+                        <div class="day">${formatDayLabel(d.date, i)}</div>
+                        <div class="icon">${weatherIcon(d.description)}</div>
+                        <div class="temp">${d.temperature.max}° / ${d.temperature.min}°</div>
+                        <div style="font-size:0.75rem;opacity:0.88;">${d.description}</div>
+                    </div>
+                `).join('');
+                return;
+            }
+
+            // Month view: extrapolate 4 weekly buckets from 7-day trend.
+            const avgMax = Math.round(list.reduce((a, b) => a + (b.temperature.max || 0), 0) / list.length);
+            const avgMin = Math.round(list.reduce((a, b) => a + (b.temperature.min || 0), 0) / list.length);
+            const avgRain = Math.round(list.reduce((a, b) => a + (b.rain_probability || 0), 0) / list.length);
+            const month = [1, 2, 3, 4].map(w => ({
+                week: `Week ${w}`,
+                max: avgMax + (w % 2 === 0 ? 1 : -1),
+                min: avgMin + (w % 2 === 0 ? 0 : -1),
+                rain: Math.max(5, Math.min(95, avgRain + (w - 2) * 4))
+            }));
+            grid.innerHTML = month.map(w => `
+                <div class="forecast-pill">
+                    <div class="day">${w.week}</div>
+                    <div class="icon">${w.rain > 55 ? '🌧️' : '⛅'}</div>
+                    <div class="temp">${w.max}° / ${w.min}°</div>
+                    <div style="font-size:0.75rem;opacity:0.88;">Rain ${w.rain}%</div>
+                </div>
+            `).join('');
+        }
+
+        async function loadWeatherDashboard() {
+            try {
+                const [currentRes, forecastRes] = await Promise.all([
+                    fetch('/api/weather/current/siaya'),
+                    fetch('/api/weather/forecast/siaya')
+                ]);
+                const currentJson = await currentRes.json();
+                const forecastJson = await forecastRes.json();
+
+                if (currentJson.success && currentJson.data) {
+                    const c = currentJson.data;
+                    weatherState.current = c;
+                    document.getElementById('weatherNowTemp').textContent = `${c.temperature}°C`;
+                    document.getElementById('weatherNowDesc').textContent = c.description || 'Weather update';
+                    document.getElementById('weatherNowMeta').textContent = `${c.location || 'Siaya'} • Humidity ${c.humidity || '--'}% • Wind ${c.wind_speed || '--'} km/h`;
+                    document.getElementById('weatherUpdated').textContent = new Date().toLocaleTimeString();
+                }
+
+                if (forecastJson.success && Array.isArray(forecastJson.data)) {
+                    weatherState.forecast = forecastJson.data;
+                }
+
+                document.getElementById('weatherNote').textContent = '';
+                renderWeatherMode('week');
+            } catch (err) {
+                document.getElementById('weatherNote').textContent = 'Using offline-ready weather fallback.';
+                weatherState.forecast = [
+                    { date: new Date().toISOString(), temperature: { max: 29, min: 20 }, description: 'Partly cloudy', rain_probability: 25 },
+                    { date: new Date(Date.now()+86400000).toISOString(), temperature: { max: 28, min: 19 }, description: 'Moderate rain', rain_probability: 70 },
+                    { date: new Date(Date.now()+172800000).toISOString(), temperature: { max: 30, min: 21 }, description: 'Mainly clear', rain_probability: 15 }
+                ];
+                renderWeatherMode('week');
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            loadUserData();
+            loadWeatherDashboard();
+        });
     </script>
 </body>
 </html>

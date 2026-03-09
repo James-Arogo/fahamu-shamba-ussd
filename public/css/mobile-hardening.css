@@ -12,7 +12,7 @@ img, canvas, video, svg {
   height: auto;
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 1280px) {
   .sidebar {
     transform: translateX(-100%);
     width: min(82vw, 290px) !important;
@@ -63,6 +63,8 @@ img, canvas, video, svg {
 
   .top-header {
     padding: 12px 14px !important;
+    gap: 8px;
+    flex-wrap: wrap;
   }
 
   .top-header .header-right {
@@ -71,6 +73,17 @@ img, canvas, video, svg {
     flex-wrap: wrap;
     align-items: center;
     justify-content: flex-end;
+  }
+
+  .language-label {
+    display: none !important;
+  }
+
+  .top-header .back-dashboard-btn,
+  .top-header .back-btn {
+    padding: 8px 10px !important;
+    font-size: 0.82rem !important;
+    white-space: nowrap;
   }
 
   header {

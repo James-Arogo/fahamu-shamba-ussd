@@ -240,7 +240,7 @@
         <header class="top-header">
             <button class="mobile-menu-btn"><i class="fas fa-bars"></i></button>
             <button class="back-btn" onclick="window.location.href='/dashboard.html'">
-                <i class="fas fa-arrow-left"></i> Back to Dashboard
+                <i class="fas fa-arrow-left"></i> Back
             </button>
             <h2 style="color: var(--primary-dark); font-weight: 700;">Market Prices</h2>
             <div style="display: flex; gap: 12px; align-items: center;">
@@ -355,21 +355,65 @@
         // Load prices from API
         async function loadPrices() {
             try {
-                const response = await fetch('/api/market/prices');
-                const data = await response.json();
-                
-                if (data.success) {
-                    marketData = data;
-                    displayPrices(data);
-                } else {
-                    document.getElementById('pricesTable').innerHTML = 
-                        '<p style="text-align:center;color:var(--danger);">Failed to load market data</p>';
+                // Primary route (market module), fallback to legacy demo route.
+                let response = await fetch('/api/market/prices');
+                let data = await response.json();
+
+                if (!data.success) {
+                    response = await fetch('/api/market-prices');
+                    data = await response.json();
                 }
+
+                if (!data.success) {
+                    throw new Error('No successful market payload');
+                }
+
+                // Normalize payload shapes from both APIs.
+                if (data.prices && Array.isArray(data.prices)) {
+                    marketData = normalizeMarketPrices(data.prices, data.timestamp);
+                } else if (data.data && Array.isArray(data.data.prices)) {
+                    marketData = normalizeLegacyPrices(data.data.prices, data.data.timestamp || data.timestamp);
+                } else {
+                    throw new Error('Unexpected market response format');
+                }
+
+                displayPrices(marketData);
             } catch (error) {
                 console.error('Error loading prices:', error);
                 document.getElementById('pricesTable').innerHTML = 
                     '<p style="text-align:center;color:var(--danger);">Failed to load market data</p>';
             }
+        }
+
+        // Convert row-per-market API to page table shape (crop row with sub-counties columns)
+        function normalizeMarketPrices(rawRows, timestamp) {
+            const map = new Map();
+            const subcounties = ['bondo', 'ugunja', 'yala', 'gem', 'alego'];
+            rawRows.forEach(row => {
+                const crop = row.crop;
+                const marketRaw = String(row.market || '').toLowerCase();
+                if (!map.has(crop)) {
+                    map.set(crop, { crop, bondo: 0, ugunja: 0, yala: 0, gem: 0, alego: 0, trend: 'stable' });
+                }
+                const matched = subcounties.find(sc => marketRaw.includes(sc));
+                if (matched) {
+                    map.get(crop)[matched] = Number(row.price || 0);
+                }
+            });
+            return {
+                success: true,
+                prices: Array.from(map.values()),
+                lastUpdated: timestamp ? new Date(timestamp).toLocaleString() : new Date().toLocaleString()
+            };
+        }
+
+        // Legacy /api/market-prices payload already grouped by crop.
+        function normalizeLegacyPrices(rawRows, timestamp) {
+            return {
+                success: true,
+                prices: rawRows,
+                lastUpdated: timestamp ? new Date(timestamp).toLocaleString() : new Date().toLocaleString()
+            };
         }
         
         // Display prices table
@@ -407,11 +451,13 @@
         // Load trend chart
         async function loadTrends(crop = 'Maize') {
             try {
-                const response = await fetch(`/api/market/trends?crop=${encodeURIComponent(crop)}`);
+                const response = await fetch(`/api/market-trends?crop=${encodeURIComponent(crop)}`);
                 const data = await response.json();
                 
                 if (data.success && data.trends) {
                     renderChart(crop, data.trends);
+                } else if (data.success && data.data) {
+                    renderChart(crop, mapMarketCentersToTrendRows(data.data, crop));
                 } else {
                     // Use demo data if no trends available
                     renderChart(crop, generateDemoTrends(crop));
@@ -420,6 +466,22 @@
                 console.error('Error loading trends:', error);
                 renderChart(crop, generateDemoTrends(crop));
             }
+        }
+
+        function mapMarketCentersToTrendRows(marketCenters, crop) {
+            const rows = [];
+            Object.entries(marketCenters).forEach(([key, center]) => {
+                const cropEntry = (center.crops || []).find(c => String(c.crop).toLowerCase() === String(crop).toLowerCase());
+                if (!cropEntry || !Array.isArray(cropEntry.history)) return;
+                cropEntry.history.forEach((price, idx) => {
+                    rows.push({
+                        subcounty: key,
+                        week_start: `W${idx + 1}`,
+                        price: Number(price || 0)
+                    });
+                });
+            });
+            return rows.length ? rows : generateDemoTrends(crop);
         }
         
         // Generate demo trends
@@ -584,5 +646,6 @@
     </script>
 </body>
 </html>
+
 
 
