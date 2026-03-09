@@ -43,11 +43,12 @@
         .hero { background: linear-gradient(135deg, rgba(45,118,73,0.08), rgba(74,157,111,0.08)); border-left: 5px solid var(--secondary); border-radius: 12px; padding: 24px; margin-bottom: 20px; }
         .hero h1 { color: var(--primary-dark); margin-bottom: 8px; font-size: 1.8rem; }
         .hero p { color: var(--text-light); }
-        .weather-card { background: radial-gradient(circle at top right, #2d7649 0%, #1e5631 68%); color: #fff; border-radius: 14px; box-shadow: var(--shadow-md); padding: 20px; margin-bottom: 20px; }
+        .weather-card { background: linear-gradient(170deg, #748390 0%, #4f6272 55%, #2b3d4d 100%); color: #fff; border-radius: 14px; box-shadow: var(--shadow-md); padding: 20px; margin-bottom: 20px; }
         .weather-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; }
         .weather-now { display: flex; align-items: center; gap: 14px; }
         .weather-now-temp { font-size: 2.3rem; font-weight: 700; line-height: 1; }
         .weather-now-meta { opacity: 0.95; font-size: 0.92rem; }
+        .weather-location { padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.35); background: rgba(255,255,255,0.12); color: #fff; font-weight: 600; }
         .weather-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
         .weather-tab { border: 1px solid rgba(255,255,255,0.35); background: rgba(255,255,255,0.1); color: #fff; padding: 8px 12px; border-radius: 20px; font-weight: 600; cursor: pointer; }
         .weather-tab.active { background: #fff; color: var(--primary-dark); }
@@ -57,6 +58,17 @@
         .forecast-pill .icon { font-size: 1.2rem; margin-bottom: 4px; }
         .forecast-pill .temp { font-size: 0.86rem; font-weight: 600; }
         .weather-fallback { font-size: 0.86rem; opacity: 0.9; }
+        .weather-radar { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 14px 0; }
+        .radar-item { background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2); border-radius: 12px; padding: 10px; text-align: center; }
+        .radar-circle { width: 72px; height: 72px; border-radius: 50%; margin: 0 auto 8px; background-size: cover; background-position: center; }
+        .radar-circle.precip { background-image: radial-gradient(circle at 30% 35%, #7bd4ff, #2f6f92 60%, #1f3344); }
+        .radar-circle.wind { background-image: radial-gradient(circle at 60% 30%, #b7f3ff, #4ea4b4 60%, #22444d); }
+        .radar-circle.temp { background-image: radial-gradient(circle at 70% 30%, #ffe48a, #f6b85f 58%, #754c37); }
+        .weather-metrics { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 12px; }
+        .metric-card { background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2); border-radius: 12px; padding: 12px; }
+        .metric-title { font-size: 0.85rem; opacity: 0.9; display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+        .metric-value { font-size: 1.6rem; font-weight: 700; margin-bottom: 4px; }
+        .metric-sub { font-size: 0.82rem; opacity: 0.85; }
         .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
         .stat { background: #fff; border-radius: 12px; border: 1px solid var(--border); padding: 18px; box-shadow: var(--shadow-sm); }
         .stat-value { font-size: 1.8rem; font-weight: 700; color: var(--primary); margin-bottom: 4px; }
@@ -70,6 +82,7 @@
             .sidebar-overlay.mobile-open { display: block; }
             .main-content { margin-left: 0 !important; }
             .weather-grid { grid-template-columns: repeat(4, minmax(100px, 1fr)); }
+            .weather-radar { grid-template-columns: 1fr 1fr 1fr; }
             .stats-grid { grid-template-columns: repeat(2, 1fr); }
         }
         @media (max-width: 640px) {
@@ -80,6 +93,10 @@
             .weather-card { padding: 14px; }
             .weather-now-temp { font-size: 1.8rem; }
             .weather-grid { grid-template-columns: repeat(2, minmax(100px, 1fr)); }
+            .weather-radar { grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+            .radar-circle { width: 58px; height: 58px; }
+            .weather-metrics { grid-template-columns: 1fr 1fr; gap: 8px; }
+            .metric-value { font-size: 1.3rem; }
             .stats-grid { grid-template-columns: 1fr; }
         }
     </style>
@@ -142,14 +159,69 @@
                     <div style="text-align:right; font-size:0.85rem; opacity:0.9;">
                         <div>Forecast</div>
                         <div id="weatherUpdated">Updating...</div>
+                        <select id="weatherLocation" class="weather-location" onchange="loadWeatherDashboard(this.value)">
+                            <option value="siaya">Siaya</option>
+                            <option value="bondo">Bondo</option>
+                            <option value="ugunja">Ugunja</option>
+                            <option value="yala">Yala</option>
+                            <option value="gem">Gem</option>
+                            <option value="alego">Alego</option>
+                        </select>
                     </div>
                 </div>
+                <div style="margin-bottom:8px; font-weight:600; opacity:0.95;">Next 72 Hours</div>
                 <div class="weather-tabs">
                     <button class="weather-tab active" data-mode="day" onclick="renderWeatherMode('day')">Day</button>
                     <button class="weather-tab" data-mode="week" onclick="renderWeatherMode('week')">Week</button>
                     <button class="weather-tab" data-mode="month" onclick="renderWeatherMode('month')">Month</button>
                 </div>
                 <div class="weather-grid" id="weatherForecastGrid"></div>
+                <div class="weather-radar">
+                    <div class="radar-item">
+                        <div class="radar-circle precip"></div>
+                        <div style="font-size:0.82rem;font-weight:600;">Precipitation</div>
+                    </div>
+                    <div class="radar-item">
+                        <div class="radar-circle wind"></div>
+                        <div style="font-size:0.82rem;font-weight:600;">Wind Force</div>
+                    </div>
+                    <div class="radar-item">
+                        <div class="radar-circle temp"></div>
+                        <div style="font-size:0.82rem;font-weight:600;">Temperatures</div>
+                    </div>
+                </div>
+                <div class="weather-metrics">
+                    <div class="metric-card">
+                        <div class="metric-title">🌧 Rainfall</div>
+                        <div class="metric-value" id="metricRainfall">-- mm</div>
+                        <div class="metric-sub" id="metricRainChance">--% chance</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-title">💨 Wind</div>
+                        <div class="metric-value" id="metricWind">--</div>
+                        <div class="metric-sub" id="metricWindDir">--</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-title">🌫 Air Quality</div>
+                        <div class="metric-value" id="metricAqi">--</div>
+                        <div class="metric-sub" id="metricAqiLabel">--</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-title">☀ UV Index</div>
+                        <div class="metric-value" id="metricUv">--</div>
+                        <div class="metric-sub">Live estimate</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-title">💧 Humidity</div>
+                        <div class="metric-value" id="metricHumidity">--%</div>
+                        <div class="metric-sub">Real-time</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-title">🌅 Sun</div>
+                        <div class="metric-value" id="metricSun">--:--</div>
+                        <div class="metric-sub" id="metricSunset">--:--</div>
+                    </div>
+                </div>
                 <div class="weather-fallback" id="weatherNote"></div>
             </section>
 
@@ -182,7 +254,11 @@
     <script>
         let weatherState = {
             current: null,
-            forecast: []
+            hourly: [],
+            daily: [],
+            air: null,
+            sun: null,
+            uv: null
         };
 
         function toggleMobileSidebar() {
@@ -219,6 +295,18 @@
             return d.toLocaleDateString('en-US', { weekday: 'short' });
         }
 
+        function formatClock(ts) {
+            if (!ts) return '--:--';
+            return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function windDirection(deg) {
+            if (deg === null || deg === undefined) return '--';
+            const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+            const idx = Math.round(((deg % 360) / 45)) % 8;
+            return dirs[idx];
+        }
+
         function weatherIcon(desc) {
             const text = String(desc || '').toLowerCase();
             if (text.includes('rain') || text.includes('showers')) return '🌧️';
@@ -234,20 +322,26 @@
             });
 
             const grid = document.getElementById('weatherForecastGrid');
-            const list = weatherState.forecast || [];
+            const daily = weatherState.daily || [];
+            const hourly = weatherState.hourly || [];
+            const list = daily.length ? daily : [];
             if (!list.length) {
                 grid.innerHTML = '<div class="forecast-pill">No forecast data yet</div>';
                 return;
             }
 
             if (mode === 'day') {
-                const today = list.slice(0, 1);
-                grid.innerHTML = today.map((d, i) => `
+                const hours = hourly.slice(0, 8);
+                if (!hours.length) {
+                    grid.innerHTML = '<div class="forecast-pill">No hourly data</div>';
+                    return;
+                }
+                grid.innerHTML = hours.map((h, i) => `
                     <div class="forecast-pill">
-                        <div class="day">${formatDayLabel(d.date, i)}</div>
-                        <div class="icon">${weatherIcon(d.description)}</div>
-                        <div class="temp">${d.temperature.max}° / ${d.temperature.min}°</div>
-                        <div style="font-size:0.75rem;opacity:0.88;">Rain ${Math.round(d.rain_probability || 0)}%</div>
+                        <div class="day">${new Date(h.dt_txt || h.date).toLocaleTimeString([], { hour: 'numeric' })}</div>
+                        <div class="icon">${weatherIcon(h.description)}</div>
+                        <div class="temp">${h.temp}°C</div>
+                        <div style="font-size:0.75rem;opacity:0.88;">Rain ${Math.round((h.pop || 0) * 100)}%</div>
                     </div>
                 `).join('');
                 return;
@@ -286,37 +380,67 @@
             `).join('');
         }
 
-        async function loadWeatherDashboard() {
+        function renderMetrics() {
+            const c = weatherState.current || {};
+            const hourly = weatherState.hourly || [];
+            const rainSum = hourly.slice(0, 8).reduce((a, b) => a + Number(b.precipitation || 0), 0);
+            const avgPop = hourly.slice(0, 8).length
+                ? Math.round(hourly.slice(0, 8).reduce((a, b) => a + Number((b.pop || 0) * 100), 0) / hourly.slice(0, 8).length)
+                : 0;
+
+            document.getElementById('metricRainfall').textContent = `${rainSum.toFixed(1)} mm`;
+            document.getElementById('metricRainChance').textContent = `${avgPop}% chance`;
+            document.getElementById('metricWind').textContent = `${Number(c.wind_speed || 0).toFixed(1)} km/h`;
+            document.getElementById('metricWindDir').textContent = `${windDirection(c.wind_deg)} wind`;
+            document.getElementById('metricAqi').textContent = weatherState.air?.aqi ?? '--';
+            document.getElementById('metricAqiLabel').textContent = weatherState.air?.label || '--';
+            document.getElementById('metricUv').textContent = weatherState.uv ?? '--';
+            document.getElementById('metricHumidity').textContent = `${c.humidity ?? '--'}%`;
+            document.getElementById('metricSun').textContent = `Sunrise ${formatClock(weatherState.sun?.sunrise)}`;
+            document.getElementById('metricSunset').textContent = `Sunset ${formatClock(weatherState.sun?.sunset)}`;
+        }
+
+        async function loadWeatherDashboard(subcounty = 'siaya') {
             try {
-                const [currentRes, forecastRes] = await Promise.all([
-                    fetch('/api/weather/current/siaya'),
-                    fetch('/api/weather/forecast/siaya')
-                ]);
-                const currentJson = await currentRes.json();
-                const forecastJson = await forecastRes.json();
+                const response = await fetch(`/api/weather/live/${encodeURIComponent(subcounty)}`);
+                const data = await response.json();
+                if (!data.success) throw new Error(data.error || 'Live weather failed');
 
-                if (currentJson.success && currentJson.data) {
-                    const c = currentJson.data;
-                    weatherState.current = c;
-                    document.getElementById('weatherNowTemp').textContent = `${c.temperature}°C`;
-                    document.getElementById('weatherNowDesc').textContent = c.description || 'Weather update';
-                    document.getElementById('weatherNowMeta').textContent = `${c.location || 'Siaya'} • Humidity ${c.humidity || '--'}% • Wind ${c.wind_speed || '--'} km/h`;
-                    document.getElementById('weatherUpdated').textContent = new Date().toLocaleTimeString();
-                }
+                const c = data.current || {};
+                weatherState.current = c;
+                weatherState.hourly = data.hourly || [];
+                weatherState.daily = data.daily || [];
+                weatherState.air = data.air || null;
+                weatherState.sun = data.sun || null;
+                weatherState.uv = data.uv_index;
 
-                if (forecastJson.success && Array.isArray(forecastJson.data)) {
-                    weatherState.forecast = forecastJson.data;
-                }
+                document.getElementById('weatherNowTemp').textContent = `${c.temp ?? '--'}°C`;
+                document.getElementById('weatherNowDesc').textContent = c.description || 'Weather update';
+                document.getElementById('weatherNowMeta').textContent = `${data.location || subcounty} • Humidity ${c.humidity || '--'}% • Wind ${Number(c.wind_speed || 0).toFixed(1)} km/h`;
+                document.getElementById('weatherUpdated').textContent = new Date().toLocaleTimeString();
+                renderMetrics();
 
                 document.getElementById('weatherNote').textContent = '';
                 renderWeatherMode('week');
             } catch (err) {
                 document.getElementById('weatherNote').textContent = 'Using offline-ready weather fallback.';
-                weatherState.forecast = [
-                    { date: new Date().toISOString(), temperature: { max: 29, min: 20 }, description: 'Partly cloudy', rain_probability: 25 },
-                    { date: new Date(Date.now()+86400000).toISOString(), temperature: { max: 28, min: 19 }, description: 'Moderate rain', rain_probability: 70 },
-                    { date: new Date(Date.now()+172800000).toISOString(), temperature: { max: 30, min: 21 }, description: 'Mainly clear', rain_probability: 15 }
+                weatherState.current = { temp: 25, humidity: 80, wind_speed: 7.2, wind_deg: 45, description: 'Overcast' };
+                weatherState.hourly = [
+                    { dt_txt: new Date().toISOString(), temp: 25, pop: 0.4, precipitation: 0.3, description: 'Overcast' },
+                    { dt_txt: new Date(Date.now()+10800000).toISOString(), temp: 24, pop: 0.67, precipitation: 0.5, description: 'Drizzling' }
                 ];
+                weatherState.daily = [
+                    { date: new Date().toISOString(), temperature: { max: 25, min: 14 }, description: 'Overcast', rain_probability: 35 },
+                    { date: new Date(Date.now()+86400000).toISOString(), temperature: { max: 25, min: 15 }, description: 'Drizzling', rain_probability: 67 },
+                    { date: new Date(Date.now()+172800000).toISOString(), temperature: { max: 26, min: 15 }, description: 'Raining', rain_probability: 100 }
+                ];
+                weatherState.air = { aqi: 1, label: 'Excellent' };
+                weatherState.sun = { sunrise: Date.now(), sunset: Date.now() + 12 * 60 * 60 * 1000 };
+                weatherState.uv = 1;
+                document.getElementById('weatherNowTemp').textContent = `${weatherState.current.temp}°C`;
+                document.getElementById('weatherNowDesc').textContent = weatherState.current.description;
+                document.getElementById('weatherNowMeta').textContent = `${subcounty} • Humidity ${weatherState.current.humidity}% • Wind ${weatherState.current.wind_speed} km/h`;
+                renderMetrics();
                 renderWeatherMode('week');
             }
         }

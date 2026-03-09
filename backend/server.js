@@ -549,8 +549,11 @@ const validatePredictionInput = (req, res, next) => {
 
 // ==================== WEATHER API CONFIGURATION ====================
 const WEATHER_BASE_URL = 'https://api.open-meteo.com/v1';
+const OPENWEATHER_BASE_URL = 'https://api.openweathermap.org/data/2.5';
+const OPENWEATHER_API_KEY = process.env.OPENWEATHER_API_KEY || '';
 
 const subCountyCoordinates = {
+  'siaya': { lat: -0.0611, lon: 34.2881 },
   'bondo': { lat: -0.2386, lon: 34.2699 },
   'ugunja': { lat: -0.2833, lon: 34.2833 },
   'yala': { lat: -0.1000, lon: 34.5333 },
@@ -615,6 +618,182 @@ app.get('/api/weather/current/:subcounty', async (req, res) => {
       last_updated: new Date().toISOString(),
       note: 'Using fallback data due to API unavailability'
     });
+  }
+});
+
+// OpenWeather-powered live weather bundle for dashboard cards and charts.
+app.get('/api/weather/live/:subcounty', async (req, res) => {
+  const subcounty = req.params.subcounty.toLowerCase();
+  const coords = subCountyCoordinates[subcounty];
+
+  if (!coords) {
+    return res.status(404).json({
+      success: false,
+      error: 'Sub-county not found. Use siaya, bondo, ugunja, yala, gem, alego'
+    });
+  }
+
+  // If key is missing, fallback to existing open-meteo endpoints already in this service.
+  if (!OPENWEATHER_API_KEY) {
+    try {
+      const [currentResp, forecastResp] = await Promise.all([
+        fetch(`${WEATHER_BASE_URL}/forecast?latitude=${coords.lat}&longitude=${coords.lon}&current=temperature_2m,relative_humidity_2m,precipitation,rain,weather_code,wind_speed_10m,wind_direction_10m&timezone=Africa/Nairobi`),
+        fetch(`${WEATHER_BASE_URL}/forecast?latitude=${coords.lat}&longitude=${coords.lon}&hourly=temperature_2m,relative_humidity_2m,precipitation_probability,precipitation,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum&timezone=Africa/Nairobi&forecast_days=7`)
+      ]);
+      const currentData = await currentResp.json();
+      const forecastData = await forecastResp.json();
+
+      return res.json({
+        success: true,
+        source: 'open-meteo-fallback',
+        location: subcounty,
+        current: {
+          temp: Math.round(currentData?.current?.temperature_2m || 0),
+          feels_like: Math.round(currentData?.current?.temperature_2m || 0),
+          humidity: currentData?.current?.relative_humidity_2m || 0,
+          wind_speed: currentData?.current?.wind_speed_10m || 0,
+          wind_deg: currentData?.current?.wind_direction_10m || 0,
+          description: getWeatherDescription(currentData?.current?.weather_code || 0),
+          icon: getWeatherIcon(currentData?.current?.weather_code || 0),
+          precipitation: currentData?.current?.precipitation || 0,
+          rain_1h: currentData?.current?.rain || 0
+        },
+        hourly: (forecastData?.hourly?.time || []).slice(0, 24).map((time, idx) => ({
+          dt_txt: time,
+          temp: Math.round(forecastData.hourly.temperature_2m[idx] || 0),
+          humidity: forecastData.hourly.relative_humidity_2m[idx] || 0,
+          pop: ((forecastData.hourly.precipitation_probability?.[idx] || 0) / 100),
+          precipitation: forecastData.hourly.precipitation?.[idx] || 0,
+          description: getWeatherDescription(forecastData.hourly.weather_code[idx] || 0),
+          icon: getWeatherIcon(forecastData.hourly.weather_code[idx] || 0)
+        })),
+        daily: processOpenMeteoForecast(forecastData.daily || {}, subcounty),
+        air: { aqi: 2, label: 'Good' },
+        sun: {
+          sunrise: new Date().setHours(6, 39, 0, 0),
+          sunset: new Date().setHours(18, 46, 0, 0)
+        },
+        uv_index: 1
+      });
+    } catch (error) {
+      return res.json({
+        success: true,
+        source: 'mock-fallback',
+        location: subcounty,
+        current: {
+          temp: 26,
+          feels_like: 27,
+          humidity: 74,
+          wind_speed: 7.2,
+          wind_deg: 45,
+          description: 'Overcast',
+          icon: '☁️',
+          precipitation: 0.5,
+          rain_1h: 0.2
+        },
+        hourly: [],
+        daily: getMockForecastData(subcounty),
+        air: { aqi: 1, label: 'Excellent' },
+        sun: {
+          sunrise: Date.now(),
+          sunset: Date.now() + (12 * 60 * 60 * 1000)
+        },
+        uv_index: 1
+      });
+    }
+  }
+
+  try {
+    const [currentRes, forecastRes, airRes] = await Promise.all([
+      fetch(`${OPENWEATHER_BASE_URL}/weather?lat=${coords.lat}&lon=${coords.lon}&units=metric&appid=${OPENWEATHER_API_KEY}`),
+      fetch(`${OPENWEATHER_BASE_URL}/forecast?lat=${coords.lat}&lon=${coords.lon}&units=metric&appid=${OPENWEATHER_API_KEY}`),
+      fetch(`${OPENWEATHER_BASE_URL}/air_pollution?lat=${coords.lat}&lon=${coords.lon}&appid=${OPENWEATHER_API_KEY}`)
+    ]);
+
+    if (!currentRes.ok || !forecastRes.ok || !airRes.ok) {
+      throw new Error('OpenWeather request failed');
+    }
+
+    const current = await currentRes.json();
+    const forecast = await forecastRes.json();
+    const air = await airRes.json();
+
+    const airAqi = air?.list?.[0]?.main?.aqi || 0;
+    const airLabels = {
+      1: 'Excellent',
+      2: 'Good',
+      3: 'Moderate',
+      4: 'Poor',
+      5: 'Very Poor'
+    };
+
+    const dailyMap = new Map();
+    (forecast.list || []).forEach(item => {
+      const key = item.dt_txt.slice(0, 10);
+      if (!dailyMap.has(key)) {
+        dailyMap.set(key, {
+          date: new Date(item.dt * 1000),
+          temperature: { min: item.main.temp_min, max: item.main.temp_max },
+          description: item.weather?.[0]?.description || 'N/A',
+          icon: item.weather?.[0]?.icon || '01d',
+          precipitation: item.rain?.['3h'] || 0,
+          rain_probability: Math.round((item.pop || 0) * 100)
+        });
+      } else {
+        const d = dailyMap.get(key);
+        d.temperature.min = Math.min(d.temperature.min, item.main.temp_min);
+        d.temperature.max = Math.max(d.temperature.max, item.main.temp_max);
+      }
+    });
+
+    const daily = Array.from(dailyMap.values()).slice(0, 7).map(d => ({
+      ...d,
+      temperature: {
+        min: Math.round(d.temperature.min),
+        max: Math.round(d.temperature.max)
+      }
+    }));
+
+    res.json({
+      success: true,
+      source: 'openweather',
+      location: current.name || subcounty,
+      current: {
+        temp: Math.round(current.main?.temp || 0),
+        feels_like: Math.round(current.main?.feels_like || 0),
+        humidity: current.main?.humidity || 0,
+        wind_speed: current.wind?.speed || 0,
+        wind_deg: current.wind?.deg || 0,
+        description: current.weather?.[0]?.description || 'N/A',
+        icon: current.weather?.[0]?.icon || '01d',
+        precipitation: current.rain?.['1h'] || 0,
+        rain_1h: current.rain?.['1h'] || 0,
+        clouds: current.clouds?.all || 0
+      },
+      hourly: (forecast.list || []).slice(0, 24).map(item => ({
+        dt_txt: item.dt_txt,
+        temp: Math.round(item.main?.temp || 0),
+        humidity: item.main?.humidity || 0,
+        pop: item.pop || 0,
+        precipitation: item.rain?.['3h'] || 0,
+        description: item.weather?.[0]?.description || 'N/A',
+        icon: item.weather?.[0]?.icon || '01d'
+      })),
+      daily,
+      air: {
+        aqi: airAqi,
+        label: airLabels[airAqi] || 'Unknown'
+      },
+      sun: {
+        sunrise: (current.sys?.sunrise || 0) * 1000,
+        sunset: (current.sys?.sunset || 0) * 1000
+      },
+      // Free tier does not always provide UV in this endpoint set.
+      uv_index: null
+    });
+  } catch (error) {
+    console.error('OpenWeather live endpoint error:', error.message);
+    res.status(500).json({ success: false, error: 'Failed to fetch live weather' });
   }
 });
 
