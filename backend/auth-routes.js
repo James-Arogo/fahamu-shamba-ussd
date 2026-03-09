@@ -197,19 +197,26 @@ export function initAuthRoutes(db) {
         });
       }
 
+      console.log(`Login attempt with identifier: ${identifier}`);
+
       // Find user
       const stmt = db.prepare('SELECT id, phone, username, password_hash, name FROM users WHERE username = ? OR phone = ?');
       const user = stmt.get(identifier, identifier);
 
       if (!user) {
+        console.log(`User not found for identifier: ${identifier}`);
         return res.status(401).json({
           status: 'error',
           message: 'Invalid username or password'
         });
       }
 
+      console.log(`User found: ${user.id}, username: ${user.username}, phone: ${user.phone}`);
+
       // Verify password
       const isPasswordValid = await verifyPassword(password, user.password_hash);
+
+      console.log(`Password valid: ${isPasswordValid}`);
 
       if (!isPasswordValid) {
         return res.status(401).json({

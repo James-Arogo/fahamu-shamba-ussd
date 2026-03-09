@@ -592,14 +592,14 @@
         document.getElementById('loginFormElement').addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            const phone = document.getElementById('loginPhone').value.trim();
+            const identifier = document.getElementById('loginPhone').value.trim();
             const password = document.getElementById('loginPassword').value;
 
             showError('loginPhoneError', '');
             showError('loginPasswordError', '');
             showError('loginFormError', '');
 
-            if (!phone || !password) {
+            if (!identifier || !password) {
                 showError('loginFormError', 'All fields are required');
                 return;
             }
@@ -607,10 +607,18 @@
             setLoading('loginLoading', true);
 
             try {
+                // Send as both phone and username - backend will check both
+                const loginData = { password };
+                if (identifier.includes('+') || identifier.startsWith('2547')) {
+                    loginData.phone = identifier;
+                } else {
+                    loginData.username = identifier;
+                }
+
                 const response = await fetch(`${API_URL}/login`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ phone, password })
+                    body: JSON.stringify(loginData)
                 });
 
                 const data = await response.json();
