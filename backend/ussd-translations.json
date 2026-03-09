@@ -5,9 +5,9 @@
     "luo": "Oyie gi Fahamu Shamba\nYier dhok moloyo:\n1. Englis\n2. Kiswahili\n3. Dholuo"
   },
   "MAIN_MENU": {
-    "en": "Main Menu\n1. Get Crop Advice\n2. Market Prices\n3. Farm Profile",
-    "sw": "Menyu Kuu\n1. Pata Ushauri wa Mazao\n2. Bei za Soko\n3. Wasifu wa Shamba",
-    "luo": "Menyu Makwongo\n1. Pata Ranyisi mag Cham\n2. Thii gi Soko\n3. Profile mar Shamba"
+    "en": "Main Menu\n1. Get Crop Advice\n2. Market Prices\n3. Farm Profile\n4. Register Account",
+    "sw": "Menyu Kuu\n1. Pata Ushauri wa Mazao\n2. Bei za Soko\n3. Wasifu wa Shamba\n4. Sajili Akaunti",
+    "luo": "Menyu Makwongo\n1. Pata Ranyisi mag Cham\n2. Nengo mar Soko\n3. Profile mar Shamba\n4. Ndik Akaunti"
   },
   "COUNTY_SELECT": {
     "en": "Select County:\n1. Siaya\n2. Kisumu\n3. Migori",

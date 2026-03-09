@@ -246,6 +246,9 @@ export function handleUSSD(sessionId, phoneNumber, text, serviceCode) {
 
     case SESSION_STATES.MAIN_MENU:
       response = handleMainMenu(session, input);
+      if (session.state === SESSION_STATES.VIEW_PROFILE || session.state === SESSION_STATES.MARKET_PRICES) {
+        endSession = true;
+      }
       break;
 
     case SESSION_STATES.GET_ADVICE_LOCATION:
@@ -270,10 +273,12 @@ export function handleUSSD(sessionId, phoneNumber, text, serviceCode) {
 
     case SESSION_STATES.GET_ADVICE_BUDGET:
       response = handleBudgetSelect(session, input);
+      // Budget is the last input before recommendation; end immediately after response.
+      endSession = true;
       break;
 
     case SESSION_STATES.GET_ADVICE_RESULT:
-      response = displayRecommendation(session);
+      response = getText('GOODBYE', session.language);
       endSession = true;
       break;
 
@@ -346,19 +351,19 @@ function handleMainMenu(session, input) {
     console.log(`[USSD] User selected: Get Advice, moving to LOCATION selection`);
     return getText('COUNTY_SELECT', session.language);
   } else if (choice === '2') {
-    session.state = SESSION_STATES.REGISTER_PHONE;
-    console.log(`[USSD] User selected: Register, asking for phone`);
-    return getText('REGISTER_PROMPT', session.language);
+    const marketResponse = displayMarketPrices(session) + '\n\n' + getText('GOODBYE', session.language);
+    session.state = SESSION_STATES.MARKET_PRICES;
+    console.log(`[USSD] User selected: Market Prices, ending session`);
+    return marketResponse;
   } else if (choice === '3') {
     const profileResponse = getText('PROFILE_HEADER', session.language) + session.phoneNumber + '\n\n' + getText('PROFILE_FOOTER', session.language) + '\n\n' + getText('GOODBYE', session.language);
     session.state = SESSION_STATES.VIEW_PROFILE;
     console.log(`[USSD] User selected: View Profile, ending session`);
     return profileResponse;
   } else if (choice === '4') {
-    const marketResponse = displayMarketPrices(session) + '\n\n' + getText('GOODBYE', session.language);
-    session.state = SESSION_STATES.MARKET_PRICES;
-    console.log(`[USSD] User selected: Market Prices, ending session`);
-    return marketResponse;
+    session.state = SESSION_STATES.REGISTER_PHONE;
+    console.log(`[USSD] User selected: Register, asking for phone`);
+    return getText('REGISTER_PROMPT', session.language);
   } else {
     console.log(`[USSD] Invalid choice in main menu: ${choice}`);
     return getText('INVALID_INPUT', session.language) + '\n\n' + getText('MAIN_MENU', session.language);
