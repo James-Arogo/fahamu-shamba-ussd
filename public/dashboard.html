@@ -3,336 +3,117 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fahamu Shamba - Farmer Dashboard</title>
+    <title>Fahamu Shamba - Dashboard</title>
     <link rel="icon" href="/fahamu-logo.png" type="image/png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
-            --primary: #2d7649;
-            --primary-dark: #1e5631;
-            --secondary: #f57c00;
-            --light: #f9f7f4;
-            --text: #34495e;
-            --text-light: #7f8c8d;
+            --primary: #2d7649; --primary-dark: #1e5631; --secondary: #f57c00;
+            --light: #f9f7f4; --text: #34495e; --text-light: #7f8c8d; --border: #e0e6ed;
+            --shadow-sm: 0 2px 8px rgba(0,0,0,0.08); --shadow-md: 0 4px 16px rgba(0,0,0,0.1);
+            --sidebar-width: 260px; --sidebar-collapsed: 70px;
         }
-        body {
-            font-family: 'Roboto', 'Segoe UI', sans-serif;
-            background: var(--light);
-            min-height: 100vh;
-            color: var(--text);
-            display: flex;
-            flex-direction: column;
-        }
-        header {
-            background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
-            color: white;
-            padding: 18px 30px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-        }
-        .header-left { display: flex; align-items: center; gap: 15px; }
-        .mobile-menu-btn {
-            display: none;
-            background: rgba(255, 255, 255, 0.15);
-            color: white;
-            border: 1px solid rgba(255, 255, 255, 0.35);
-            border-radius: 8px;
-            width: 40px;
-            height: 40px;
-            cursor: pointer;
-            align-items: center;
-            justify-content: center;
-        }
-        header img { height: 40px; width: auto; }
-        .header-brand h1 { font-size: 1.3em; font-weight: 700; }
-        .header-right { display: flex; align-items: center; gap: 20px; }
-        .profile-menu { display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 8px 12px; }
-        .wrapper { display: flex; flex: 1; }
-        .sidebar-overlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.45);
-            z-index: 1050;
-        }
-        aside {
-            width: 280px;
-            background: linear-gradient(180deg, var(--primary-dark) 0%, var(--primary) 100%);
-            color: white;
-            padding: 25px 0;
-            position: fixed;
-            left: 0;
-            top: 70px;
-            height: calc(100vh - 70px);
-            overflow-y: auto;
-            z-index: 999;
-        }
-        aside ul { list-style: none; padding: 0; margin: 0; }
-        aside li { margin: 0; }
-        aside a {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            padding: 15px 25px;
-            color: rgba(255, 255, 255, 0.85);
-            text-decoration: none;
-            font-weight: 500;
-            font-size: 0.95em;
-        }
-        aside a:hover { background: rgba(255, 255, 255, 0.1); color: white; padding-left: 35px; }
-        aside a.active { background: rgba(255, 255, 255, 0.15); color: white; border-left: 4px solid var(--secondary); padding-left: 21px; }
-        aside i { font-size: 1.2em; width: 25px; text-align: center; }
-        .sidebar-footer { position: absolute; bottom: 0; width: 100%; padding: 20px; border-top: 1px solid rgba(255, 255, 255, 0.1); }
-        .logout-link { display: flex; align-items: center; gap: 10px; padding: 10px 15px; color: #ff6b6b; text-decoration: none; font-weight: 600; }
-        main { margin-left: 280px; padding: 30px; flex: 1; }
-        .card { background: white; border-radius: 12px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 25px; }
-        .welcome { font-size: 1.8em; font-weight: 700; color: var(--primary-dark); margin-bottom: 15px; }
-        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 30px; }
-        .stat { background: white; padding: 20px; border-radius: 10px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-        .stat-value { font-size: 2.5em; font-weight: 700; color: var(--primary); }
-        
-        /* ===== RESPONSIVE ===== */
-        @media (max-width: 1024px) {
-            .stats-grid {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 12px;
-            }
-            .stat-value {
-                font-size: 2em;
-            }
-            aside {
-                width: 200px;
-            }
-            main {
-                margin-left: 200px;
-                padding: 20px;
-            }
-        }
+        body { font-family: 'Roboto', 'Segoe UI', sans-serif; background: var(--light); min-height: 100vh; color: var(--text); }
 
-        @media (max-width: 768px) {
-            aside { 
-                width: 70px; 
-            }
-            aside a { 
-                justify-content: center; 
-                padding: 12px 15px;
-            }
-            aside span { 
-                display: none; 
-            }
-            aside i {
-                width: 20px;
-                font-size: 1.1em;
-            }
-            main { 
-                margin-left: 70px; 
-                padding: 15px;
-            }
-            .stats-grid { 
-                grid-template-columns: repeat(2, 1fr); 
-                gap: 10px;
-            }
-            .stat {
-                padding: 15px;
-            }
-            .stat-value {
-                font-size: 1.8em;
-            }
-            .welcome {
-                font-size: 1.4em;
-            }
-            header {
-                padding: 12px 15px;
-            }
-            header img {
-                height: 32px;
-            }
-            .header-brand h1 {
-                font-size: 1.1em;
-            }
-            .header-right {
-                gap: 10px;
-            }
-            .profile-menu {
-                padding: 6px 8px;
-                font-size: 0.9em;
-            }
-            .card {
-                padding: 15px;
-                margin-bottom: 15px;
-            }
-            .card h2 {
-                font-size: 1.2em;
-            }
-            .card p {
-                font-size: 0.9em;
-            }
-        }
+        .sidebar { position: fixed; left: 0; top: 0; width: var(--sidebar-width); height: 100vh; background: linear-gradient(180deg,var(--primary-dark) 0%,var(--primary) 100%); color: white; z-index: 1000; transition: width 0.3s ease; display: flex; flex-direction: column; box-shadow: 4px 0 20px rgba(0,0,0,0.15); }
+        .sidebar.collapsed { width: var(--sidebar-collapsed); }
+        .sidebar-header { padding: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; gap: 12px; }
+        .sidebar-logo { width: 40px; height: 40px; background: rgba(255,255,255,0.2); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; }
+        .sidebar-brand h2 { font-size: 1.2rem; margin-bottom: 2px; }
+        .sidebar-brand p { font-size: 0.75rem; opacity: 0.85; }
+        .sidebar-nav { flex: 1; padding: 15px 10px; overflow-y: auto; }
+        .nav-item { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 10px; color: rgba(255,255,255,0.85); text-decoration: none; margin-bottom: 5px; transition: all 0.25s ease; }
+        .nav-item:hover { background: rgba(255,255,255,0.15); color: white; transform: translateX(4px); }
+        .nav-item.active { background: rgba(255,255,255,0.25); color: white; border-left: 3px solid var(--secondary); }
+        .nav-item i { width: 24px; text-align: center; font-size: 1.1rem; }
+        .sidebar-footer { padding: 15px; border-top: 1px solid rgba(255,255,255,0.1); }
+        .user-info { display: flex; align-items: center; gap: 12px; padding: 12px; background: rgba(255,255,255,0.1); border-radius: 10px; margin-bottom: 12px; }
+        .user-avatar { width: 38px; height: 38px; border-radius: 50%; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; }
+        .user-name { font-weight: 600; }
+        .user-phone { font-size: 0.78rem; opacity: 0.85; }
+        .logout-btn { width: 100%; padding: 12px; border: 1px solid rgba(231,76,60,0.35); border-radius: 8px; background: rgba(231,76,60,0.2); color: #ffb3ab; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .logout-btn:hover { background: #e74c3c; color: #fff; }
+        .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 999; }
 
-        @media (max-width: 480px) {
-            header {
-                padding: 10px 12px;
-                flex-wrap: wrap;
-                gap: 8px;
-            }
-            .header-left {
-                gap: 10px;
-            }
-            header img {
-                height: 28px;
-            }
-            .header-brand h1 {
-                font-size: 1em;
-            }
-            .profile-menu span {
-                display: none;
-            }
-            .wrapper {
-                flex-direction: column;
-            }
-            aside {
-                position: fixed;
-                bottom: 0;
-                top: auto;
-                left: 0;
-                right: 0;
-                width: 100%;
-                height: auto;
-                flex-direction: row;
-                padding: 8px 0;
-                display: flex;
-                justify-content: space-around;
-                z-index: 1001;
-            }
-            aside ul {
-                display: flex;
-                width: 100%;
-                justify-content: space-around;
-            }
-            aside li {
-                flex: 1;
-                text-align: center;
-            }
-            aside a {
-                flex-direction: column;
-                padding: 8px 5px;
-                font-size: 0.7em;
-                gap: 4px;
-            }
-            aside a:hover {
-                padding-left: 5px;
-            }
-            aside a.active {
-                padding-left: 5px;
-            }
-            aside i {
-                font-size: 1.3em;
-            }
-            aside span {
-                display: block;
-                font-size: 0.65em;
-            }
-            .sidebar-footer {
-                display: none;
-            }
-            main {
-                margin-left: 0;
-                margin-bottom: 60px;
-                padding: 12px;
-            }
-            .stats-grid {
-                grid-template-columns: 1fr 1fr;
-                gap: 8px;
-            }
-            .stat {
-                padding: 12px 8px;
-            }
-            .stat-value {
-                font-size: 1.5em;
-            }
-            .stat div:last-child {
-                font-size: 0.8em;
-            }
-            .welcome {
-                font-size: 1.2em;
-                margin-bottom: 10px;
-            }
-            .card {
-                padding: 12px;
-                border-radius: 8px;
-            }
-            .card h2 {
-                font-size: 1.1em;
-            }
-            .card p {
-                font-size: 0.85em;
-                line-height: 1.5;
-            }
+        .main-content { margin-left: var(--sidebar-width); min-height: 100vh; }
+        .top-header { background: #fff; padding: 15px 24px; box-shadow: var(--shadow-sm); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 90; }
+        .mobile-menu-btn { display: none; background: none; border: none; font-size: 1.4rem; color: var(--primary); cursor: pointer; }
+        .dashboard-wrap { padding: 24px; }
+        .hero { background: linear-gradient(135deg, rgba(45,118,73,0.08), rgba(74,157,111,0.08)); border-left: 5px solid var(--secondary); border-radius: 12px; padding: 24px; margin-bottom: 20px; }
+        .hero h1 { color: var(--primary-dark); margin-bottom: 8px; font-size: 1.8rem; }
+        .hero p { color: var(--text-light); }
+        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
+        .stat { background: #fff; border-radius: 12px; border: 1px solid var(--border); padding: 18px; box-shadow: var(--shadow-sm); }
+        .stat-value { font-size: 1.8rem; font-weight: 700; color: var(--primary); margin-bottom: 4px; }
+        .card { background: #fff; border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow-sm); padding: 22px; margin-bottom: 16px; }
+        .card h2 { color: var(--primary-dark); margin-bottom: 10px; }
+        .card p { color: var(--text-light); }
+
+        @media (max-width: 992px) {
+            .sidebar { transform: translateX(-100%); width: var(--sidebar-width) !important; }
+            .sidebar.mobile-open { transform: translateX(0); }
+            .sidebar-overlay.mobile-open { display: block; }
+            .main-content { margin-left: 0 !important; }
+            .mobile-menu-btn { display: inline-flex; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
         }
-        
-        /* Touch-friendly improvements */
-        @media (hover: none) and (pointer: coarse) {
-            aside a,
-            .profile-menu,
-            .logout-link,
-            .stat {
-                min-height: 44px;
-            }
-            button, .btn {
-                min-height: 44px;
-                min-width: 44px;
-            }
+        @media (max-width: 640px) {
+            .dashboard-wrap { padding: 14px; }
+            .top-header { padding: 12px 14px; }
+            .hero { padding: 16px; }
+            .hero h1 { font-size: 1.3rem; }
+            .stats-grid { grid-template-columns: 1fr; }
         }
     </style>
     <link rel="stylesheet" href="/css/mobile-hardening.css">
     <script src="/js/mobile-hardening.js" defer></script>
 </head>
 <body>
-    <header>
-        <div class="header-left">
-            <button class="mobile-menu-btn"><i class="fas fa-bars"></i></button>
-            <img src="/fahamu-logo.png" alt="Fahamu Shamba">
-            <div class="header-brand">
-                <h1>Fahamu Shamba</h1>
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMobileSidebar()"></div>
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-logo">🌱</div>
+            <div class="sidebar-brand">
+                <h2>Fahamu Shamba</h2>
+                <p>Smart Farming</p>
             </div>
         </div>
-        <div class="header-right">
-            <div class="profile-menu" onclick="logout()">
-                <span id="profileName">Farmer</span>
-                <i class="fas fa-sign-out-alt"></i>
+        <nav class="sidebar-nav">
+            <a class="nav-item active" href="/dashboard.html"><i class="fas fa-home"></i><span>Dashboard</span></a>
+            <a class="nav-item" href="/recommendations.html"><i class="fas fa-seedling"></i><span>Recommendations</span></a>
+            <a class="nav-item" href="/market.html"><i class="fas fa-chart-bar"></i><span>Market Prices</span></a>
+            <a class="nav-item" href="/community.html"><i class="fas fa-users"></i><span>Community</span></a>
+            <a class="nav-item" href="/feedback.html"><i class="fas fa-comments"></i><span>Feedback</span></a>
+            <a class="nav-item" href="/profile.html"><i class="fas fa-user-circle"></i><span>My Profile</span></a>
+            <a class="nav-item" href="/settings.html"><i class="fas fa-cog"></i><span>Settings</span></a>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="user-avatar">👤</div>
+                <div>
+                    <div class="user-name" id="userName">Farmer</div>
+                    <div class="user-phone" id="userPhone">—</div>
+                </div>
             </div>
+            <button class="logout-btn" onclick="logout()"><i class="fas fa-sign-out-alt"></i>Logout</button>
         </div>
-    </header>
+    </aside>
 
-    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    <div class="main-content">
+        <header class="top-header">
+            <button class="mobile-menu-btn" onclick="toggleMobileSidebar()"><i class="fas fa-bars"></i></button>
+            <h2 style="color: var(--primary-dark);">Farmer Dashboard</h2>
+            <div id="profileName" style="font-weight: 600; color: var(--text);">Farmer</div>
+        </header>
 
-    <div class="wrapper">
-        <aside>
-            <ul>
-                <li><a href="/dashboard" class="active"><i class="fas fa-home"></i> <span>Dashboard</span></a></li>
-                <li><a href="/recommendations"><i class="fas fa-leaf"></i> <span>Recommendations</span></a></li>
-                <li><a href="/market"><i class="fas fa-chart-bar"></i> <span>Market Prices</span></a></li>
-                <li><a href="/community"><i class="fas fa-users"></i> <span>Community</span></a></li>
-                <li><a href="/feedback"><i class="fas fa-star"></i> <span>Feedback</span></a></li>
-                <li><a href="/profile"><i class="fas fa-user-circle"></i> <span>My Profile</span></a></li>
-            </ul>
-            <div class="sidebar-footer">
-                <a href="javascript:logout()" class="logout-link">
-                    <i class="fas fa-sign-out-alt"></i>
-                    <span>Logout</span>
-                </a>
-            </div>
-        </aside>
+        <div class="dashboard-wrap">
+            <section class="hero">
+                <h1>Welcome to Fahamu Shamba Dashboard</h1>
+                <p>Use the same sidebar to move across recommendations, market prices, community, feedback, and profile without changing dashboard structure.</p>
+            </section>
 
-        <main>
-            <div class="welcome">🌅 Welcome to Fahamu Shamba Dashboard</div>
-
-            <div class="stats-grid">
+            <section class="stats-grid">
                 <div class="stat">
                     <div class="stat-value">3</div>
                     <div>Active Crops</div>
@@ -349,35 +130,45 @@
                     <div class="stat-value">156</div>
                     <div>Community</div>
                 </div>
-            </div>
+            </section>
 
-            <div class="card">
-                <h2>Farmer Dashboard with Side Menu</h2>
-                <p>Welcome to your personalized Fahamu Shamba farming dashboard.</p>
-                <p style="margin-top: 15px; color: var(--text-light);">Use the left sidebar to navigate to different sections including recommendations, market prices, community, and more.</p>
-            </div>
-        </main>
+            <section class="card">
+                <h2>Dashboard Summary</h2>
+                <p>This dashboard now uses the same layout system as the other sidebar pages to prevent visual jumps when navigating.</p>
+            </section>
+        </div>
     </div>
 
     <script>
-        function logout() {
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            window.location.href = '/login';
+        function toggleMobileSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            sidebar.classList.toggle('mobile-open');
+            overlay.classList.toggle('mobile-open');
         }
 
         function loadUserData() {
+            const cached = localStorage.getItem('user');
+            if (!cached) return;
             try {
-                const user = localStorage.getItem('user');
-                if (user) {
-                    const userData = JSON.parse(user);
-                    document.getElementById('profileName').textContent = userData.name || 'Farmer';
-                }
-            } catch (e) {}
+                const user = JSON.parse(cached);
+                const name = user.name || user.username || 'Farmer';
+                const phone = user.phone || user.phone_number || '—';
+                document.getElementById('userName').textContent = name;
+                document.getElementById('profileName').textContent = name;
+                document.getElementById('userPhone').textContent = phone;
+            } catch (e) {
+                // Keep fallback labels
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = '/login.html';
         }
 
         window.addEventListener('DOMContentLoaded', loadUserData);
     </script>
 </body>
 </html>
-
