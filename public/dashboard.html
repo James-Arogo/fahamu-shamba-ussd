@@ -74,6 +74,76 @@
         .hero h1 { color: var(--primary-dark); margin-bottom: 8px; font-size: 1.8rem; }
         .hero p { color: var(--text-light); }
         .weather-card { background: linear-gradient(175deg, #1e2654 0%, #232b62 52%, #1b2250 100%); color: #fff; border-radius: 16px; box-shadow: var(--shadow-md); padding: 20px; margin-bottom: 20px; }
+        
+        /* MODULAR WEATHER DASHBOARD */
+        .weather-dashboard { display: flex; flex-direction: column; gap: 18px; }
+        
+        /* 1. HERO WEATHER CARD */
+        .hero-weather-card { 
+            background: linear-gradient(135deg, #1e2654 0%, #232b62 52%, #1b2250 100%);
+            color: #fff; border-radius: 16px; box-shadow: var(--shadow-md); padding: 28px;
+        }
+        .hero-weather-content { display: flex; justify-content: space-between; align-items: center; gap: 24px; }
+        .hero-weather-left { }
+        .hero-temp-display { font-size: 3.5rem; font-weight: 700; line-height: 1; margin-bottom: 8px; }
+        .hero-condition { font-size: 1.3rem; font-weight: 600; margin-bottom: 12px; opacity: 0.95; }
+        .hero-advisory { font-size: 0.95rem; color: #b8d7ff; font-weight: 500; }
+        .hero-weather-right { display: flex; flex-direction: column; gap: 10px; align-items: flex-end; }
+        .hero-update-time { font-size: 0.85rem; opacity: 0.85; }
+        
+        /* 2. FORECAST MINI-CARDS */
+        .forecast-cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; }
+        .forecast-mini-card { 
+            background: #fff; border-radius: 12px; padding: 18px; text-align: center;
+            box-shadow: var(--shadow-sm); transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .forecast-mini-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-md); }
+        .card-icon { font-size: 2rem; margin-bottom: 8px; }
+        .card-title { font-size: 0.85rem; color: var(--text-light); font-weight: 600; margin-bottom: 8px; }
+        .card-value { font-size: 1.8rem; font-weight: 700; color: var(--primary-dark); margin-bottom: 4px; }
+        .card-sub { font-size: 0.8rem; color: var(--text-light); margin-bottom: 10px; }
+        .rainfall-bar { width: 100%; height: 6px; background: #e0e6ed; border-radius: 3px; overflow: hidden; }
+        .rainfall-indicator { height: 100%; background: linear-gradient(90deg, #4a9d6f, #2d7649); border-radius: 3px; transition: width 0.3s ease; width: 45%; }
+        .wind-arrow { font-size: 2rem; display: block; transition: transform 0.3s ease; }
+        .temp-trend { font-weight: 700; color: #e74c3c; }
+        
+        /* 3. EXTENDED FORECAST STRIP */
+        .extended-forecast-section { }
+        .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .section-header h3 { font-size: 1.1rem; font-weight: 700; color: var(--primary-dark); }
+        .view-mode-tabs { display: flex; gap: 8px; }
+        .mode-tab { 
+            padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border);
+            background: #fff; color: var(--text); font-weight: 600; cursor: pointer;
+            font-size: 0.85rem; transition: all 0.2s ease;
+        }
+        .mode-tab.active { background: var(--primary-dark); color: #fff; border-color: var(--primary-dark); }
+        .mode-tab:hover { border-color: var(--primary-dark); }
+        
+        /* 4. WEEKLY FORECAST */
+        .weekly-forecast-section { }
+        
+        /* 5. DETAILS PANEL (Expandable) */
+        .details-panel { }
+        .details-header { 
+            width: 100%; padding: 14px 16px; background: #fff; border: 1px solid var(--border);
+            border-radius: 12px; display: flex; justify-content: space-between; align-items: center;
+            font-weight: 700; color: var(--primary-dark); cursor: pointer; font-size: 0.95rem;
+            transition: all 0.2s ease;
+        }
+        .details-header:hover { background: var(--light); border-color: var(--primary-dark); }
+        #detailsChevron { transition: transform 0.3s ease; }
+        #detailsChevron.active { transform: rotate(180deg); }
+        
+        /* Responsive: Mobile adjustments */
+        @media (max-width: 768px) {
+            .hero-weather-content { flex-direction: column; align-items: flex-start; }
+            .hero-weather-right { align-items: flex-start; }
+            .hero-temp-display { font-size: 2.5rem; }
+            .forecast-cards-grid { grid-template-columns: 1fr; }
+            .forecast-mini-card { }
+            .section-header { flex-direction: column; align-items: flex-start; }
+        }
         .city-strip { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 12px; }
         .city-chip {
             min-width: 140px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.18);
@@ -272,113 +342,119 @@
                 <p>Use the same sidebar to move across recommendations, market prices, community, feedback, and profile without changing dashboard structure.</p>
             </section>
 
-            <section class="weather-card">
-                <div class="city-strip" id="cityStrip">
-                    <button class="city-chip active" data-subcounty="siaya" onclick="switchSubcounty('siaya')"><strong>Siaya</strong><span class="chip-temp">--°</span></button>
-                    <button class="city-chip" data-subcounty="bondo" onclick="switchSubcounty('bondo')"><strong>Bondo</strong><span class="chip-temp">--°</span></button>
-                    <button class="city-chip" data-subcounty="ugunja" onclick="switchSubcounty('ugunja')"><strong>Ugunja</strong><span class="chip-temp">--°</span></button>
-                    <button class="city-chip" data-subcounty="ugenya" onclick="switchSubcounty('ugenya')"><strong>Ugenya</strong><span class="chip-temp">--°</span></button>
-                    <button class="city-chip" data-subcounty="gem" onclick="switchSubcounty('gem')"><strong>Gem</strong><span class="chip-temp">--°</span></button>
-                    <button class="city-chip" data-subcounty="alego" onclick="switchSubcounty('alego')"><strong>Alego</strong><span class="chip-temp">--°</span></button>
-                    <button class="city-chip" data-subcounty="rarieda" onclick="switchSubcounty('rarieda')"><strong>Rarieda</strong><span class="chip-temp">--°</span></button>
-                    <div class="unit-chip">°C</div>
-                </div>
-                <div class="weather-top">
-                    <div class="weather-now">
-                        <div class="weather-now-temp" id="weatherNowTemp">--°C</div>
-                        <div>
-                            <div style="font-weight:700;" id="weatherNowDesc">Loading weather...</div>
-                            <div class="weather-now-meta" id="weatherNowMeta">Siaya • Humidity --% • Wind -- km/h</div>
-                            <div class="weather-farmer-tip" id="weatherFarmerTip">Checking live advisory...</div>
+            <!-- WEATHER SECTION - Modular Dashboard Layout -->
+            <section class="weather-dashboard">
+                <!-- 1. HERO WEATHER CARD -->
+                <div class="hero-weather-card">
+                    <div class="hero-weather-content">
+                        <div class="hero-weather-left">
+                            <div class="hero-temp-display" id="heroWeatherTemp">--°C</div>
+                            <div class="hero-condition" id="heroWeatherDesc">Loading...</div>
+                            <div class="hero-advisory" id="heroFarmerTip">Checking advisory...</div>
+                        </div>
+                        <div class="hero-weather-right">
+                            <select id="weatherLocation" class="weather-location" onchange="loadWeatherDashboard(this.value)">
+                                <option value="siaya">Siaya</option>
+                                <option value="bondo">Bondo</option>
+                                <option value="ugunja">Ugunja</option>
+                                <option value="ugenya">Ugenya</option>
+                                <option value="gem">Gem</option>
+                                <option value="alego">Alego</option>
+                                <option value="rarieda">Rarieda</option>
+                            </select>
+                            <div class="hero-update-time" id="heroWeatherUpdated">Updating...</div>
                         </div>
                     </div>
-                    <div style="text-align:right; font-size:0.85rem; opacity:0.9;">
-                        <div>Forecast</div>
-                        <div id="weatherUpdated">Updating...</div>
-                        <select id="weatherLocation" class="weather-location" onchange="loadWeatherDashboard(this.value)">
-                            <option value="siaya">Siaya</option>
-                            <option value="bondo">Bondo</option>
-                            <option value="ugunja">Ugunja</option>
-                            <option value="ugenya">Ugenya</option>
-                            <option value="gem">Gem</option>
-                            <option value="alego">Alego</option>
-                            <option value="rarieda">Rarieda</option>
-                        </select>
+                </div>
+
+                <!-- 2. FORECAST MINI-CARDS (Rainfall, Wind, Temperature) -->
+                <div class="forecast-cards-grid">
+                    <div class="forecast-mini-card rainfall-card">
+                        <div class="card-icon">🌧</div>
+                        <div class="card-title">Rainfall</div>
+                        <div class="card-value" id="miniRainfall">-- mm</div>
+                        <div class="card-sub" id="miniRainChance">--% chance</div>
+                        <div class="rainfall-bar"><div class="rainfall-indicator" id="rainfallBar"></div></div>
+                    </div>
+
+                    <div class="forecast-mini-card wind-card">
+                        <div class="card-icon">💨</div>
+                        <div class="card-title">Wind</div>
+                        <div class="card-value" id="miniWind">-- km/h</div>
+                        <div class="card-sub" id="miniWindDir">--</div>
+                        <div class="wind-arrow" id="windArrow">↑</div>
+                    </div>
+
+                    <div class="forecast-mini-card temperature-card">
+                        <div class="card-icon">🌡</div>
+                        <div class="card-title">Temperature</div>
+                        <div class="card-value" id="miniTempRange">--/-- °C</div>
+                        <div class="temp-trend" id="tempTrend">↗ Rising</div>
                     </div>
                 </div>
-                <div style="margin-bottom:8px; font-weight:600; opacity:0.95;">Next 72 Hours</div>
-                <div class="weather-tabs">
-                    <button class="weather-tab active" data-mode="day" onclick="renderWeatherMode('day')">Day</button>
-                    <button class="weather-tab" data-mode="week" onclick="renderWeatherMode('week')">Week</button>
-                    <button class="weather-tab" data-mode="month" onclick="renderWeatherMode('month')">Month</button>
-                </div>
-                <div class="weather-alert" id="weatherAlert"></div>
-                <div class="strip-title">Next 72 Hours</div>
-                <div class="forecast-strip">
-                    <div class="forecast-track" id="forecast72Track"></div>
-                </div>
-                <div class="strip-title">7-Day Forecast</div>
-                <div class="week-row" id="weekForecastRow"></div>
-                <div class="weather-grid" id="weatherForecastGrid"></div>
-                <div class="hourly-plot">
-                    <div class="hourly-row" id="hourlyTimeline"></div>
-                </div>
-                <div class="weather-radar-tabs">
-                    <button class="radar-tab-btn active" onclick="setRadarView('all', this)">All</button>
-                    <button class="radar-tab-btn" onclick="setRadarView('precip', this)">Precipitation</button>
-                    <button class="radar-tab-btn" onclick="setRadarView('wind', this)">Wind</button>
-                    <button class="radar-tab-btn" onclick="setRadarView('temp', this)">Temperature</button>
-                </div>
-                <div class="weather-radar">
-                    <div class="radar-item" data-radar="precip">
-                        <div class="radar-circle precip"></div>
-                        <div style="font-size:0.82rem;font-weight:600;">Precipitation</div>
+
+                <!-- 3. EXTENDED FORECAST STRIP -->
+                <div class="extended-forecast-section">
+                    <div class="section-header">
+                        <h3>72-Hour Forecast</h3>
+                        <div class="view-mode-tabs">
+                            <button class="mode-tab active" data-mode="hourly" onclick="renderWeatherMode('hourly')">Hourly</button>
+                            <button class="mode-tab" data-mode="day" onclick="renderWeatherMode('day')">Daily</button>
+                        </div>
                     </div>
-                    <div class="radar-item" data-radar="wind">
-                        <div class="radar-circle wind"></div>
-                        <div style="font-size:0.82rem;font-weight:600;">Wind Force</div>
-                    </div>
-                    <div class="radar-item" data-radar="temp">
-                        <div class="radar-circle temp"></div>
-                        <div style="font-size:0.82rem;font-weight:600;">Temperatures</div>
+                    <div class="forecast-strip" id="forecast72Strip">
+                        <div class="forecast-track" id="forecast72Track"></div>
                     </div>
                 </div>
-                <div class="details-head">
-                    <div class="strip-title" style="margin:0;">Weather Details</div>
-                    <button class="details-toggle" id="detailsToggleBtn" onclick="toggleWeatherDetails()">Hide details</button>
+
+                <!-- 4. 7-DAY FORECAST -->
+                <div class="weekly-forecast-section">
+                    <div class="section-header">
+                        <h3>7-Day Forecast</h3>
+                    </div>
+                    <div class="week-row" id="weekForecastRow"></div>
                 </div>
-                <div class="weather-metrics" id="weatherMetricsPanel">
-                    <div class="metric-card">
-                        <div class="metric-title">🌧 Rainfall</div>
-                        <div class="metric-value" id="metricRainfall">-- mm</div>
-                        <div class="metric-sub" id="metricRainChance">--% chance</div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="metric-title">💨 Wind</div>
-                        <div class="metric-value" id="metricWind">--</div>
-                        <div class="metric-sub" id="metricWindDir">--</div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="metric-title">🌫 Air Quality</div>
-                        <div class="metric-value" id="metricAqi">--</div>
-                        <div class="metric-sub" id="metricAqiLabel">--</div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="metric-title">☀ UV Index</div>
-                        <div class="metric-value" id="metricUv">--</div>
-                        <div class="metric-sub">Live estimate</div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="metric-title">💧 Humidity</div>
-                        <div class="metric-value" id="metricHumidity">--%</div>
-                        <div class="metric-sub">Real-time</div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="metric-title">🌅 Sun</div>
-                        <div class="metric-value" id="metricSun">--:--</div>
-                        <div class="metric-sub" id="metricSunset">--:--</div>
+
+                <!-- 5. DETAILS & INSIGHTS PANEL (Expandable) -->
+                <div class="details-panel">
+                    <button class="details-header" onclick="toggleWeatherDetails()">
+                        <span>More Details & Insights</span>
+                        <i class="fas fa-chevron-down" id="detailsChevron"></i>
+                    </button>
+                    <div class="weather-metrics" id="weatherMetricsPanel" style="display:none;">
+                        <div class="metric-card">
+                            <div class="metric-title">💧 Humidity</div>
+                            <div class="metric-value" id="metricHumidity">--%</div>
+                            <div class="metric-sub">Real-time</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-title">☀ UV Index</div>
+                            <div class="metric-value" id="metricUv">--</div>
+                            <div class="metric-sub">Live estimate</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-title">🌫 Air Quality</div>
+                            <div class="metric-value" id="metricAqi">--</div>
+                            <div class="metric-sub" id="metricAqiLabel">--</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-title">🌅 Sunrise</div>
+                            <div class="metric-value" id="metricSun">--:--</div>
+                            <div class="metric-sub">Morning</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-title">🌙 Sunset</div>
+                            <div class="metric-value" id="metricSunset">--:--</div>
+                            <div class="metric-sub">Evening</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-title">💨 Pressure</div>
+                            <div class="metric-value" id="metricPressure">-- hPa</div>
+                            <div class="metric-sub">Atmospheric</div>
+                        </div>
                     </div>
                 </div>
+
                 <div class="weather-fallback" id="weatherNote"></div>
             </section>
 
@@ -563,9 +639,15 @@
 
         function toggleWeatherDetails() {
             const panel = document.getElementById('weatherMetricsPanel');
-            const btn = document.getElementById('detailsToggleBtn');
-            panel.classList.toggle('collapsed');
-            btn.textContent = panel.classList.contains('collapsed') ? 'Show details' : 'Hide details';
+            const chevron = document.getElementById('detailsChevron');
+            const isHidden = panel.style.display === 'none';
+            panel.style.display = isHidden ? 'grid' : 'none';
+            chevron.classList.toggle('active');
+        }
+        
+        function getWindDirection(degrees) {
+            const dirs = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+            return dirs[Math.round(((degrees + 11.25) % 360) / 22.5)];
         }
 
         function setRadarView(type, btn) {
@@ -734,10 +816,26 @@
                 weatherState.location = subcounty;
                 setActiveCityChip(subcounty);
 
-                document.getElementById('weatherNowTemp').textContent = `${c.temp ?? '--'}°C`;
-                document.getElementById('weatherNowDesc').textContent = c.description || 'Weather update';
-                document.getElementById('weatherNowMeta').textContent = `${data.location || subcounty} • Humidity ${c.humidity || '--'}% • Wind ${Number(c.wind_speed || 0).toFixed(1)} km/h`;
-                document.getElementById('weatherUpdated').textContent = new Date().toLocaleTimeString();
+                // Update hero weather card
+                document.getElementById('heroWeatherTemp').textContent = `${c.temp ?? '--'}°C`;
+                document.getElementById('heroWeatherDesc').textContent = c.description || 'Weather update';
+                document.getElementById('heroWeatherUpdated').textContent = new Date().toLocaleTimeString();
+                
+                // Update mini forecast cards
+                document.getElementById('miniRainfall').textContent = `${c.precipitation || 0} mm`;
+                document.getElementById('miniRainChance').textContent = `${(c.pop || 0) * 100}% chance`;
+                document.getElementById('miniWind').textContent = `${Number(c.wind_speed || 0).toFixed(1)} km/h`;
+                document.getElementById('miniWindDir').textContent = getWindDirection(c.wind_deg || 0);
+                document.getElementById('miniTempRange').textContent = `${c.temp_max || '--'}/${c.temp_min || '--'} °C`;
+                
+                // Update rainfall bar
+                const rainPercent = (c.pop || 0) * 100;
+                document.getElementById('rainfallBar').style.width = rainPercent + '%';
+                
+                // Update wind arrow rotation
+                const windDeg = c.wind_deg || 0;
+                document.getElementById('windArrow').style.transform = `rotate(${windDeg}deg)`;
+                
                 renderMetrics();
                 render72HourStrip();
                 renderWeekRow();
@@ -762,9 +860,19 @@
                 weatherState.uv = 1;
                 weatherState.location = subcounty;
                 setActiveCityChip(subcounty);
-                document.getElementById('weatherNowTemp').textContent = `${weatherState.current.temp}°C`;
-                document.getElementById('weatherNowDesc').textContent = weatherState.current.description;
-                document.getElementById('weatherNowMeta').textContent = `${subcounty} • Humidity ${weatherState.current.humidity}% • Wind ${weatherState.current.wind_speed} km/h`;
+                
+                // Update hero weather card
+                document.getElementById('heroWeatherTemp').textContent = `${weatherState.current.temp}°C`;
+                document.getElementById('heroWeatherDesc').textContent = weatherState.current.description;
+                document.getElementById('heroWeatherUpdated').textContent = new Date().toLocaleTimeString();
+                
+                // Update mini forecast cards with fallback data
+                document.getElementById('miniRainfall').textContent = '0.3 mm';
+                document.getElementById('miniRainChance').textContent = '40% chance';
+                document.getElementById('miniWind').textContent = `${weatherState.current.wind_speed} km/h`;
+                document.getElementById('miniWindDir').textContent = getWindDirection(weatherState.current.wind_deg || 0);
+                document.getElementById('miniTempRange').textContent = '26/14 °C';
+                
                 updateChipTemperature(subcounty, weatherState.current.temp);
                 renderMetrics();
                 render72HourStrip();
