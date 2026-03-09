@@ -607,13 +607,24 @@
             setLoading('loginLoading', true);
 
             try {
-                // Send as both phone and username - backend will check both
+                // Determine if identifier is phone or username
+                const isPhoneNumber = /^(\+?254|0)[0-9]{9,}$/.test(identifier);
+                
                 const loginData = { password };
-                if (identifier.includes('+') || identifier.startsWith('2547')) {
-                    loginData.phone = identifier;
+                if (isPhoneNumber) {
+                    // Normalize phone to +254 format
+                    let phone = identifier;
+                    if (phone.startsWith('0')) {
+                        phone = '+254' + phone.substring(1);
+                    } else if (phone.startsWith('254')) {
+                        phone = '+' + phone;
+                    }
+                    loginData.phone = phone;
                 } else {
-                    loginData.username = identifier;
+                    loginData.username = identifier.toLowerCase();
                 }
+
+                console.log('Sending login data:', loginData);
 
                 const response = await fetch(`${API_URL}/login`, {
                     method: 'POST',
