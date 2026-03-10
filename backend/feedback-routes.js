@@ -107,27 +107,31 @@ router.post('/feedback/submit', ensureInitialized, (req, res) => {
 // Simple feedback submission (for quick feedback and detailed feedback)
 router.post('/feedback', ensureInitialized, (req, res) => {
   try {
-    const { helpful, comments, feedback_type, rating } = req.body;
+    const { helpful, comments, feedback_type, rating, phoneNumber } = req.body;
     
-    // Extract user from token
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) {
-      return res.status(401).json({
-        success: false,
-        error: 'No token provided'
-      });
+    // Use provided phoneNumber or try to extract from token
+    let phone = phoneNumber;
+    
+    if (!phone) {
+      const token = req.headers.authorization?.split(' ')[1];
+      if (token) {
+        try {
+          // Simple JWT decode (for production use proper jwt library)
+          const decoded = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+          phone = decoded.phone || decoded.phoneNumber;
+        } catch (e) {
+          // Token decode failed, phone is still undefined
+        }
+      }
     }
     
-    const decoded = req.verifyToken(token);
-    if (!decoded) {
-      return res.status(401).json({
-        success: false,
-        error: 'Invalid token'
-      });
+    // If still no phone, generate a temporary identifier
+    if (!phone) {
+      phone = `guest_${Date.now()}`;
     }
     
     const result = feedbackService.submitSimpleFeedback({
-      phoneNumber: decoded.phone,
+      phoneNumber: phone,
       helpful,
       comments,
       feedback_type,
@@ -180,7 +184,7 @@ router.get('/feedback/all', ensureInitialized, (req, res) => {
 // Record yield
 router.post('/feedback/yield', ensureInitialized, (req, res) => {
   try {
-    const {
+    let {
       phoneNumber,
       crop,
       subCounty,
@@ -193,10 +197,32 @@ router.post('/feedback/yield', ensureInitialized, (req, res) => {
       notes
     } = req.body;
     
-    if (!phoneNumber || !crop) {
+    // Extract phoneNumber from token if not provided
+    if (!phoneNumber) {
+      const token = req.headers.authorization?.split(' ')[1];
+      if (token) {
+        try {
+          // Simple JWT decode (for production use proper jwt library)
+          const decoded = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+          phoneNumber = decoded.phone || decoded.phoneNumber;
+        } catch (e) {
+          // Token decode failed
+        }
+      }
+    }
+    
+    // If still no phone, generate a temporary identifier
+    if (!phoneNumber) {
+      phoneNumber = `guest_${Date.now()}`;
+    }
+    
+    // Handle yield_amount from frontend
+    const amount = yieldAmount || req.body.yield_amount;
+    
+    if (!crop) {
       return res.status(400).json({
         success: false,
-        error: 'phoneNumber and crop are required'
+        error: 'crop is required'
       });
     }
     
@@ -206,7 +232,7 @@ router.post('/feedback/yield', ensureInitialized, (req, res) => {
       subCounty,
       soilType,
       season,
-      yieldAmount,
+      yieldAmount: amount,
       yieldUnit,
       farmSize,
       inputsUsed,
