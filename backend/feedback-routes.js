@@ -246,13 +246,47 @@ router.post('/feedback/yield', ensureInitialized, (req, res) => {
   }
 });
 
-// Get user yield history
+// Get user yield history - requires phoneNumber in URL
 router.get('/feedback/yields/:phoneNumber', ensureInitialized, (req, res) => {
   try {
     const { phoneNumber } = req.params;
     
     const result = feedbackService.getUserYields(phoneNumber);
     res.json(result);
+  } catch (error) {
+    console.error('Error fetching yields:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch yields' });
+  }
+});
+
+// Get current user's yield history (from token)
+router.get('/feedback/yields', ensureInitialized, (req, res) => {
+  try {
+    // Extract phoneNumber from token
+    let phoneNumber = null;
+    const token = req.headers.authorization?.split(' ')[1];
+    if (token) {
+      try {
+        const decoded = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+        phoneNumber = decoded.phone || decoded.phoneNumber;
+      } catch (e) {
+        // Token decode failed
+      }
+    }
+    
+    if (!phoneNumber) {
+      return res.status(400).json({
+        success: false,
+        error: 'Unable to identify user. Please log in.'
+      });
+    }
+    
+    const result = feedbackService.getUserYields(phoneNumber);
+    // Return in format expected by frontend: { success, data }
+    res.json({
+      success: result.success,
+      data: result.yields || []
+    });
   } catch (error) {
     console.error('Error fetching yields:', error);
     res.status(500).json({ success: false, error: 'Failed to fetch yields' });
@@ -278,7 +312,35 @@ router.get('/feedback/yields/analytics', ensureInitialized, (req, res) => {
 router.get('/feedback/analytics', ensureInitialized, (req, res) => {
   try {
     const result = feedbackService.getFeedbackAnalytics();
-    res.json(result);
+    
+    // Transform to format expected by frontend
+    if (result.success && result.analytics) {
+      const overall = result.analytics.overall || {};
+      const yieldStats = result.analytics.yieldStats || [];
+      
+      // Calculate total yields
+      const totalYields = yieldStats.reduce((sum, item) => sum + (item.records || 0), 0);
+      
+      res.json({
+        success: true,
+        data: {
+          totalFeedback: overall.totalFeedback || 0,
+          helpfulCount: overall.helpfulPercentage || 0,  // Note: This is percentage in original
+          averageRating: overall.avgRating || 0,
+          totalYields: totalYields
+        }
+      });
+    } else {
+      res.json({
+        success: true,
+        data: {
+          totalFeedback: 0,
+          helpfulCount: 0,
+          averageRating: 0,
+          totalYields: 0
+        }
+      });
+    }
   } catch (error) {
     console.error('Error fetching analytics:', error);
     res.status(500).json({ success: false, error: 'Failed to fetch analytics' });

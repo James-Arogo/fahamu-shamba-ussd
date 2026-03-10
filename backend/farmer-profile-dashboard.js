@@ -38,6 +38,8 @@ export function initializeEnhancedFarmerDatabase(db) {
       passport_photo_url TEXT,
       passport_photo_mime_type TEXT,
       photo_uploaded_date DATETIME,
+      profile_edits_count INTEGER DEFAULT 0,
+      last_profile_edit DATETIME,
       profile_completion_percentage INTEGER DEFAULT 0,
       profile_verified BOOLEAN DEFAULT 0,
       verified_by TEXT,
@@ -280,6 +282,50 @@ export async function getFarmerProfileById(dbAsync, farmerId) {
 }
 
 /**
+ * Check if farmer can edit profile (max 2 times per week)
+ */
+export async function canEditProfile(dbAsync, farmerId) {
+  try {
+    const profile = await dbAsync.get(
+      `SELECT profile_edits_count, last_profile_edit FROM farmer_profiles WHERE farmer_id = ?`,
+      [farmerId]
+    );
+
+    if (!profile) {
+      return { canEdit: false, reason: 'Profile not found' };
+    }
+
+    // If never edited, allow edit
+    if (!profile.last_profile_edit) {
+      return { canEdit: true, remainingEdits: 2 };
+    }
+
+    const lastEdit = new Date(profile.last_profile_edit);
+    const now = new Date();
+    const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    // If last edit was more than a week ago, reset counter
+    if (lastEdit < oneWeekAgo) {
+      return { canEdit: true, remainingEdits: 2 };
+    }
+
+    // Check if edits remaining
+    const remainingEdits = 2 - profile.profile_edits_count;
+    if (remainingEdits <= 0) {
+      return { 
+        canEdit: false, 
+        reason: 'You have reached the maximum of 2 profile edits per week. Please try again next week.',
+        nextEditDate: new Date(lastEdit.getTime() + 7 * 24 * 60 * 60 * 1000)
+      };
+    }
+
+    return { canEdit: true, remainingEdits };
+  } catch (error) {
+    throw new Error(`Failed to check edit limit: ${error.message}`);
+  }
+}
+
+/**
  * Update farmer profile
  */
 export async function updateFarmerProfile(dbAsync, farmerId, profileData, updatedBy) {
@@ -303,7 +349,9 @@ export async function updateFarmerProfile(dbAsync, farmerId, profileData, update
       annualIncome,
       budget,
       preferredLanguage,
-      contactMethod
+      contactMethod,
+      passportPhotoUrl,
+      passportPhotoMimeType
     } = profileData;
 
     // Get current profile for completion calculation
@@ -314,6 +362,14 @@ export async function updateFarmerProfile(dbAsync, farmerId, profileData, update
 
     if (!currentProfile) {
       throw new Error('Farmer not found');
+    }
+
+    // Check edit limit (only for non-photo updates)
+    if (!passportPhotoUrl) {
+      const editCheck = await canEditProfile(dbAsync, farmerId);
+      if (!editCheck.canEdit) {
+        throw new Error(editCheck.reason);
+      }
     }
 
     // Merge and calculate new completion
@@ -399,6 +455,14 @@ export async function updateFarmerProfile(dbAsync, farmerId, profileData, update
       updates.push('contact_method = ?');
       values.push(contactMethod);
     }
+    if (passportPhotoUrl !== undefined) {
+      updates.push('passport_photo_url = ?');
+      values.push(passportPhotoUrl);
+    }
+    if (passportPhotoMimeType !== undefined) {
+      updates.push('passport_photo_mime_type = ?');
+      values.push(passportPhotoMimeType);
+    }
 
     if (updates.length === 0) {
       throw new Error('No fields to update');
@@ -410,6 +474,12 @@ export async function updateFarmerProfile(dbAsync, farmerId, profileData, update
     updates.push('last_updated_by = ?');
     values.push(updatedBy);
 
+    // Update edit count and last edit date (only for non-photo updates)
+    if (!passportPhotoUrl) {
+      updates.push('profile_edits_count = profile_edits_count + 1');
+      updates.push('last_profile_edit = CURRENT_TIMESTAMP');
+    }
+
     updates.push('updated_at = CURRENT_TIMESTAMP');
 
     values.push(farmerId);
@@ -417,13 +487,17 @@ export async function updateFarmerProfile(dbAsync, farmerId, profileData, update
     const sql = `UPDATE farmer_profiles SET ${updates.join(', ')} WHERE farmer_id = ?`;
     await dbAsync.run(sql, values);
 
+    // Get remaining edits
+    const editCheck = await canEditProfile(dbAsync, farmerId);
+
     // Log activity
     await logFarmerActivity(dbAsync, farmerId, 'PROFILE_UPDATED', 'Farmer profile updated', { updatedBy });
 
     return {
       farmerId,
-      message: 'Farmer profile updated successfully',
-      profileCompletion: completionPercentage
+      message: passportPhotoUrl ? 'Profile photo updated successfully' : 'Farmer profile updated successfully',
+      profileCompletion: completionPercentage,
+      remainingEdits: editCheck.remainingEdits
     };
   } catch (error) {
     throw new Error(`Failed to update farmer profile: ${error.message}`);

@@ -6,7 +6,11 @@
     <title>Crop Recommendations - Fahamu Shamba</title>
     <link rel="icon" href="/fahamu-logo.png" type="image/png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/css/sidebar.css">
+    <link rel="stylesheet" href="/css/toast.css">
     <script src="/language-utils.js"></script>
+    <script src="/js/sidebar.js" defer></script>
+    <script src="/js/toast.js" defer></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
@@ -57,7 +61,6 @@
         .sidebar.collapsed+.main-content { margin-left: var(--sidebar-collapsed); }
         .top-header { background: white; padding: 15px 30px; display: flex; align-items: center; justify-content: space-between; box-shadow: var(--shadow-sm); position: sticky; top: 0; z-index: 100; }
         .header-left { display: flex; align-items: center; gap: 15px; }
-        .mobile-menu-btn { display: none; background: none; border: none; font-size: 1.5rem; color: var(--primary); cursor: pointer; padding: 5px; }
         
         /* ===== PAGE CONTENT ===== */
         .page-container { padding: 30px; }
@@ -167,11 +170,6 @@
         /* ===== RESPONSIVE ===== */
         /* Tablet (768px - 1024px) */
         @media (max-width: 1024px) {
-            .sidebar { width: var(--sidebar-collapsed); }
-            .sidebar:hover { width: var(--sidebar-width); }
-            .main-content { margin-left: var(--sidebar-collapsed); }
-            .sidebar.collapsed { width: var(--sidebar-width); }
-            .sidebar.collapsed+.main-content { margin-left: var(--sidebar-width); }
             .page-container { padding: 20px; }
             .form-grid { grid-template-columns: repeat(2, 1fr); }
             .recommendations-grid { grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
@@ -180,40 +178,6 @@
             .back-dashboard-btn span { display: inline; }
             .page-title { font-size: 1.5rem; }
             .section-title { font-size: 1rem; }
-        }
-        
-        /* Mobile (max-width: 768px) */
-        @media (max-width: 768px) {
-            .sidebar { position: fixed; width: var(--sidebar-collapsed); left: 0; transition: left 0.3s ease; }
-            .sidebar.mobile-open { left: 0; width: var(--sidebar-width); }
-            .main-content { margin-left: var(--sidebar-collapsed); width: calc(100% - var(--sidebar-collapsed)); }
-            .sidebar.mobile-open + .main-content { margin-left: var(--sidebar-width); width: calc(100% - var(--sidebar-width)); }
-            .page-container { padding: 15px; }
-            .form-grid { grid-template-columns: 1fr; }
-            .recommendations-grid { grid-template-columns: 1fr; }
-            .top-header { padding: 10px 12px; flex-wrap: wrap; gap: 10px; }
-            .header-left { gap: 10px; }
-            .page-header { padding: 15px; margin-bottom: 20px; border-left: 3px solid var(--secondary); }
-            .page-title { font-size: 1.3rem; margin-bottom: 8px; }
-            .page-subtitle { font-size: 0.85rem; }
-            .mobile-menu-btn { display: flex; }
-            .back-dashboard-btn { padding: 8px 10px; font-size: 0.8rem; }
-            .back-dashboard-btn span { display: none; }
-            .back-dashboard-btn i { margin-right: 0; }
-            .form-actions { gap: 10px; }
-            .btn { padding: 10px 16px; font-size: 0.85rem; }
-            .btn-sm { padding: 6px 12px; font-size: 0.75rem; }
-            .section-title { font-size: 0.95rem; }
-            .recommendation-header { gap: 10px; }
-            .recommendation-icon { width: 50px; height: 50px; font-size: 1.5rem; }
-            .recommendation-name { font-size: 1rem; }
-            .recommendation-subtitle { font-size: 0.8rem; }
-            .recommendation-details { padding: 12px; margin: 15px 0; }
-            .detail-row { font-size: 0.85rem; margin-bottom: 8px; }
-            .recommendation-actions { gap: 8px; }
-            .recommendation-actions .btn { flex: 1; padding: 8px 12px; font-size: 0.75rem; }
-            .history-item { flex-direction: column; align-items: flex-start; }
-            .history-date { text-align: left; width: 100%; margin-top: 8px; }
         }
         
         /* Small phones (max-width: 480px) */
@@ -353,6 +317,9 @@
     <script src="/js/mobile-hardening.js" defer></script>
 </head>
 <body>
+    <!-- Sidebar Overlay for Mobile -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMobileSidebar()"></div>
+    
     <!-- Sidebar -->
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
@@ -365,10 +332,11 @@
         
         <nav class="sidebar-nav">
             <a class="nav-item" href="/dashboard.html"><i class="fas fa-home"></i><span>Dashboard</span></a>
-            <a class="nav-item" href="/market.html"><i class="fas fa-chart-bar"></i><span>Market</span></a>
-            <a class="nav-item active" href="/recommendations.html"><i class="fas fa-seedling"></i><span>Recommendations</span></a>
+            <a class="nav-item" href="/recommendations.html"><i class="fas fa-seedling"></i><span>Recommendations</span></a>
+            <a class="nav-item" href="/market.html"><i class="fas fa-chart-bar"></i><span>Market Prices</span></a>
             <a class="nav-item" href="/community.html"><i class="fas fa-users"></i><span>Community</span></a>
             <a class="nav-item" href="/feedback.html"><i class="fas fa-comments"></i><span>Feedback</span></a>
+            <a class="nav-item" href="/profile.html"><i class="fas fa-user-circle"></i><span>My Profile</span></a>
             <a class="nav-item" href="/settings.html"><i class="fas fa-cog"></i><span>Settings</span></a>
         </nav>
         
@@ -385,21 +353,21 @@
         <div class="sidebar-toggle" onclick="toggleSidebar()">
             <i class="fas fa-chevron-left"></i>
         </div>
+        <!-- Mobile Close Button (X) -->
+        <div class="sidebar-close" onclick="toggleMobileSidebar()">
+            <i class="fas fa-times"></i>
+        </div>
     </div>
-    
-    <!-- Mobile Menu Button -->
-    <button class="mobile-menu-btn" onclick="toggleMobileSidebar()">
-        <i class="fas fa-bars"></i>
-    </button>
     
     <!-- Main Content -->
     <div class="main-content">
         <!-- Top Header -->
         <div class="top-header">
             <div class="header-left">
-                <button class="mobile-menu-btn" onclick="toggleMobileSidebar()">
+                <button class="mobile-menu-btn" id="mobileMenuBtn">
                     <i class="fas fa-bars"></i>
                 </button>
+                <span style="font-weight:700;color:var(--primary-dark);font-size:1.1rem;">Recommendations</span>
             </div>
             <div style="display: flex; gap: 12px; align-items: center;">
                 <div class="language-wrapper">
@@ -556,6 +524,23 @@
             translatePage(lang);
             loadUserData();
             loadRecommendationHistory();
+            
+            // Add click listener to mobile menu button
+            const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+            if (mobileMenuBtn) {
+                mobileMenuBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    toggleMobileSidebar();
+                });
+            }
+            
+            // Add click listener to sidebar overlay
+            const overlay = document.getElementById('sidebarOverlay');
+            if (overlay) {
+                overlay.addEventListener('click', function() {
+                    toggleMobileSidebar();
+                });
+            }
         });
         
         // Language functions
@@ -588,15 +573,6 @@
                 if (menu) menu.classList.remove('show');
             }
         });
-        
-        // Toggle Sidebar
-        function toggleSidebar() {
-            document.getElementById('sidebar').classList.toggle('collapsed');
-        }
-        
-        function toggleMobileSidebar() {
-            document.getElementById('sidebar').classList.toggle('mobile-open');
-        }
         
         // User Functions - Load from localStorage (no API calls)
         function loadUserData() {

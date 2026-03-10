@@ -6,7 +6,9 @@
     <title>Sign Up - Fahamu Shamba</title>
     <link rel="icon" href="/fahamu-logo.png" type="image/png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/css/toast.css">
     <script src="/language-utils.js"></script>
+    <script src="/js/toast.js" defer></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -334,12 +336,12 @@
             const confirmPassword = document.getElementById('confirmPassword').value;
             
             if (password !== confirmPassword) {
-                alert('Passwords do not match!');
+                showToast('Passwords do not match!', 'error');
                 return;
             }
             
             if (!username) {
-                alert('Please choose a username!');
+                showToast('Please choose a username!', 'error');
                 return;
             }
 
@@ -377,10 +379,12 @@
 
                 localStorage.setItem('token', profileData.token);
                 localStorage.setItem('user', JSON.stringify(profileData.user || {}));
-                alert('Account created successfully. Please login with your username and password.');
-                window.location.href = '/login.html';
+                showToast('Account created successfully! Please login.', 'success');
+                setTimeout(() => {
+                    window.location.href = '/login.html';
+                }, 1500);
             } catch (error) {
-                alert(error.message || 'Failed to create account');
+                showToast(error.message || 'Failed to create account', 'error');
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Create Account';

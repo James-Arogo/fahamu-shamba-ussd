@@ -183,8 +183,8 @@ export function securityHeaders(req, res, next) {
   // Enable XSS protection
   res.setHeader('X-XSS-Protection', '1; mode=block');
 
-  // Content Security Policy - Allow trusted CDNs for styles and fonts
-  res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com https://ka-f.fontawesome.com; connect-src 'self' https://openweathermap.org https://api.openweathermap.org");
+  // Content Security Policy - Allow trusted CDNs for styles and fonts and base64 images
+  res.setHeader('Content-Security-Policy', "default-src 'self'; img-src 'self' data:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com https://ka-f.fontawesome.com; connect-src 'self' https://openweathermap.org https://api.openweathermap.org");
 
   // Referrer Policy
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');

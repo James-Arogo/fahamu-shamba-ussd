@@ -203,7 +203,8 @@ router.put('/farmer-profile/:farmerId', sanitizeInput, async (req, res) => {
       'firstName', 'lastName', 'email', 'dateOfBirth', 'gender', 'idNumber',
       'subCounty', 'ward', 'soilType', 'farmSize', 'farmSizeUnit',
       'waterSource', 'waterSourceType', 'cropsGrown', 'livestockKept',
-      'annualIncome', 'budget', 'preferredLanguage', 'contactMethod'
+      'annualIncome', 'budget', 'preferredLanguage', 'contactMethod',
+      'passportPhotoUrl', 'passportPhotoMimeType'
     ];
 
     allowedFields.forEach(field => {
@@ -217,6 +218,19 @@ router.put('/farmer-profile/:farmerId', sanitizeInput, async (req, res) => {
         success: false,
         message: 'No fields to update'
       });
+    }
+
+    // Check edit limit before updating (only for non-photo updates)
+    if (!updateData.passportPhotoUrl) {
+      const editCheck = await farmerProfileDB.canEditProfile(req.dbAsync, farmerId);
+      if (!editCheck.canEdit) {
+        return res.status(403).json({
+          success: false,
+          message: editCheck.reason,
+          remainingEdits: 0,
+          nextEditDate: editCheck.nextEditDate
+        });
+      }
     }
 
     // Parse numeric fields
@@ -236,17 +250,61 @@ router.put('/farmer-profile/:farmerId', sanitizeInput, async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Farmer profile updated successfully',
+      message: result.message,
       data: {
         ...result,
         profile: updatedProfile
-      }
+      },
+      remainingEdits: result.remainingEdits
     });
   } catch (error) {
     console.error('Farmer profile update error:', error);
+    
+    // Check if it's an edit limit error
+    if (error.message.includes('maximum of 2 profile edits')) {
+      return res.status(403).json({
+        success: false,
+        message: error.message,
+        error: 'edit_limit_exceeded'
+      });
+    }
+    
     res.status(500).json({
       success: false,
       message: 'Failed to update farmer profile',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/farmer-profile/:farmerId/edit-limit
+ * Check if farmer can edit profile
+ */
+router.get('/farmer-profile/:farmerId/edit-limit', async (req, res) => {
+  try {
+    const { farmerId } = req.params;
+
+    if (!farmerId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Farmer ID is required'
+      });
+    }
+
+    const editCheck = await farmerProfileDB.canEditProfile(req.dbAsync, farmerId);
+
+    res.json({
+      success: true,
+      canEdit: editCheck.canEdit,
+      remainingEdits: editCheck.remainingEdits || 0,
+      reason: editCheck.reason,
+      nextEditDate: editCheck.nextEditDate
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to check edit limit',
       error: error.message
     });
   }

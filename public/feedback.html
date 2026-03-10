@@ -309,11 +309,23 @@
             display: flex; 
             justify-content: space-between; 
             align-items: center; 
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             flex-wrap: wrap;
-            gap: 10px;
+            gap: 8px;
         }
-        .recent-feedback-date { 
+        
+        .feedback-type-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            color: white;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: capitalize;
+        }
+        
+        .recent-feedback-date {
             font-size: 0.8rem; 
             color: var(--text-light);
             font-weight: 500;
@@ -499,12 +511,12 @@
             <div class="sidebar-brand"><h2>Fahamu Shamba</h2><p>Smart Farming</p></div>
         </div>
         <nav class="sidebar-nav">
-            <a class="nav-item" onclick="goToDashboard()"><i class="fas fa-chart-line"></i><span>Dashboard</span></a>
-<a class="nav-item" onclick="goToRecommendations()"><i class="fas fa-seedling"></i><span>Recommendations</span></a>
+            <a class="nav-item" onclick="goToDashboard()"><i class="fas fa-home"></i><span>Dashboard</span></a>
+            <a class="nav-item" onclick="goToRecommendations()"><i class="fas fa-seedling"></i><span>Recommendations</span></a>
             <a class="nav-item" onclick="goToMarket()"><i class="fas fa-chart-bar"></i><span>Market Prices</span></a>
             <a class="nav-item" onclick="goToCommunity()"><i class="fas fa-users"></i><span>Community</span></a>
-            <a class="nav-item active"><i class="fas fa-star"></i><span>Feedback</span></a>
-            <a class="nav-item" onclick="goToProfile()"><i class="fas fa-user"></i><span>My Profile</span></a>
+            <a class="nav-item active"><i class="fas fa-comments"></i><span>Feedback</span></a>
+            <a class="nav-item" onclick="goToProfile()"><i class="fas fa-user-circle"></i><span>My Profile</span></a>
             <a class="nav-item" onclick="goToSettings()"><i class="fas fa-cog"></i><span>Settings</span></a>
         </nav>
         <div class="sidebar-footer">
@@ -638,6 +650,19 @@
                     <button class="btn btn-primary" onclick="submitYield()">
                         <i class="fas fa-save"></i> Record
                     </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- View Your Yields -->
+        <div class="feedback-section">
+            <div class="section-title"><i class="fas fa-chart-line"></i> Your Recorded Yields</div>
+            <div class="feedback-card">
+                <button class="btn btn-secondary" onclick="loadYieldHistory()" style="margin-bottom: 15px;">
+                    <i class="fas fa-sync"></i> Load Yields
+                </button>
+                <div class="yield-history-list" id="yieldHistoryList">
+                    <p style="text-align: center; color: var(--text-light); padding: 20px;">No yields recorded yet</p>
                 </div>
             </div>
         </div>
@@ -841,9 +866,10 @@ function goToCommunity() { window.location.href = '/community.html'; }
                 
                 const result = await response.json();
                 if (result.success) {
-                    showToast('✅ Yield recorded successfully!', 'success');
+                    showToast(`✅ Yield recorded successfully! (ID: ${result.recordId || 'N/A'})`, 'success');
                     cropEl.value = '';
                     amountEl.value = '';
+                    loadYieldHistory();
                     loadFeedbackStats();
                 } else {
                     showToast(result.message || 'Failed to record yield', 'error');
@@ -922,7 +948,7 @@ function goToCommunity() { window.location.href = '/community.html'; }
                 
                 const result = await response.json();
                 if (result.success) {
-                    showToast('✅ Thank you for your feedback! It helps us improve.', 'success');
+                    showToast(`✅ Thank you for your feedback! (ID: ${result.feedbackId || 'N/A'})`, 'success');
                     clearForm();
                     loadRecentFeedback();
                 } else {
@@ -982,20 +1008,110 @@ function goToCommunity() { window.location.href = '/community.html'; }
                 const container = document.getElementById('recentFeedbackList');
                 
                 if (result.success && result.data && result.data.length > 0) {
-                    container.innerHTML = result.data.slice(0, 5).map(item => `
+                    container.innerHTML = result.data.slice(0, 10).map(item => {
+                        const feedbackType = item.feedback_type || 'general';
+                        const typeLabel = feedbackType.charAt(0).toUpperCase() + feedbackType.slice(1);
+                        return `
                         <div class="recent-feedback-item">
                             <div class="recent-feedback-header">
+                                <span class="feedback-type-badge">${typeLabel}</span>
                                 <span class="recent-feedback-date">${new Date(item.created_at).toLocaleDateString()}</span>
-                                <span class="recent-feedback-rating">${'★'.repeat(item.rating || 0)}${'☆'.repeat(5 - (item.rating || 0))}</span>
                             </div>
-                            <div class="recent-feedback-comment">${item.comments || item.feedback_type || 'No comment'}</div>
+                            <div class="recent-feedback-comment">${item.comments || 'No comment provided'}</div>
+                            <div class="recent-feedback-rating">
+                                ${item.rating ? '★'.repeat(item.rating) + '☆'.repeat(5 - item.rating) : 'No rating'}
+                            </div>
                         </div>
-                    `).join('');
+                    `}).join('');
                 } else {
                     container.innerHTML = '<p style="text-align: center; color: var(--text-light); padding: 20px;">No feedback yet. Be the first to share!</p>';
                 }
             } catch (error) {
                 console.error('Error loading recent feedback:', error);
+            }
+        }
+        
+        // Load yield history
+        async function loadYieldHistory() {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch('/api/feedback/yields', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const result = await response.json();
+                
+                const container = document.getElementById('yieldHistoryList');
+                
+                if (result.success && result.data && result.data.length > 0) {
+                    container.innerHTML = result.data.map(item => `
+                        <div class="recent-feedback-item">
+                            <div class="recent-feedback-header">
+                                <span class="recent-feedback-date">${new Date(item.created_at).toLocaleDateString()}</span>
+                                <span class="recent-feedback-rating" style="color: var(--success);">
+                                    <i class="fas fa-leaf"></i> ${item.crop || 'Unknown crop'}
+                                </span>
+                            </div>
+                            <div class="recent-feedback-comment">
+                                Yield: <strong>${item.yield_amount || '0'} kg</strong>
+                                ${item.prediction_id ? `<br><small>Based on prediction #${item.prediction_id}</small>` : ''}
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    container.innerHTML = '<p style="text-align: center; color: var(--text-light); padding: 20px;">No yields recorded yet</p>';
+                }
+            } catch (error) {
+                console.error('Error loading yield history:', error);
+                showToast('Error loading yield history', 'error');
+            }
+        }
+        
+        // Load yield history
+        async function loadYieldHistory() {
+            try {
+                const token = localStorage.getItem('token');
+                let userPhone = localStorage.getItem('userPhone');
+                
+                if (!userPhone) {
+                    const user = localStorage.getItem('user');
+                    if (user) {
+                        try {
+                            userPhone = JSON.parse(user).phone;
+                        } catch (e) {}
+                    }
+                }
+                
+                if (!userPhone) {
+                    showToast('Phone number not found. Please log in again.', 'error');
+                    return;
+                }
+                
+                const response = await fetch(`/api/feedback/yields/${userPhone}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const result = await response.json();
+                
+                const container = document.getElementById('yieldHistoryList');
+                
+                if (result.success && result.yields && result.yields.length > 0) {
+                    container.innerHTML = result.yields.map(item => `
+                        <div class="yield-history-item" style="padding: 12px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <div style="font-weight: 500; color: var(--text-dark);">${item.crop} - ${item.yield_amount} ${item.yield_unit || 'kg'}</div>
+                                <div style="font-size: 0.85em; color: var(--text-light);">
+                                    ${item.sub_county ? 'County: ' + item.sub_county + ' | ' : ''}
+                                    ${new Date(item.recorded_at).toLocaleDateString()}
+                                </div>
+                            </div>
+                            <div style="text-align: right; font-size: 0.9em; color: var(--success); font-weight: 500;">✓ Recorded</div>
+                        </div>
+                    `).join('');
+                } else {
+                    container.innerHTML = '<p style="text-align: center; color: var(--text-light); padding: 20px;">No yields recorded yet. Record your first yield above!</p>';
+                }
+            } catch (error) {
+                console.error('Error loading yield history:', error);
+                showToast('Error loading yield history: ' + error.message, 'error');
             }
         }
         

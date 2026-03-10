@@ -29,7 +29,7 @@ export function initializeFeedbackDatabase(dbConnection) {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       prediction_id INTEGER,
       phone_number TEXT,
-      crop_recommended TEXT NOT NULL,
+      crop_recommended TEXT DEFAULT NULL,
       crop_planted TEXT,
       rating INTEGER CHECK(rating >= 1 AND rating <= 5),
       was_helpful BOOLEAN,
@@ -39,10 +39,18 @@ export function initializeFeedbackDatabase(dbConnection) {
       challenges TEXT,
       suggestions TEXT,
       would_recommend BOOLEAN,
+      feedback_type TEXT DEFAULT 'general',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
+  
+  // Add feedback_type column if it doesn't exist (for existing databases)
+  try {
+    database.exec(`ALTER TABLE enhanced_feedback ADD COLUMN feedback_type TEXT DEFAULT 'general'`);
+  } catch (e) {
+    // Column already exists, ignore error
+  }
   
   // Rating history for ML improvement
   database.exec(`
@@ -203,14 +211,16 @@ export function submitFeedback(data) {
 export function submitSimpleFeedback(data) {
   const { phoneNumber, helpful, comments, feedback_type, rating } = data;
   
+  // Use a default value for crop_recommended to avoid NOT NULL constraint issues
   const stmt = getDb().prepare(`
     INSERT INTO enhanced_feedback (
-      phone_number, rating, was_helpful, suggestions, feedback_type
-    ) VALUES (?, ?, ?, ?, ?)
+      phone_number, crop_recommended, rating, was_helpful, suggestions, feedback_type, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
   `);
   
   const result = stmt.run(
     phoneNumber,
+    'general',  // Default crop_recommended to avoid NOT NULL constraint
     rating || null,
     helpful !== undefined ? (helpful ? 1 : 0) : null,
     comments || null,

@@ -6,7 +6,9 @@
     <title>Login - Fahamu Shamba</title>
     <link rel="icon" href="/fahamu-logo.png" type="image/png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/css/toast.css">
     <script src="/language-utils.js"></script>
+    <script src="/js/toast.js" defer></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -273,7 +275,7 @@
             const submitBtn = document.querySelector('#loginForm .btn');
             
             if (!username || !password) {
-                alert('Please enter username and password');
+                showToast('Please enter username and password', 'error');
                 return;
             }
 
@@ -299,7 +301,7 @@
                 localStorage.setItem('user', JSON.stringify(result.user || {}));
                 window.location.href = '/dashboard.html';
             } catch (error) {
-                alert(error.message || 'Invalid username or password');
+                showToast(error.message || 'Invalid username or password', 'error');
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Login';

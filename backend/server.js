@@ -1755,8 +1755,9 @@ app.post('/api/ussd', (req, res) => {
   }
 });
 
-// Save user feedback about recommendations
-app.post('/api/feedback', async (req, res) => {
+// Save user feedback about recommendations - DEPRECATED, use /api/feedback from feedback-routes.js
+// This endpoint is kept for backward compatibility but delegates to the new service
+app.post('/api/feedback/deprecated', async (req, res) => {
   const { predictionId, phoneNumber, helpful, comments = '' } = req.body;
 
   if (!predictionId || typeof helpful !== 'boolean') {
