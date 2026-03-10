@@ -596,10 +596,17 @@
             Object.entries(marketCenters).forEach(([key, center]) => {
                 const cropEntry = (center.crops || []).find(c => String(c.crop).toLowerCase() === String(crop).toLowerCase());
                 if (!cropEntry || !Array.isArray(cropEntry.history)) return;
+                
+                // Map the history array to trend rows
                 cropEntry.history.forEach((price, idx) => {
+                    // Create a date for this week
+                    const date = new Date();
+                    date.setDate(date.getDate() - (cropEntry.history.length - idx - 1) * 7);
+                    const weekStart = date.toISOString().split('T')[0];
+                    
                     rows.push({
                         subcounty: key,
-                        week_start: `W${idx + 1}`,
+                        week_start: weekStart,
                         price: Number(price || 0)
                     });
                 });
