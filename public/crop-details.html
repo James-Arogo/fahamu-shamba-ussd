@@ -6,32 +6,58 @@
     <title>Crop Details & Inputs - Fahamu Shamba</title>
     <link rel="icon" href="/fahamu-logo.png" type="image/png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="/css/sidebar.css">
-    <link rel="stylesheet" href="/css/toast.css">
-    <script src="/language-utils.js"></script>
-    <script src="/js/sidebar.js" defer></script>
-    <script src="/js/toast.js" defer></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
-            --primary: #2d7649; --primary-light: #4a9d6f; --primary-dark: #1e5631;
-            --secondary: #f57c00; --success: #27ae60; --warning: #f39c12;
-            --danger: #e74c3c; --info: #3498db; --light: #f9f7f4;
-            --lighter: #ecf0f1; --dark: #2c3e50; --text: #34495e;
-            --text-light: #7f8c8d; --border: #e0e6ed;
+            --primary: #2d7649; --primary-dark: #1e5631; --secondary: #f57c00;
+            --light: #f9f7f4; --text: #34495e; --text-light: #7f8c8d; --border: #e0e6ed;
             --shadow-sm: 0 2px 8px rgba(0,0,0,0.08); --shadow-md: 0 4px 16px rgba(0,0,0,0.1);
-            --sidebar-width: 260px;
+            --sidebar-width: 260px; --sidebar-collapsed: 70px;
         }
-        html { scroll-behavior: smooth; }
-        body { font-family: 'Roboto','Segoe UI',sans-serif; background: var(--light); min-height: 100vh; color: var(--text); line-height: 1.6; }
+        body { font-family: 'Roboto', 'Segoe UI', sans-serif; background: var(--light); min-height: 100vh; color: var(--text); }
+
+        .sidebar { position: fixed; left: 0; top: 0; width: var(--sidebar-width); height: 100vh; background: linear-gradient(180deg,var(--primary-dark) 0%,var(--primary) 100%); color: white; z-index: 1000; transition: width 0.3s ease; display: flex; flex-direction: column; box-shadow: 4px 0 20px rgba(0,0,0,0.15); }
+        .sidebar.collapsed { width: var(--sidebar-collapsed); }
+        .sidebar-header { padding: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; gap: 12px; }
+        .sidebar-logo { width: 40px; height: 40px; background: rgba(255,255,255,0.2); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; }
+        .sidebar-brand h2 { font-size: 1.2rem; margin-bottom: 2px; }
+        .sidebar-brand p { font-size: 0.75rem; opacity: 0.85; }
+        .sidebar-close-btn { margin-left: auto; width: 38px; height: 38px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.35); background: rgba(0,0,0,0.2); color: #fff; cursor: pointer; display: none; align-items: center; justify-content: center; }
+        .sidebar-nav { flex: 1; padding: 15px 10px; overflow-y: auto; }
+        .nav-item { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 10px; color: rgba(255,255,255,0.85); text-decoration: none; margin-bottom: 5px; transition: all 0.25s ease; }
+        .nav-item:hover { background: rgba(255,255,255,0.15); color: white; transform: translateX(4px); }
+        .nav-item.active { background: rgba(255,255,255,0.25); color: white; border-left: 3px solid var(--secondary); }
+        .nav-item i { width: 24px; text-align: center; font-size: 1.1rem; }
+        .sidebar-footer { padding: 15px; border-top: 1px solid rgba(255,255,255,0.1); }
+        .user-info { display: flex; align-items: center; gap: 12px; padding: 12px; background: rgba(255,255,255,0.1); border-radius: 10px; margin-bottom: 12px; }
+        .user-avatar { width: 38px; height: 38px; border-radius: 50%; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; }
+        .user-name { font-weight: 600; }
+        .user-phone { font-size: 0.78rem; opacity: 0.85; }
+        .logout-btn { width: 100%; padding: 12px; border: 1px solid rgba(231,76,60,0.35); border-radius: 8px; background: rgba(231,76,60,0.2); color: #ffb3ab; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .logout-btn:hover { background: #e74c3c; color: #fff; }
+        .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 999; }
+
+        .main-content { margin-left: var(--sidebar-width); min-height: 100vh; }
         
-        .container { max-width: 1200px; margin: 0 auto; padding: 30px 20px; }
-        .header { background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%); color: white; padding: 40px 0; margin-bottom: 40px; }
-        .header-content { max-width: 1200px; margin: 0 auto; padding: 0 20px; display: flex; justify-content: space-between; align-items: center; }
-        .header h1 { font-size: 2rem; margin-bottom: 10px; }
-        .header p { font-size: 1rem; opacity: 0.9; }
-        .back-btn { background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 10px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s ease; display: inline-flex; align-items: center; gap: 8px; }
-        .back-btn:hover { background: rgba(255,255,255,0.3); }
+        .top-nav { background: #fff; padding: 15px 24px; box-shadow: var(--shadow-sm); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 90; gap: 12px; }
+        .nav-left { display: flex; align-items: center; gap: 10px; }
+        .nav-hamburger { display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; background: var(--primary-dark); border: 1px solid #184528; border-radius: 10px; color: #fff; font-size: 1.2rem; cursor: pointer; transition: all 0.3s ease; }
+        .nav-hamburger:hover { background: var(--primary); }
+        .nav-back-btn { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: var(--primary); color: #fff; border: none; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; }
+        .nav-back-btn:hover { background: var(--primary-dark); }
+        .nav-center { flex: 1; text-align: center; }
+        .nav-page-title { font-size: 1.3rem; font-weight: 700; color: var(--primary-dark); margin: 0; }
+        .nav-right { display: flex; align-items: center; gap: 12px; }
+        .nav-profile { display: flex; align-items: center; gap: 10px; padding: 8px 14px; background: var(--light); border-radius: 25px; cursor: pointer; transition: all 0.3s ease; }
+        .nav-profile:hover { background: #ecf0f1; }
+        .nav-profile-avatar { width: 32px; height: 32px; background: var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 0.9rem; font-weight: 600; }
+        .nav-profile-name { font-weight: 600; color: var(--text); font-size: 0.9rem; }
+        
+        .page-container { padding: 30px; }
+        
+        .page-header { background: linear-gradient(135deg, rgba(45,118,73,0.08), rgba(74,157,111,0.08)); border-left: 5px solid var(--secondary); border-radius: 12px; padding: 30px; margin-bottom: 30px; }
+        .page-header h1 { color: var(--primary-dark); margin-bottom: 8px; font-size: 1.8rem; }
+        .page-header p { color: var(--text-light); }
         
         .crop-header { background: white; padding: 30px; border-radius: 12px; box-shadow: var(--shadow-sm); margin-bottom: 30px; display: flex; gap: 30px; align-items: center; }
         .crop-icon { width: 120px; height: 120px; background: linear-gradient(135deg, var(--primary), var(--primary-light)); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 4rem; flex-shrink: 0; }
@@ -64,224 +90,203 @@
         .tool-description { color: var(--text-light); font-size: 0.9rem; }
         
         .section-title { font-size: 1.3rem; font-weight: 700; color: var(--primary-dark); margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
-        .section-title i { font-size: 1.5rem; }
         
-        .empty-state { text-align: center; padding: 60px 20px; color: var(--text-light); }
-        .empty-state-icon { font-size: 4rem; margin-bottom: 20px; }
-        
-        .toast { position: fixed; bottom: 30px; right: 30px; padding: 15px 25px; border-radius: 8px; background: var(--success); color: white; font-weight: 600; box-shadow: var(--shadow-md); transition: all 0.3s ease; opacity: 0; transform: translateY(100px); z-index: 2000; }
+        .toast { position: fixed; bottom: 30px; right: 30px; padding: 15px 25px; border-radius: 8px; background: #27ae60; color: white; font-weight: 600; box-shadow: var(--shadow-md); transition: all 0.3s ease; opacity: 0; transform: translateY(100px); z-index: 2000; }
         .toast.show { opacity: 1; transform: translateY(0); }
-        .toast.error { background: var(--danger); }
-        
-        /* Tablet (768px and below) */
-        @media (max-width: 768px) {
-            .container { padding: 20px 15px; }
-            .header { padding: 30px 0; margin-bottom: 30px; }
-            .header h1 { font-size: 1.5rem; }
-            .header p { font-size: 0.9rem; }
+        .toast.error { background: #e74c3c; }
+
+        @media (max-width: 1280px) { .sidebar-close-btn { display: inline-flex; } }
+        @media (max-width: 992px) {
+            .sidebar { transform: translateX(-100%); width: var(--sidebar-width) !important; }
+            .sidebar.mobile-open { transform: translateX(0); }
+            .sidebar-overlay.mobile-open { display: block; }
+            .main-content { margin-left: 0 !important; }
+        }
+        @media (max-width: 640px) {
+            .page-container { padding: 14px; }
+            .top-header { padding: 12px 14px; }
+            .page-header { padding: 16px; }
+            .page-header h1 { font-size: 1.3rem; }
             .crop-header { flex-direction: column; text-align: center; padding: 20px; gap: 20px; }
             .crop-icon { width: 80px; height: 80px; font-size: 3rem; }
             .crop-info h2 { font-size: 1.5rem; }
             .crop-info-row { flex-direction: column; gap: 10px; }
-            .info-item { flex-direction: column; }
             .products-grid { grid-template-columns: 1fr; }
             .tools-list { grid-template-columns: 1fr; }
-            .header-content { flex-direction: column; gap: 15px; padding: 0 15px; }
-            .tabs { flex-wrap: wrap; gap: 5px; }
-            .tab-btn { padding: 10px 16px; font-size: 0.85rem; }
-            .section-title { font-size: 1.1rem; }
-            .toast { bottom: 20px; right: 20px; padding: 12px 20px; font-size: 0.85rem; }
-        }
-        
-        /* Small phones (480px and below) */
-        @media (max-width: 480px) {
-            .container { padding: 15px 10px; }
-            .header { padding: 20px 0; margin-bottom: 20px; }
-            .header h1 { font-size: 1.3rem; margin-bottom: 5px; }
-            .header p { font-size: 0.8rem; }
-            .header-content { padding: 0 10px; }
-            .back-btn { padding: 8px 12px; font-size: 0.8rem; }
-            .back-btn span { display: none; }
-            .back-btn i { margin-right: 0; }
-            .crop-header { padding: 15px; gap: 15px; }
-            .crop-icon { width: 70px; height: 70px; font-size: 2.5rem; }
-            .crop-info h2 { font-size: 1.2rem; margin-bottom: 10px; }
-            .crop-info-row { gap: 5px; margin-bottom: 8px; }
-            .info-label { font-size: 0.75rem; }
-            .info-value { font-size: 0.9rem; }
-            .tabs { gap: 0; border-bottom: 1px solid var(--border); }
-            .tab-btn { padding: 8px 12px; font-size: 0.75rem; flex: 1; text-align: center; }
-            .tab-btn i { display: block; margin-bottom: 2px; }
-            .tab-btn span { display: none; }
-            .products-grid { gap: 15px; }
-            .product-card { padding: 15px; }
-            .product-name { font-size: 1rem; }
-            .product-description { font-size: 0.8rem; }
-            .product-dosage { font-size: 0.75rem; padding: 8px 10px; }
-            .tools-list { gap: 15px; }
-            .tool-card { padding: 15px; }
-            .tool-icon { font-size: 2rem; margin-bottom: 10px; }
-            .tool-name { font-size: 0.95rem; }
-            .tool-description { font-size: 0.8rem; }
-            .section-title { font-size: 1rem; margin-bottom: 15px; }
-            .section-title i { font-size: 1.2rem; }
-            .toast { bottom: 15px; right: 15px; padding: 10px 15px; font-size: 0.75rem; }
         }
     </style>
-    <link rel="stylesheet" href="/css/mobile-hardening.css">
-    <script src="/js/mobile-hardening.js" defer></script>
+    <link rel="stylesheet" href="/css/navbar.css">
+    <script src="/js/navbar.js" defer></script>
 </head>
 <body>
-    <!-- Sidebar Overlay -->
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMobileSidebar()"></div>
     
-    <!-- Toast Container -->
-    <div class="toast-container" id="toastContainer"></div>
-    
-    <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
-        <div class="sidebar-toggle" onclick="toggleSidebar()"><i class="fas fa-chevron-left"></i></div>
-        <!-- Mobile Close Button (X) -->
-        <div class="sidebar-close" onclick="toggleMobileSidebar()">
-            <i class="fas fa-times"></i>
-        </div>
-        
         <div class="sidebar-header">
             <div class="sidebar-logo">🌱</div>
             <div class="sidebar-brand">
-                <h2>Fahamu</h2>
-                <p>Shamba</p>
+                <h2>Fahamu Shamba</h2>
+                <p>Smart Farming</p>
             </div>
+            <button class="sidebar-close-btn" onclick="closeMobileSidebar()" aria-label="Close menu">
+                <i class="fas fa-times"></i>
+            </button>
         </div>
-        
         <nav class="sidebar-nav">
-            <a class="nav-item" onclick="goToDashboard()"><i class="fas fa-home"></i><span>Dashboard</span></a>
-            <a class="nav-item" onclick="goToRecommendations()"><i class="fas fa-leaf"></i><span>Recommendations</span></a>
-            <a class="nav-item" onclick="goToMarket()"><i class="fas fa-chart-bar"></i><span>Market Prices</span></a>
-            <a class="nav-item" onclick="goToCommunity()"><i class="fas fa-users"></i><span>Community</span></a>
-            <a class="nav-item" onclick="goToFeedback()"><i class="fas fa-star"></i><span>Feedback</span></a>
-            <a class="nav-item" onclick="goToProfile()"><i class="fas fa-user-circle"></i><span>My Profile</span></a>
-            <a class="nav-item" onclick="goToSettings()"><i class="fas fa-cog"></i><span>Settings</span></a>
+            <a class="nav-item" href="/dashboard.html"><i class="fas fa-home"></i><span>Dashboard</span></a>
+            <a class="nav-item" href="/recommendations.html"><i class="fas fa-seedling"></i><span>Recommendations</span></a>
+            <a class="nav-item" href="/market.html"><i class="fas fa-chart-bar"></i><span>Market Prices</span></a>
+            <a class="nav-item" href="/community.html"><i class="fas fa-users"></i><span>Community</span></a>
+            <a class="nav-item" href="/feedback.html"><i class="fas fa-comments"></i><span>Feedback</span></a>
+            <a class="nav-item" href="/profile.html"><i class="fas fa-user-circle"></i><span>My Profile</span></a>
+            <a class="nav-item" href="/settings.html"><i class="fas fa-cog"></i><span>Settings</span></a>
         </nav>
-        
         <div class="sidebar-footer">
             <div class="user-info">
                 <div class="user-avatar">👤</div>
-                <div class="user-details">
+                <div>
                     <div class="user-name" id="userName">Farmer</div>
                     <div class="user-phone" id="userPhone">—</div>
                 </div>
             </div>
-            <button class="logout-btn" onclick="logout()"><i class="fas fa-sign-out-alt"></i><span>Logout</span></button>
+            <button class="logout-btn" onclick="logout()"><i class="fas fa-sign-out-alt"></i>Logout</button>
         </div>
     </aside>
-    
-    <!-- Main Content -->
+
     <div class="main-content">
-        <div class="top-header">
-            <div class="header-left">
-                <button class="mobile-menu-btn" onclick="toggleMobileSidebar()">
+        <header class="top-nav">
+            <div class="nav-left">
+                <button class="nav-hamburger" onclick="toggleMobileSidebar()" aria-label="Open menu">
                     <i class="fas fa-bars"></i>
                 </button>
-                <span class="header-title" style="font-weight:700;color:var(--primary-dark);font-size:1.1rem;">Crop Details</span>
+                <button class="nav-back-btn" onclick="window.history.back()">
+                    <i class="fas fa-arrow-left"></i>
+                    <span>Back</span>
+                </button>
             </div>
-        </div>
-        
-        <div class="container">
-        <div class="header-content">
-            <div>
+            <div class="nav-center">
+                <h1 class="nav-page-title">Crop Details</h1>
+            </div>
+            <div class="nav-right">
+                <div class="nav-profile" onclick="window.location.href='/profile.html'">
+                    <div class="nav-profile-avatar" id="navProfileAvatar">👤</div>
+                    <span class="nav-profile-name" id="navProfileName">Farmer</span>
+                </div>
+            </div>
+        </header>
+
+        <div class="page-container">
+            <div class="page-header">
                 <h1>🌾 Crop Details & Inputs</h1>
                 <p>Everything you need for successful farming</p>
             </div>
-            <button class="back-btn" onclick="goBack()">
-                <i class="fas fa-arrow-left"></i>
-                <span>Back</span>
-            </button>
-        </div>
-    </div>
-    
-    <div class="container">
-        <!-- Crop Header -->
-        <div class="crop-header">
-            <div class="crop-icon">🌾</div>
-            <div class="crop-info">
-                <h2 id="cropName">Loading...</h2>
-                <div class="crop-info-row">
-                    <div class="info-item">
-                        <span class="info-label">✓ Recommended For:</span>
-                        <span class="info-value" id="soilInfo">Loam Soil</span>
+            
+            <div class="crop-header">
+                <div class="crop-icon">🌾</div>
+                <div class="crop-info">
+                    <h2 id="cropName">Loading...</h2>
+                    <div class="crop-info-row">
+                        <div class="info-item">
+                            <span class="info-label">✓ Recommended For:</span>
+                            <span class="info-value" id="soilInfo">Loam Soil</span>
+                        </div>
                     </div>
-                </div>
-                <div class="crop-info-row">
-                    <div class="info-item">
-                        <span class="info-label">📊 Expected Yield:</span>
-                        <span class="info-value" id="yieldInfo">50-70 bags/acre</span>
+                    <div class="crop-info-row">
+                        <div class="info-item">
+                            <span class="info-label">📊 Expected Yield:</span>
+                            <span class="info-value" id="yieldInfo">50-70 bags/acre</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">💰 Est. Returns:</span>
+                            <span class="info-value" id="returnsInfo">KES 50,000-70,000</span>
+                        </div>
                     </div>
-                    <div class="info-item">
-                        <span class="info-label">💰 Est. Returns:</span>
-                        <span class="info-value" id="returnsInfo">KES 50,000-70,000</span>
-                    </div>
-                </div>
-                <div class="crop-info-row">
-                    <div class="info-item">
-                        <span class="info-label">⏱️ Growing Period:</span>
-                        <span class="info-value" id="periodInfo">3-4 months</span>
+                    <div class="crop-info-row">
+                        <div class="info-item">
+                            <span class="info-label">⏱️ Growing Period:</span>
+                            <span class="info-value" id="periodInfo">3-4 months</span>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-        
-        <!-- Tabs -->
-        <div class="tabs">
-            <button class="tab-btn active" onclick="switchTab('fertilizers')">
-                <i class="fas fa-leaf"></i> Fertilizers
-            </button>
-            <button class="tab-btn" onclick="switchTab('pesticides')">
-                <i class="fas fa-bug"></i> Pesticides
-            </button>
-            <button class="tab-btn" onclick="switchTab('fungicides')">
-                <i class="fas fa-flask"></i> Fungicides
-            </button>
-            <button class="tab-btn" onclick="switchTab('tools')">
-                <i class="fas fa-tools"></i> Tools
-            </button>
-        </div>
-        
-        <!-- Fertilizers Tab -->
-        <div id="fertilizers" class="tab-content active">
-            <h3 class="section-title"><i class="fas fa-leaf"></i> Recommended Fertilizers</h3>
-            <div class="products-grid" id="fertilizerList"></div>
-        </div>
-        
-        <!-- Pesticides Tab -->
-        <div id="pesticides" class="tab-content">
-            <h3 class="section-title"><i class="fas fa-bug"></i> Recommended Pesticides</h3>
-            <div class="products-grid" id="pesticideList"></div>
-        </div>
-        
-        <!-- Fungicides Tab -->
-        <div id="fungicides" class="tab-content">
-            <h3 class="section-title"><i class="fas fa-flask"></i> Recommended Fungicides</h3>
-            <div class="products-grid" id="fungicideList"></div>
-        </div>
-        
-        <!-- Tools Tab -->
-        <div id="tools" class="tab-content">
-            <h3 class="section-title"><i class="fas fa-tools"></i> Required Tools & Equipment</h3>
-            <div class="tools-list" id="toolList"></div>
+            
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchTab('fertilizers')">
+                    <i class="fas fa-leaf"></i> Fertilizers
+                </button>
+                <button class="tab-btn" onclick="switchTab('pesticides')">
+                    <i class="fas fa-bug"></i> Pesticides
+                </button>
+                <button class="tab-btn" onclick="switchTab('fungicides')">
+                    <i class="fas fa-flask"></i> Fungicides
+                </button>
+                <button class="tab-btn" onclick="switchTab('tools')">
+                    <i class="fas fa-tools"></i> Tools
+                </button>
+            </div>
+            
+            <div id="fertilizers" class="tab-content active">
+                <h3 class="section-title"><i class="fas fa-leaf"></i> Recommended Fertilizers</h3>
+                <div class="products-grid" id="fertilizerList"></div>
+            </div>
+            
+            <div id="pesticides" class="tab-content">
+                <h3 class="section-title"><i class="fas fa-bug"></i> Recommended Pesticides</h3>
+                <div class="products-grid" id="pesticideList"></div>
+            </div>
+            
+            <div id="fungicides" class="tab-content">
+                <h3 class="section-title"><i class="fas fa-flask"></i> Recommended Fungicides</h3>
+                <div class="products-grid" id="fungicideList"></div>
+            </div>
+            
+            <div id="tools" class="tab-content">
+                <h3 class="section-title"><i class="fas fa-tools"></i> Required Tools & Equipment</h3>
+                <div class="tools-list" id="toolList"></div>
+            </div>
         </div>
     </div>
-    
+
     <div id="toast" class="toast"></div>
     
     <script>
-        // Crop data with all inputs information - Extended to include all crops from backend
+        function toggleMobileSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            sidebar.classList.toggle('mobile-open');
+            overlay.classList.toggle('mobile-open');
+        }
+
+        function closeMobileSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            sidebar.classList.remove('mobile-open');
+            overlay.classList.remove('mobile-open');
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = '/login.html';
+        }
+
+        function loadUserData() {
+            const cached = localStorage.getItem('user');
+            if (cached) {
+                try {
+                    const user = JSON.parse(cached);
+                    document.getElementById('userName').textContent = user.name || 'Farmer';
+                    document.getElementById('userPhone').textContent = user.phone || '—';
+                    document.getElementById('navProfileName').textContent = user.name || 'Farmer';
+                } catch (e) {
+                    document.getElementById('userName').textContent = 'Farmer';
+                }
+            }
+        }
+
         const cropData = {
             "Maize": {
-                soil: "Loamy, well-drained soil",
-                yield: "50-70 bags/acre",
-                returns: "KES 50,000-70,000",
-                period: "3-4 months",
+                soil: "Loamy, well-drained soil", yield: "50-70 bags/acre", returns: "KES 50,000-70,000", period: "3-4 months",
                 fertilizers: [
                     { name: "Urea", description: "Nitrogen for vegetative growth", dosage: "150-200 kg/ha" },
                     { name: "DAP", description: "Phosphorus for early growth", dosage: "100-150 kg/ha" },
@@ -302,447 +307,153 @@
                 ]
             },
             "Rice": {
-                soil: "Waterlogged, clay soil",
-                yield: "60-80 bags/acre",
-                returns: "KES 60,000-80,000",
-                period: "4-5 months",
+                soil: "Waterlogged, clay soil", yield: "60-80 bags/acre", returns: "KES 60,000-80,000", period: "4-5 months",
                 fertilizers: [
                     { name: "Urea", description: "Nitrogen fertilizer for growth", dosage: "100-150 kg/ha" },
-                    { name: "DAP", description: "Phosphorus fertilizer for root development", dosage: "60-80 kg/ha" },
-                    { name: "Potassium Sulfate", description: "Potassium for grain quality", dosage: "40-60 kg/ha" }
+                    { name: "DAP", description: "Phosphorus for root development", dosage: "60-80 kg/ha" }
                 ],
                 pesticides: [
-                    { name: "Chlorpyrifos", description: "Controls stem borers", dosage: "1.5-2.0 L/ha" },
-                    { name: "Imidacloprid", description: "Effective against leafhoppers", dosage: "100-150 ml/ha" }
-                ],
-                fungicides: [
-                    { name: "Tricyclazole", description: "Controls blast disease", dosage: "0.5-1.0 kg/ha" },
-                    { name: "Carbendazim", description: "Controls sheath blight", dosage: "500 g/ha" }
-                ],
-                tools: [
-                    { name: "Paddy Transplanter", description: "Seedling transplanting" },
-                    { name: "Combine Harvester", description: "Efficient grain harvesting" },
-                    { name: "Sprayer", description: "Chemical application" }
-                ]
-            },
-            "Wheat": {
-                soil: "Well-drained loam to clay loam",
-                yield: "40-60 bags/acre",
-                returns: "KES 40,000-60,000",
-                period: "4-5 months",
-                fertilizers: [
-                    { name: "Ammonium Sulfate", description: "Nitrogen source", dosage: "100-120 kg/ha" },
-                    { name: "SSP", description: "Phosphorus for root growth", dosage: "150-200 kg/ha" },
-                    { name: "MOP", description: "Potassium for grain filling", dosage: "40-60 kg/ha" }
-                ],
-                pesticides: [
-                    { name: "Lambda-cyhalothrin", description: "Controls aphids", dosage: "250-300 ml/ha" },
-                    { name: "Deltamethrin", description: "Effective against armyworms", dosage: "250-500 ml/ha" }
-                ],
-                fungicides: [
-                    { name: "Propiconazole", description: "Controls rust diseases", dosage: "500 ml/ha" },
-                    { name: "Tebuconazole", description: "Controls powdery mildew", dosage: "500-750 ml/ha" }
-                ],
-                tools: [
-                    { name: "Seed Drill", description: "Precision seeding" },
-                    { name: "Combine Harvester", description: "Grain harvesting" },
-                    { name: "Sprayer", description: "Chemical application" }
-                ]
-            },
-            "Beans": {
-                soil: "Well-drained loam soil",
-                yield: "15-20 bags/acre",
-                returns: "KES 30,000-40,000",
-                period: "3-4 months",
-                fertilizers: [
-                    { name: "Rhizobium Inoculant", description: "Nitrogen fixation", dosage: "200-250 g/ha" },
-                    { name: "SSP", description: "Phosphorus for pod formation", dosage: "150-200 kg/ha" },
-                    { name: "Gypsum", description: "Calcium and sulfur source", dosage: "200-400 kg/ha" }
-                ],
-                pesticides: [
-                    { name: "Quinalphos", description: "Controls pod borers", dosage: "1.0-1.5 L/ha" },
-                    { name: "Acephate", description: "Controls leaf miners", dosage: "600-800 g/ha" }
-                ],
-                fungicides: [
-                    { name: "Carbendazim", description: "Controls root rot", dosage: "500 g/ha" },
-                    { name: "Metalaxyl", description: "Controls damping off", dosage: "2.5 g/kg seed" }
-                ],
-                tools: [
-                    { name: "Planter", description: "Seeding equipment" },
-                    { name: "Bean Harvester", description: "Pod collection" },
-                    { name: "Sprayer", description: "Chemical application" }
-                ]
-            },
-            "Sorghum": {
-                soil: "Well-drained sandy loam",
-                yield: "40-50 bags/acre",
-                returns: "KES 35,000-50,000",
-                period: "3-4 months",
-                fertilizers: [
-                    { name: "Urea", description: "Nitrogen for growth", dosage: "80-120 kg/ha" },
-                    { name: "DAP", description: "Phosphorus for development", dosage: "60-100 kg/ha" },
-                    { name: "MOP", description: "Potassium for grain quality", dosage: "40-60 kg/ha" }
-                ],
-                pesticides: [
-                    { name: "Monocrotophos", description: "Controls shoot fly", dosage: "1.0-1.5 L/ha" },
-                    { name: "Spinosad", description: "Controls head bugs", dosage: "80-100 ml/ha" }
-                ],
-                fungicides: [
-                    { name: "Carbendazim", description: "Controls grain mold", dosage: "1.0 g/L water" },
-                    { name: "Copper Oxychloride", description: "Controls leaf spot", dosage: "2.5-3.0 g/L water" }
-                ],
-                tools: [
-                    { name: "Planter", description: "Seeding equipment" },
-                    { name: "Sorghum Harvester", description: "Grain harvesting" },
-                    { name: "Sprayer", description: "Chemical application" }
-                ]
-            },
-            "Groundnuts": {
-                soil: "Sandy loam, well-drained",
-                yield: "15-25 bags/acre",
-                returns: "KES 40,000-60,000",
-                period: "4-5 months",
-                fertilizers: [
-                    { name: "Single Super Phosphate", description: "Phosphorus for pod development", dosage: "150-200 kg/ha" },
-                    { name: "Urea", description: "Nitrogen for vegetative growth", dosage: "50-80 kg/ha" },
-                    { name: "Gypsum", description: "Calcium for pod filling", dosage: "300-400 kg/ha" }
-                ],
-                pesticides: [
-                    { name: "Chlorpyrifos", description: "Controls termites", dosage: "2.0-2.5 L/ha" },
-                    { name: "Imidacloprid", description: "Controls aphids", dosage: "100-150 ml/ha" }
-                ],
-                fungicides: [
-                    { name: "Mancozeb", description: "Controls leaf spot", dosage: "1.5-2.0 kg/ha" },
-                    { name: "Carbendazim", description: "Controls collar rot", dosage: "500 g/ha" }
-                ],
-                tools: [
-                    { name: "Planter", description: "Seeding equipment" },
-                    { name: "Groundnut Harvester", description: "Pod collection" },
-                    { name: "Sprayer", description: "Chemical application" }
-                ]
-            },
-            "Cassava": {
-                soil: "Sandy loam, well-drained",
-                yield: "80-120 bags/acre",
-                returns: "KES 25,000-40,000",
-                period: "8-12 months",
-                fertilizers: [
-                    { name: "NPK 17:17:17", description: "Balanced fertilizer", dosage: "100-150 kg/ha" },
-                    { name: "Urea", description: "Nitrogen for growth", dosage: "50-80 kg/ha" },
-                    { name: "MOP", description: "Potassium for root development", dosage: "60-80 kg/ha" }
-                ],
-                pesticides: [
-                    { name: "Cypermethrin", description: "Controls mealybugs", dosage: "300-500 ml/ha" },
-                    { name: "Imidacloprid", description: "Controls whiteflies", dosage: "100-150 ml/ha" }
-                ],
-                fungicides: [
-                    { name: "Mancozeb", description: "Controls leaf blight", dosage: "1.5-2.0 kg/ha" },
-                    { name: "Copper Oxychloride", description: "Controls bacterial blight", dosage: "2.5-3.0 g/L water" }
-                ],
-                tools: [
-                    { name: "Cutting Planter", description: "Stem cutting equipment" },
-                    { name: "Cassava Harvester", description: "Root harvesting" },
-                    { name: "Sprayer", description: "Chemical application" }
-                ]
-            },
-            "Sweet Potatoes": {
-                soil: "Sandy loam, well-drained",
-                yield: "100-150 bags/acre",
-                returns: "KES 30,000-50,000",
-                period: "3-4 months",
-                fertilizers: [
-                    { name: "NPK 17:17:17", description: "Balanced fertilizer", dosage: "100-150 kg/ha" },
-                    { name: "Urea", description: "Nitrogen for vine growth", dosage: "50-80 kg/ha" },
-                    { name: "MOP", description: "Potassium for tuber development", dosage: "80-100 kg/ha" }
-                ],
-                pesticides: [
-                    { name: "Cypermethrin", description: "Controls weevils", dosage: "300-500 ml/ha" },
-                    { name: "Chlorpyrifos", description: "Controls nematodes", dosage: "1.5-2.0 L/ha" }
-                ],
-                fungicides: [
-                    { name: "Mancozeb", description: "Controls leaf spot", dosage: "1.5-2.0 kg/ha" },
-                    { name: "Carbendazim", description: "Controls root rot", dosage: "500 g/ha" }
-                ],
-                tools: [
-                    { name: "Vine Planter", description: "Vine cutting equipment" },
-                    { name: "Sweet Potato Harvester", description: "Tuber harvesting" },
-                    { name: "Sprayer", description: "Chemical application" }
-                ]
-            },
-            "Tomatoes": {
-                soil: "Loamy, well-drained",
-                yield: "150-200 bags/acre",
-                returns: "KES 80,000-120,000",
-                period: "3-4 months",
-                fertilizers: [
-                    { name: "NPK 17:17:17", description: "Balanced fertilizer", dosage: "150-200 kg/ha" },
-                    { name: "Urea", description: "Nitrogen for vegetative growth", dosage: "80-100 kg/ha" },
-                    { name: "Potassium Sulfate", description: "Potassium for fruit quality", dosage: "60-80 kg/ha" }
-                ],
-                pesticides: [
-                    { name: "Cypermethrin", description: "Controls fruit borers", dosage: "300-500 ml/ha" },
-                    { name: "Imidacloprid", description: "Controls aphids", dosage: "100-150 ml/ha" }
-                ],
-                fungicides: [
-                    { name: "Mancozeb", description: "Controls early blight", dosage: "1.5-2.0 kg/ha" },
-                    { name: "Carbendazim", description: "Controls fruit rot", dosage: "500 g/ha" }
-                ],
-                tools: [
-                    { name: "Transplanter", description: "Seedling transplanting" },
-                    { name: "Tomato Harvester", description: "Fruit harvesting" },
-                    { name: "Sprayer", description: "Chemical application" }
-                ]
-            },
-            "Soybean": {
-                soil: "Loamy, well-drained",
-                yield: "20-30 bags/acre",
-                returns: "KES 35,000-55,000",
-                period: "3-4 months",
-                fertilizers: [
-                    { name: "Rhizobium Inoculant", description: "Nitrogen fixation", dosage: "200-250 g/ha" },
-                    { name: "SSP", description: "Phosphorus for root development", dosage: "150-200 kg/ha" },
-                    { name: "MOP", description: "Potassium for pod filling", dosage: "40-60 kg/ha" }
-                ],
-                pesticides: [
-                    { name: "Cypermethrin", description: "Controls pod borers", dosage: "300-500 ml/ha" },
-                    { name: "Imidacloprid", description: "Controls aphids", dosage: "100-150 ml/ha" }
-                ],
-                fungicides: [
-                    { name: "Mancozeb", description: "Controls rust", dosage: "1.5-2.0 kg/ha" },
-                    { name: "Carbendazim", description: "Controls root rot", dosage: "500 g/ha" }
-                ],
-                tools: [
-                    { name: "Planter", description: "Seeding equipment" },
-                    { name: "Soybean Harvester", description: "Pod collection" },
-                    { name: "Sprayer", description: "Chemical application" }
-                ]
-            },
-            "Kales": {
-                soil: "Loamy, fertile",
-                yield: "200-300 bags/acre",
-                returns: "KES 40,000-60,000",
-                period: "2-3 months",
-                fertilizers: [
-                    { name: "Urea", description: "Nitrogen for leaf growth", dosage: "100-150 kg/ha" },
-                    { name: "DAP", description: "Phosphorus for root development", dosage: "80-100 kg/ha" },
-                    { name: "MOP", description: "Potassium for leaf quality", dosage: "40-60 kg/ha" }
-                ],
-                pesticides: [
-                    { name: "Cypermethrin", description: "Controls aphids", dosage: "300-500 ml/ha" },
-                    { name: "Chlorpyrifos", description: "Controls cutworms", dosage: "1.5-2.0 L/ha" }
-                ],
-                fungicides: [
-                    { name: "Mancozeb", description: "Controls leaf spot", dosage: "1.5-2.0 kg/ha" },
-                    { name: "Carbendazim", description: "Controls damping off", dosage: "500 g/ha" }
-                ],
-                tools: [
-                    { name: "Transplanter", description: "Seedling transplanting" },
-                    { name: "Harvesting Knife", description: "Leaf cutting" },
-                    { name: "Sprayer", description: "Chemical application" }
-                ]
-            },
-            "Cowpeas": {
-                soil: "Sandy loam, well-drained",
-                yield: "15-25 bags/acre",
-                returns: "KES 25,000-40,000",
-                period: "3-4 months",
-                fertilizers: [
-                    { name: "Rhizobium Inoculant", description: "Nitrogen fixation", dosage: "200-250 g/ha" },
-                    { name: "SSP", description: "Phosphorus for pod formation", dosage: "100-150 kg/ha" },
-                    { name: "Gypsum", description: "Calcium for pod development", dosage: "200-300 kg/ha" }
-                ],
-                pesticides: [
-                    { name: "Cypermethrin", description: "Controls pod borers", dosage: "300-500 ml/ha" },
-                    { name: "Imidacloprid", description: "Controls aphids", dosage: "100-150 ml/ha" }
-                ],
-                fungicides: [
-                    { name: "Mancozeb", description: "Controls leaf spot", dosage: "1.5-2.0 kg/ha" },
-                    { name: "Carbendazim", description: "Controls root rot", dosage: "500 g/ha" }
-                ],
-                tools: [
-                    { name: "Planter", description: "Seeding equipment" },
-                    { name: "Cowpea Harvester", description: "Pod collection" },
-                    { name: "Sprayer", description: "Chemical application" }
-                ]
-            },
-            "Millet": {
-                soil: "Sandy loam, well-drained",
-                yield: "20-30 bags/acre",
-                returns: "KES 20,000-35,000",
-                period: "3-4 months",
-                fertilizers: [
-                    { name: "Urea", description: "Nitrogen for growth", dosage: "60-80 kg/ha" },
-                    { name: "DAP", description: "Phosphorus for development", dosage: "50-80 kg/ha" },
-                    { name: "MOP", description: "Potassium for grain quality", dosage: "30-50 kg/ha" }
-                ],
-                pesticides: [
-                    { name: "Cypermethrin", description: "Controls shoot fly", dosage: "300-500 ml/ha" },
                     { name: "Chlorpyrifos", description: "Controls stem borers", dosage: "1.5-2.0 L/ha" }
                 ],
                 fungicides: [
-                    { name: "Mancozeb", description: "Controls rust", dosage: "1.5-2.0 kg/ha" },
-                    { name: "Carbendazim", description: "Controls grain mold", dosage: "500 g/ha" }
+                    { name: "Tricyclazole", description: "Controls blast disease", dosage: "0.5-1.0 kg/ha" }
                 ],
                 tools: [
-                    { name: "Planter", description: "Seeding equipment" },
-                    { name: "Millet Harvester", description: "Grain harvesting" },
-                    { name: "Sprayer", description: "Chemical application" }
+                    { name: "Paddy Transplanter", description: "Seedling transplanting" },
+                    { name: "Combine Harvester", description: "Efficient grain harvesting" }
                 ]
             },
-            "Pigeon Peas": {
-                soil: "Sandy loam, well-drained",
-                yield: "25-35 bags/acre",
-                returns: "KES 30,000-50,000",
-                period: "4-6 months",
+            "Beans": {
+                soil: "Well-drained loam soil", yield: "15-20 bags/acre", returns: "KES 30,000-40,000", period: "3-4 months",
                 fertilizers: [
                     { name: "Rhizobium Inoculant", description: "Nitrogen fixation", dosage: "200-250 g/ha" },
-                    { name: "SSP", description: "Phosphorus for root development", dosage: "100-150 kg/ha" },
-                    { name: "MOP", description: "Potassium for pod filling", dosage: "40-60 kg/ha" }
+                    { name: "SSP", description: "Phosphorus for pod formation", dosage: "150-200 kg/ha" }
                 ],
                 pesticides: [
-                    { name: "Cypermethrin", description: "Controls pod borers", dosage: "300-500 ml/ha" },
-                    { name: "Imidacloprid", description: "Controls aphids", dosage: "100-150 ml/ha" }
+                    { name: "Quinalphos", description: "Controls pod borers", dosage: "1.0-1.5 L/ha" }
                 ],
                 fungicides: [
-                    { name: "Mancozeb", description: "Controls leaf spot", dosage: "1.5-2.0 kg/ha" },
                     { name: "Carbendazim", description: "Controls root rot", dosage: "500 g/ha" }
                 ],
                 tools: [
                     { name: "Planter", description: "Seeding equipment" },
-                    { name: "Pigeon Pea Harvester", description: "Pod collection" },
-                    { name: "Sprayer", description: "Chemical application" }
+                    { name: "Bean Harvester", description: "Pod collection" }
                 ]
             },
-            "Okra": {
-                soil: "Loamy, well-drained",
-                yield: "40-60 bags/acre",
-                returns: "KES 35,000-55,000",
-                period: "3-4 months",
+            "Tomatoes": {
+                soil: "Loamy, well-drained", yield: "150-200 bags/acre", returns: "KES 80,000-120,000", period: "3-4 months",
                 fertilizers: [
-                    { name: "NPK 17:17:17", description: "Balanced fertilizer", dosage: "100-150 kg/ha" },
-                    { name: "Urea", description: "Nitrogen for vegetative growth", dosage: "60-80 kg/ha" },
-                    { name: "MOP", description: "Potassium for fruit quality", dosage: "60-80 kg/ha" }
+                    { name: "NPK 17:17:17", description: "Balanced fertilizer", dosage: "150-200 kg/ha" },
+                    { name: "Urea", description: "Nitrogen for vegetative growth", dosage: "80-100 kg/ha" }
                 ],
                 pesticides: [
-                    { name: "Cypermethrin", description: "Controls fruit borers", dosage: "300-500 ml/ha" },
-                    { name: "Imidacloprid", description: "Controls aphids", dosage: "100-150 ml/ha" }
+                    { name: "Cypermethrin", description: "Controls fruit borers", dosage: "300-500 ml/ha" }
                 ],
                 fungicides: [
-                    { name: "Mancozeb", description: "Controls leaf spot", dosage: "1.5-2.0 kg/ha" },
-                    { name: "Carbendazim", description: "Controls fruit rot", dosage: "500 g/ha" }
+                    { name: "Mancozeb", description: "Controls early blight", dosage: "1.5-2.0 kg/ha" }
                 ],
                 tools: [
-                    { name: "Planter", description: "Seeding equipment" },
-                    { name: "Okra Harvester", description: "Pod collection" },
-                    { name: "Sprayer", description: "Chemical application" }
+                    { name: "Transplanter", description: "Seedling transplanting" },
+                    { name: "Tomato Harvester", description: "Fruit harvesting" }
+                ]
+            },
+            "Kales": {
+                soil: "Loamy, fertile", yield: "200-300 bags/acre", returns: "KES 40,000-60,000", period: "2-3 months",
+                fertilizers: [
+                    { name: "Urea", description: "Nitrogen for leaf growth", dosage: "100-150 kg/ha" },
+                    { name: "DAP", description: "Phosphorus for root development", dosage: "80-100 kg/ha" }
+                ],
+                pesticides: [
+                    { name: "Cypermethrin", description: "Controls aphids", dosage: "300-500 ml/ha" }
+                ],
+                fungicides: [
+                    { name: "Mancozeb", description: "Controls leaf spot", dosage: "1.5-2.0 kg/ha" }
+                ],
+                tools: [
+                    { name: "Transplanter", description: "Seedling transplanting" },
+                    { name: "Harvesting Knife", description: "Leaf cutting" }
                 ]
             }
         };
-        
-        let currentCrop = null;
-        
-        // Functions moved to initialization at bottom of script
-        
+
         function displayCropDetails(crop) {
             const data = cropData[crop];
             if (!data) return;
             
-            // Update header
             document.getElementById('cropName').textContent = crop;
             document.getElementById('soilInfo').textContent = data.soil;
             document.getElementById('yieldInfo').textContent = data.yield;
             document.getElementById('returnsInfo').textContent = data.returns;
             document.getElementById('periodInfo').textContent = data.period;
             
-            // Display fertilizers
             displayProducts(data.fertilizers, 'fertilizerList');
-            
-            // Display pesticides
             displayProducts(data.pesticides, 'pesticideList');
-            
-            // Display fungicides
             displayProducts(data.fungicides, 'fungicideList');
-            
-            // Display tools
             displayTools(data.tools, 'toolList');
         }
         
         function displayProducts(products, containerId) {
             const container = document.getElementById(containerId);
-            container.innerHTML = products.map(product => `
-                <div class="product-card">
-                    <div class="product-name">${product.name}</div>
-                    <div class="product-description">${product.description}</div>
-                    <div class="product-dosage">📏 ${product.dosage}</div>
-                </div>
-            `).join('');
+            if (!products || !container) return;
+            container.innerHTML = products.map(function(product) {
+                return '<div class="product-card">' +
+                    '<div class="product-name">' + product.name + '</div>' +
+                    '<div class="product-description">' + product.description + '</div>' +
+                    '<div class="product-dosage">📏 ' + product.dosage + '</div>' +
+                    '</div>';
+            }).join('');
         }
         
         function displayTools(tools, containerId) {
             const container = document.getElementById(containerId);
+            if (!tools || !container) return;
             const icons = ['🌾', '🚜', '💨', '🔧', '⚙️'];
-            container.innerHTML = tools.map((tool, idx) => `
-                <div class="tool-card">
-                    <div class="tool-icon">${icons[idx] || '🔧'}</div>
-                    <div class="tool-name">${tool.name}</div>
-                    <div class="tool-description">${tool.description}</div>
-                </div>
-            `).join('');
+            container.innerHTML = tools.map(function(tool, idx) {
+                return '<div class="tool-card">' +
+                    '<div class="tool-icon">' + (icons[idx] || '🔧') + '</div>' +
+                    '<div class="tool-name">' + tool.name + '</div>' +
+                    '<div class="tool-description">' + tool.description + '</div>' +
+                    '</div>';
+            }).join('');
         }
         
         function switchTab(tabName) {
-            // Hide all tabs
-            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-            
-            // Show selected tab
+            var tabs = document.querySelectorAll('.tab-content');
+            for (var i = 0; i < tabs.length; i++) {
+                tabs[i].classList.remove('active');
+            }
+            var btns = document.querySelectorAll('.tab-btn');
+            for (var j = 0; j < btns.length; j++) {
+                btns[j].classList.remove('active');
+            }
             document.getElementById(tabName).classList.add('active');
-            event.target.closest('.tab-btn').classList.add('active');
-        }
-        
-        function goBack() {
-            closeMobileSidebar();
-            window.history.back();
-        }
-        
-        // Load user data
-        function loadUserData() {
-            const cached = localStorage.getItem('user');
-            if (cached) {
-                try {
-                    const user = JSON.parse(cached);
-                    const userNameEl = document.getElementById('userName');
-                    const userPhoneEl = document.getElementById('userPhone');
-                    if (userNameEl) userNameEl.textContent = user.name || 'Farmer';
-                    if (userPhoneEl) userPhoneEl.textContent = user.phone || '—';
-                } catch (e) {
-                    document.getElementById('userName').textContent = 'Farmer';
-                }
+            if (event && event.target) {
+                event.target.classList.add('active');
             }
         }
-        
-        // Initialize on load
-        document.addEventListener('DOMContentLoaded', () => {
+
+        function showToast(message, type) {
+            type = type || 'info';
+            var toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast ' + type + ' show';
+            setTimeout(function() { toast.className = 'toast'; }, 3000);
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
             loadUserData();
-            const urlParams = new URLSearchParams(window.location.search);
-            const crop = urlParams.get('crop');
+            var urlParams = new URLSearchParams(window.location.search);
+            var crop = urlParams.get('crop');
             
             if (crop && cropData[crop]) {
-                currentCrop = crop;
                 displayCropDetails(crop);
+            } else if (crop) {
+                displayCropDetails("Maize");
+                showToast('Crop details not fully available, showing default', 'error');
             } else {
-                showToast('Crop not found', 'error');
+                showToast('No crop specified', 'error');
             }
         });
-        
-        function showToast(message, type = 'info') {
-            const toast = document.getElementById('toast');
-            if (toast) {
-                toast.textContent = message;
-                toast.className = `toast ${type} show`;
-                setTimeout(() => toast.classList.remove('show'), 3000);
-            }
-        }
     </script>
 </body>
 </html>
