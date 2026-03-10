@@ -321,14 +321,17 @@
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMobileSidebar()"></div>
     
     <!-- Sidebar -->
-    <div class="sidebar" id="sidebar">
-        <div class="sidebar-header">
-            <div class="sidebar-logo">🌱</div>
-            <div class="sidebar-brand">
-                <h2>Fahamu</h2>
-                <p>Shamba</p>
-            </div>
-        </div>
+     <div class="sidebar" id="sidebar">
+         <div class="sidebar-header">
+             <div class="sidebar-logo">🌱</div>
+             <div class="sidebar-brand">
+                 <h2>Fahamu Shamba</h2>
+                 <p>Smart Farming</p>
+             </div>
+             <button class="sidebar-close-btn" onclick="closeMobileSidebar()" aria-label="Close menu">
+                 <i class="fas fa-times"></i>
+             </button>
+         </div>
         
         <nav class="sidebar-nav">
             <a class="nav-item" href="/dashboard.html"><i class="fas fa-home"></i><span>Dashboard</span></a>
@@ -350,13 +353,7 @@
             </div>
             <button class="logout-btn" onclick="logout()"><i class="fas fa-sign-out-alt"></i><span>Logout</span></button>
         </div>
-        <div class="sidebar-toggle" onclick="toggleSidebar()">
-            <i class="fas fa-chevron-left"></i>
-        </div>
-        <!-- Mobile Close Button (X) -->
-        <div class="sidebar-close" onclick="toggleMobileSidebar()">
-            <i class="fas fa-times"></i>
-        </div>
+
     </div>
     
     <!-- Main Content -->

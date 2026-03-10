@@ -504,12 +504,14 @@
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMobileSidebar()"></div>
     
     <!-- Sidebar -->
-    <aside class="sidebar" id="sidebar">
-        <div class="sidebar-toggle" onclick="toggleSidebar()"><i class="fas fa-chevron-left"></i></div>
-        <div class="sidebar-header">
-            <div class="sidebar-logo">🌱</div>
-            <div class="sidebar-brand"><h2>Fahamu Shamba</h2><p>Smart Farming</p></div>
-        </div>
+     <aside class="sidebar" id="sidebar">
+         <div class="sidebar-header">
+             <div class="sidebar-logo">🌱</div>
+             <div class="sidebar-brand"><h2>Fahamu Shamba</h2><p>Smart Farming</p></div>
+             <button class="sidebar-close-btn" onclick="closeMobileSidebar()" aria-label="Close menu">
+                 <i class="fas fa-times"></i>
+             </button>
+         </div>
         <nav class="sidebar-nav">
             <a class="nav-item" onclick="goToDashboard()"><i class="fas fa-home"></i><span>Dashboard</span></a>
             <a class="nav-item" onclick="goToRecommendations()"><i class="fas fa-seedling"></i><span>Recommendations</span></a>
