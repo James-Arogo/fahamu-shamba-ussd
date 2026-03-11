@@ -198,32 +198,32 @@
         }
 
         .weather-dashboard.sunny-bg {
-            background-image: url('/images/sunny.avif'), url('/images/sunny.webp'), url('/images/sunny.jpg'), url('/images/sunny.png');
-            background-color: linear-gradient(180deg, #87CEEB 0%, #E0F6FF 100%);
+            background-image: url('/images/sunny.jpg');
+            background-color: #87CEEB;
         }
 
         .weather-dashboard.cloudy-bg {
-            background-image: url('/images/cloudy.avif'), url('/images/cloudy.webp'), url('/images/cloudy.jpg'), url('/images/cloudy.png');
+            background-image: url('/images/cloudy.avif');
             background-color: #A9B5B8;
         }
 
         .weather-dashboard.rainy-bg {
-            background-image: url('/images/rainy.avif'), url('/images/rainy.webp'), url('/images/rainy.jpg'), url('/images/rainy.png');
+            background-image: url('/images/rainy.avif');
             background-color: #505050;
         }
 
         .weather-dashboard.stormy-bg {
-            background-image: url('/images/stormy.avif'), url('/images/stormy.webp'), url('/images/stormy.jpg'), url('/images/stormy.png');
+            background-image: url('/images/stormy.avif');
             background-color: #2C2C2C;
         }
 
         .weather-dashboard.foggy-bg {
-            background-image: url('/images/foggy.avif'), url('/images/foggy.webp'), url('/images/foggy.jpg'), url('/images/foggy.png');
+            background-image: url('/images/foggy.avif');
             background-color: #7A8E95;
         }
 
         .weather-dashboard.snowy-bg {
-            background-image: url('/images/snowy.avif'), url('/images/snowy.webp'), url('/images/snowy.jpg'), url('/images/snowy.png');
+            background-image: url('/images/snowy.avif');
             background-color: #E8F4FD;
         }
 
@@ -1439,7 +1439,7 @@
 
     <!-- Dynamic Background Slideshow -->
     <div class="dashboard-bg-slideshow" id="bgSlideshow">
-        <div class="bg-slide active" style="background-image: url('/images/sunny.avif'); background-color: #87CEEB;">
+        <div class="bg-slide active" style="background-image: url('/images/sunny.jpg'); background-color: #87CEEB;">
         </div>
         <div class="bg-slide" style="background-image: url('/images/cloudy.avif'); background-color: #A9B5B8;"></div>
         <div class="bg-slide" style="background-image: url('/images/rainy.avif'); background-color: #505050;"></div>
@@ -1699,30 +1699,56 @@
     </div>
 
     <script>
-        // Dynamic Background Slideshow
-        const bgSlides = document.querySelectorAll('.bg-slide');
+        // Dynamic Background Slideshow - FIXED
+        let backgroundSlideshow = null;
         let currentSlide = 0;
 
-        function changeBackground() {
-            // Remove active from current
-            bgSlides[currentSlide].classList.remove('active');
+        function initializeBackgroundSlideshow() {
+            const bgSlides = document.querySelectorAll('.bg-slide');
+            if (bgSlides.length === 0) return;
 
-            // Move to next slide
-            currentSlide = (currentSlide + 1) % bgSlides.length;
+            // Ensure first slide is active
+            bgSlides[0].classList.add('active');
 
-            // Add active to new slide
-            bgSlides[currentSlide].classList.add('active');
+            function changeBackground() {
+                // Remove active from current
+                bgSlides[currentSlide].classList.remove('active');
+
+                // Move to next slide
+                currentSlide = (currentSlide + 1) % bgSlides.length;
+
+                // Add active to new slide
+                bgSlides[currentSlide].classList.add('active');
+            }
+
+            // Change background every 8 seconds for smooth transition
+            backgroundSlideshow = setInterval(changeBackground, 8000);
+
+            // Pause slideshow on hover (optional)
+            const slideshow = document.getElementById('bgSlideshow');
+            if (slideshow) {
+                slideshow.addEventListener('mouseenter', () => {
+                    if (backgroundSlideshow) {
+                        clearInterval(backgroundSlideshow);
+                        backgroundSlideshow = null;
+                    }
+                });
+                
+                slideshow.addEventListener('mouseleave', () => {
+                    if (!backgroundSlideshow) {
+                        backgroundSlideshow = setInterval(changeBackground, 8000);
+                    }
+                });
+            }
+
+            console.log('✅ Background slideshow initialized with', bgSlides.length, 'slides');
         }
 
-        // Change background every 8 seconds for smooth transition
-        setInterval(changeBackground, 8000);
-
-        // Optional: Pause on hover
-        const slideshow = document.getElementById('bgSlideshow');
-        if (slideshow) {
-            slideshow.addEventListener('mouseenter', () => {
-                // Could pause here if desired
-            });
+        // Initialize on DOM ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeBackgroundSlideshow);
+        } else {
+            initializeBackgroundSlideshow();
         }
 
         let weatherState = {

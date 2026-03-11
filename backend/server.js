@@ -25,6 +25,8 @@ import communityService from './community-service-async.js';
 import feedbackService from './feedback-service.js';
 import marketRoutes from './market-routes.js';
 import marketPricesApi from './market-prices-api.js';
+import weatherRoutes from './weather-routes.js';
+import { initializeWeatherTablesSQLite, initializeWeatherTablesPostgreSQL } from './weather-database-migration.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -209,6 +211,25 @@ if (!USE_POSTGRES) {
   }
 } else {
   console.log('✅ Using PostgreSQL - feedback tables already migrated');
+}
+
+// Initialize weather database tables
+if (!USE_POSTGRES) {
+  console.log('🌦️ Initializing weather database tables...');
+  try {
+    initializeWeatherTablesSQLite(db);
+    console.log('✅ Weather tables initialized (SQLite)');
+  } catch (error) {
+    console.error('⚠️ Error initializing weather tables:', error.message);
+  }
+} else {
+  console.log('🌦️ Initializing weather database tables (PostgreSQL)...');
+  try {
+    await initializeWeatherTablesPostgreSQL();
+    console.log('✅ Weather tables initialized (PostgreSQL)');
+  } catch (error) {
+    console.error('⚠️ Error initializing weather tables:', error.message);
+  }
 }
 console.log('🚀 Registering authentication routes...');
 const authRoutes = initAuthRoutes(db, dbAsync);
@@ -2552,6 +2573,15 @@ app.use('/api', marketRoutes);
 
 // Register market prices API (frontend-compatible)
 app.use('/', marketPricesApi);
+
+// Register weather routes (with dbAsync middleware)
+console.log('🌦️ Registering weather routes...');
+app.use('/api', (req, res, next) => {
+  // Make dbAsync available to weather routes
+  req.dbAsync = dbAsync;
+  next();
+}, weatherRoutes);
+console.log('✅ Weather routes registered');
 
 // Test endpoint
 app.get('/api/test', (req, res) => {
