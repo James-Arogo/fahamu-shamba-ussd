@@ -289,19 +289,36 @@ async function updateCropAnalytics(crop, subCounty) {
   );
   
   // Check if analytics exist
-  const existing = await dbAsync.get(
-    `SELECT id FROM feedback_analytics WHERE crop = ? AND (sub_county = ? OR (sub_county IS NULL AND ? IS NULL))`,
-    [crop, subCounty || null, subCounty || null]
-  );
+  let existing;
+  if (subCounty) {
+    existing = await dbAsync.get(
+      `SELECT id FROM feedback_analytics WHERE crop = ? AND sub_county = ?`,
+      [crop, subCounty]
+    );
+  } else {
+    existing = await dbAsync.get(
+      `SELECT id FROM feedback_analytics WHERE crop = ? AND sub_county IS NULL`,
+      [crop]
+    );
+  }
   
   if (existing) {
     // Update existing record
-    await dbAsync.run(
-      `UPDATE feedback_analytics 
-       SET total_ratings = ?, avg_rating = ?, positive_count = ?, negative_count = ?, updated_at = CURRENT_TIMESTAMP
-       WHERE crop = ? AND (sub_county = ? OR (sub_county IS NULL AND ? IS NULL))`,
-      [ratings.total, ratings.avg_rating, ratings.positive, ratings.negative, crop, subCounty || null, subCounty || null]
-    );
+    if (subCounty) {
+      await dbAsync.run(
+        `UPDATE feedback_analytics 
+         SET total_ratings = ?, avg_rating = ?, positive_count = ?, negative_count = ?, updated_at = CURRENT_TIMESTAMP
+         WHERE crop = ? AND sub_county = ?`,
+        [ratings.total, ratings.avg_rating, ratings.positive, ratings.negative, crop, subCounty]
+      );
+    } else {
+      await dbAsync.run(
+        `UPDATE feedback_analytics 
+         SET total_ratings = ?, avg_rating = ?, positive_count = ?, negative_count = ?, updated_at = CURRENT_TIMESTAMP
+         WHERE crop = ? AND sub_county IS NULL`,
+        [ratings.total, ratings.avg_rating, ratings.positive, ratings.negative, crop]
+      );
+    }
   } else {
     // Insert new record
     await dbAsync.run(
@@ -325,19 +342,36 @@ async function updateYieldAnalytics(crop, subCounty, yieldAmount) {
   );
   
   // Check if analytics exist
-  const existing = await dbAsync.get(
-    `SELECT id FROM feedback_analytics WHERE crop = ? AND (sub_county = ? OR (sub_county IS NULL AND ? IS NULL))`,
-    [crop, subCounty || null, subCounty || null]
-  );
+  let existing;
+  if (subCounty) {
+    existing = await dbAsync.get(
+      `SELECT id FROM feedback_analytics WHERE crop = ? AND sub_county = ?`,
+      [crop, subCounty]
+    );
+  } else {
+    existing = await dbAsync.get(
+      `SELECT id FROM feedback_analytics WHERE crop = ? AND sub_county IS NULL`,
+      [crop]
+    );
+  }
   
   if (existing) {
     // Update existing record
-    await dbAsync.run(
-      `UPDATE feedback_analytics 
-       SET yield_reports = ?, avg_yield = ?, updated_at = CURRENT_TIMESTAMP
-       WHERE crop = ? AND (sub_county = ? OR (sub_county IS NULL AND ? IS NULL))`,
-      [yields.total, yields.avg_yield, crop, subCounty || null, subCounty || null]
-    );
+    if (subCounty) {
+      await dbAsync.run(
+        `UPDATE feedback_analytics 
+         SET yield_reports = ?, avg_yield = ?, updated_at = CURRENT_TIMESTAMP
+         WHERE crop = ? AND sub_county = ?`,
+        [yields.total, yields.avg_yield, crop, subCounty]
+      );
+    } else {
+      await dbAsync.run(
+        `UPDATE feedback_analytics 
+         SET yield_reports = ?, avg_yield = ?, updated_at = CURRENT_TIMESTAMP
+         WHERE crop = ? AND sub_county IS NULL`,
+        [yields.total, yields.avg_yield, crop]
+      );
+    }
   } else {
     // Insert new record
     await dbAsync.run(
