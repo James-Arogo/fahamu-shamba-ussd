@@ -125,20 +125,21 @@ async function migrate() {
     await client.query(`
       CREATE TABLE IF NOT EXISTS community_questions (
         id SERIAL PRIMARY KEY,
-        user_phone VARCHAR(20) NOT NULL,
-        user_name VARCHAR(100),
-        category VARCHAR(50),
         title VARCHAR(255) NOT NULL,
-        question TEXT NOT NULL,
-        tags TEXT,
+        content TEXT NOT NULL,
+        author_phone VARCHAR(20) NOT NULL,
+        author_name VARCHAR(100),
+        sub_county VARCHAR(100),
+        category VARCHAR(50) DEFAULT 'general',
         upvotes INTEGER DEFAULT 0,
-        answer_count INTEGER DEFAULT 0,
+        views INTEGER DEFAULT 0,
         status VARCHAR(20) DEFAULT 'open',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
-    await client.query('CREATE INDEX IF NOT EXISTS idx_questions_user ON community_questions(user_phone)');
+    await client.query('CREATE INDEX IF NOT EXISTS idx_questions_author ON community_questions(author_phone)');
     await client.query('CREATE INDEX IF NOT EXISTS idx_questions_category ON community_questions(category)');
+    await client.query('CREATE INDEX IF NOT EXISTS idx_questions_status ON community_questions(status)');
     console.log('✅ Community questions table created\n');
 
     // 7. COMMUNITY ANSWERS TABLE
@@ -147,15 +148,16 @@ async function migrate() {
       CREATE TABLE IF NOT EXISTS community_answers (
         id SERIAL PRIMARY KEY,
         question_id INTEGER NOT NULL REFERENCES community_questions(id) ON DELETE CASCADE,
-        user_phone VARCHAR(20) NOT NULL,
-        user_name VARCHAR(100),
-        answer TEXT NOT NULL,
+        content TEXT NOT NULL,
+        author_phone VARCHAR(20) NOT NULL,
+        author_name VARCHAR(100),
         upvotes INTEGER DEFAULT 0,
         is_verified BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
     await client.query('CREATE INDEX IF NOT EXISTS idx_answers_question ON community_answers(question_id)');
+    await client.query('CREATE INDEX IF NOT EXISTS idx_answers_author ON community_answers(author_phone)');
     console.log('✅ Community answers table created\n');
 
     // 8. SUCCESS STORIES TABLE
@@ -163,22 +165,59 @@ async function migrate() {
     await client.query(`
       CREATE TABLE IF NOT EXISTS success_stories (
         id SERIAL PRIMARY KEY,
-        user_phone VARCHAR(20) NOT NULL,
-        user_name VARCHAR(100),
         title VARCHAR(255) NOT NULL,
-        story TEXT NOT NULL,
-        crop VARCHAR(100),
-        location VARCHAR(100),
+        content TEXT NOT NULL,
+        author_phone VARCHAR(20) NOT NULL,
+        author_name VARCHAR(100),
+        sub_county VARCHAR(100),
+        crop_grown VARCHAR(100),
+        yield_achieved VARCHAR(100),
         image_url TEXT,
         likes INTEGER DEFAULT 0,
-        is_approved BOOLEAN DEFAULT FALSE,
+        status VARCHAR(20) DEFAULT 'pending',
+        approved_at TIMESTAMP,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
-    await client.query('CREATE INDEX IF NOT EXISTS idx_stories_user ON success_stories(user_phone)');
+    await client.query('CREATE INDEX IF NOT EXISTS idx_stories_author ON success_stories(author_phone)');
+    await client.query('CREATE INDEX IF NOT EXISTS idx_stories_status ON success_stories(status)');
     console.log('✅ Success stories table created\n');
 
-    // 9. MARKET PRICES TABLE
+    // 9. DISCUSSION TOPICS TABLE
+    console.log('📋 Creating discussion_topics table...');
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS discussion_topics (
+        id SERIAL PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        description TEXT,
+        category VARCHAR(50) NOT NULL,
+        created_by VARCHAR(20) NOT NULL,
+        posts_count INTEGER DEFAULT 0,
+        is_pinned BOOLEAN DEFAULT FALSE,
+        last_activity TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await client.query('CREATE INDEX IF NOT EXISTS idx_topics_category ON discussion_topics(category)');
+    console.log('✅ Discussion topics table created\n');
+
+    // 10. DISCUSSION POSTS TABLE
+    console.log('📋 Creating discussion_posts table...');
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS discussion_posts (
+        id SERIAL PRIMARY KEY,
+        topic_id INTEGER NOT NULL REFERENCES discussion_topics(id) ON DELETE CASCADE,
+        content TEXT NOT NULL,
+        author_phone VARCHAR(20) NOT NULL,
+        author_name VARCHAR(100),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await client.query('CREATE INDEX IF NOT EXISTS idx_posts_topic ON discussion_posts(topic_id)');
+    await client.query('CREATE INDEX IF NOT EXISTS idx_posts_author ON discussion_posts(author_phone)');
+    console.log('✅ Discussion posts table created\n');
+
+    // 11. MARKET PRICES TABLE
     console.log('📋 Creating market_prices table...');
     await client.query(`
       CREATE TABLE IF NOT EXISTS market_prices (
@@ -197,7 +236,7 @@ async function migrate() {
     await client.query('CREATE INDEX IF NOT EXISTS idx_prices_market ON market_prices(market)');
     console.log('✅ Market prices table created\n');
 
-    // 10. PRICE ALERTS TABLE
+    // 12. PRICE ALERTS TABLE
     console.log('📋 Creating price_alerts table...');
     await client.query(`
       CREATE TABLE IF NOT EXISTS price_alerts (
@@ -213,7 +252,7 @@ async function migrate() {
     await client.query('CREATE INDEX IF NOT EXISTS idx_alerts_phone ON price_alerts(phone_number)');
     console.log('✅ Price alerts table created\n');
 
-    // 11. ADMIN USERS TABLE
+    // 13. ADMIN USERS TABLE
     console.log('📋 Creating admin_users table...');
     await client.query(`
       CREATE TABLE IF NOT EXISTS admin_users (
@@ -237,7 +276,7 @@ async function migrate() {
     await client.query('CREATE INDEX IF NOT EXISTS idx_admin_email ON admin_users(email)');
     console.log('✅ Admin users table created\n');
 
-    // 12. ADMIN SESSIONS TABLE
+    // 14. ADMIN SESSIONS TABLE
     console.log('📋 Creating admin_sessions table...');
     await client.query(`
       CREATE TABLE IF NOT EXISTS admin_sessions (
@@ -255,7 +294,7 @@ async function migrate() {
     await client.query('CREATE INDEX IF NOT EXISTS idx_sessions_id ON admin_sessions(session_id)');
     console.log('✅ Admin sessions table created\n');
 
-    // 13. AUDIT LOGS TABLE
+    // 15. AUDIT LOGS TABLE
     console.log('📋 Creating audit_logs table...');
     await client.query(`
       CREATE TABLE IF NOT EXISTS audit_logs (
@@ -278,7 +317,7 @@ async function migrate() {
 
     console.log('🎉 Migration completed successfully!\n');
     console.log('📊 Summary:');
-    console.log('   ✅ 13 tables created');
+    console.log('   ✅ 15 tables created');
     console.log('   ✅ All indexes created');
     console.log('   ✅ Foreign keys configured\n');
     
