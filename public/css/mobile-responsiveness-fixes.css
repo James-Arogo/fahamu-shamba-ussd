@@ -257,10 +257,10 @@ button, a, .btn, .nav-item, .clickable,
         font-size: 1.5rem !important;
     }
     
-    /* Daily forecast */
+    /* Daily forecast - 2x2 grid for compact mobile view */
     .daily-forecast {
-        grid-template-columns: repeat(3, 1fr) !important;
-        gap: 6px !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 8px !important;
     }
     
     .day-block {
