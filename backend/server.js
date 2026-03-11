@@ -2537,8 +2537,12 @@ app.use('/api', (req, res, next) => {
   next();
 }, farmerProfileRoutes);
 
-// Register community routes
-app.use('/api', communityRoutes);
+// Register community routes (with dbAsync middleware)
+app.use('/api', (req, res, next) => {
+  // Make dbAsync available to community routes
+  req.dbAsync = dbAsync;
+  next();
+}, communityRoutes);
 
 // Register feedback routes
 app.use('/api', feedbackRoutes);
