@@ -4,25 +4,14 @@
  */
 
 import express from 'express';
-import communityService from './community-service.js';
+import communityService from './community-service-async.js';
 
 const router = express.Router();
-
-// Initialize community database
-let initialized = false;
-
-function ensureInitialized(req, res, next) {
-  if (!initialized) {
-    communityService.initializeCommunityDatabase();
-    initialized = true;
-  }
-  next();
-}
 
 // ==================== QUESTIONS & ANSWERS ====================
 
 // Ask a question
-router.post('/community/questions', ensureInitialized, (req, res) => {
+router.post('/community/questions', async (req, res) => {
   try {
     const { title, content, authorPhone, authorName, subCounty, category } = req.body;
     
@@ -33,7 +22,7 @@ router.post('/community/questions', ensureInitialized, (req, res) => {
       });
     }
     
-    const result = communityService.askQuestion({
+    const result = await communityService.askQuestion({
       title,
       content,
       authorPhone,
@@ -50,11 +39,11 @@ router.post('/community/questions', ensureInitialized, (req, res) => {
 });
 
 // Get all questions
-router.get('/community/questions', ensureInitialized, (req, res) => {
+router.get('/community/questions', async (req, res) => {
   try {
     const { page, limit, subCounty, category, status } = req.query;
     
-    const result = communityService.getQuestions({
+    const result = await communityService.getQuestions({
       page: parseInt(page) || 1,
       limit: parseInt(limit) || 20,
       subCounty,
@@ -70,7 +59,7 @@ router.get('/community/questions', ensureInitialized, (req, res) => {
 });
 
 // Get user's questions (for My Contributions section)
-router.get('/community/my-questions', ensureInitialized, (req, res) => {
+router.get('/community/my-questions', async (req, res) => {
   try {
     const { phone } = req.query;
     
@@ -81,7 +70,7 @@ router.get('/community/my-questions', ensureInitialized, (req, res) => {
       });
     }
     
-    const result = communityService.getUserQuestions(phone);
+    const result = await communityService.getUserQuestions(phone);
     res.json(result);
   } catch (error) {
     console.error('Error fetching user questions:', error);
@@ -90,7 +79,7 @@ router.get('/community/my-questions', ensureInitialized, (req, res) => {
 });
 
 // Get user's stories (for My Contributions section)
-router.get('/community/my-stories', ensureInitialized, (req, res) => {
+router.get('/community/my-stories', async (req, res) => {
   try {
     const { phone } = req.query;
     
@@ -101,7 +90,7 @@ router.get('/community/my-stories', ensureInitialized, (req, res) => {
       });
     }
     
-    const result = communityService.getUserStories(phone);
+    const result = await communityService.getUserStories(phone);
     res.json(result);
   } catch (error) {
     console.error('Error fetching user stories:', error);
@@ -110,9 +99,9 @@ router.get('/community/my-stories', ensureInitialized, (req, res) => {
 });
 
 // Get single question with answers
-router.get('/community/questions/:id', ensureInitialized, (req, res) => {
+router.get('/community/questions/:id', async (req, res) => {
   try {
-    const result = communityService.getQuestionWithAnswers(parseInt(req.params.id));
+    const result = await communityService.getQuestionWithAnswers(parseInt(req.params.id));
     res.json(result);
   } catch (error) {
     console.error('Error fetching question:', error);
@@ -121,7 +110,7 @@ router.get('/community/questions/:id', ensureInitialized, (req, res) => {
 });
 
 // Answer a question
-router.post('/community/answers', ensureInitialized, (req, res) => {
+router.post('/community/answers', async (req, res) => {
   try {
     const { questionId, content, authorPhone, authorName } = req.body;
     
@@ -132,7 +121,7 @@ router.post('/community/answers', ensureInitialized, (req, res) => {
       });
     }
     
-    const result = communityService.answerQuestion({
+    const result = await communityService.answerQuestion({
       questionId: parseInt(questionId),
       content,
       authorPhone,
@@ -147,7 +136,7 @@ router.post('/community/answers', ensureInitialized, (req, res) => {
 });
 
 // Upvote question or answer
-router.post('/community/upvote', ensureInitialized, (req, res) => {
+router.post('/community/upvote', async (req, res) => {
   try {
     const { type, id } = req.body;
     
@@ -165,7 +154,7 @@ router.post('/community/upvote', ensureInitialized, (req, res) => {
       });
     }
     
-    const result = communityService.upvoteContent(type, parseInt(id));
+    const result = await communityService.upvoteContent(type, parseInt(id));
     res.json(result);
   } catch (error) {
     console.error('Error upvoting:', error);
@@ -174,7 +163,7 @@ router.post('/community/upvote', ensureInitialized, (req, res) => {
 });
 
 // Verify answer (admin)
-router.post('/community/answers/verify', ensureInitialized, (req, res) => {
+router.post('/community/answers/verify', async (req, res) => {
   try {
     const { answerId } = req.body;
     
@@ -185,7 +174,7 @@ router.post('/community/answers/verify', ensureInitialized, (req, res) => {
       });
     }
     
-    const result = communityService.verifyAnswer(parseInt(answerId));
+    const result = await communityService.verifyAnswer(parseInt(answerId));
     res.json(result);
   } catch (error) {
     console.error('Error verifying answer:', error);
@@ -196,7 +185,7 @@ router.post('/community/answers/verify', ensureInitialized, (req, res) => {
 // ==================== SUCCESS STORIES ====================
 
 // Submit success story
-router.post('/community/stories', ensureInitialized, (req, res) => {
+router.post('/community/stories', async (req, res) => {
   try {
     const { title, content, authorPhone, authorName, subCounty, cropGrown, yieldAchieved, imageUrl } = req.body;
     
@@ -207,7 +196,7 @@ router.post('/community/stories', ensureInitialized, (req, res) => {
       });
     }
     
-    const result = communityService.submitSuccessStory({
+    const result = await communityService.submitSuccessStory({
       title,
       content,
       authorPhone,
@@ -226,11 +215,11 @@ router.post('/community/stories', ensureInitialized, (req, res) => {
 });
 
 // Get success stories
-router.get('/community/stories', ensureInitialized, (req, res) => {
+router.get('/community/stories', async (req, res) => {
   try {
     const { page, limit, subCounty } = req.query;
     
-    const result = communityService.getSuccessStories({
+    const result = await communityService.getSuccessStories({
       page: parseInt(page) || 1,
       limit: parseInt(limit) || 10,
       subCounty
@@ -244,7 +233,7 @@ router.get('/community/stories', ensureInitialized, (req, res) => {
 });
 
 // Like success story
-router.post('/community/stories/like', ensureInitialized, (req, res) => {
+router.post('/community/stories/like', async (req, res) => {
   try {
     const { storyId } = req.body;
     
@@ -255,7 +244,7 @@ router.post('/community/stories/like', ensureInitialized, (req, res) => {
       });
     }
     
-    const result = communityService.likeSuccessStory(parseInt(storyId));
+    const result = await communityService.likeSuccessStory(parseInt(storyId));
     res.json(result);
   } catch (error) {
     console.error('Error liking story:', error);
@@ -264,7 +253,7 @@ router.post('/community/stories/like', ensureInitialized, (req, res) => {
 });
 
 // Approve success story (admin)
-router.post('/community/stories/approve', ensureInitialized, (req, res) => {
+router.post('/community/stories/approve', async (req, res) => {
   try {
     const { storyId } = req.body;
     
@@ -275,7 +264,7 @@ router.post('/community/stories/approve', ensureInitialized, (req, res) => {
       });
     }
     
-    const result = communityService.approveSuccessStory(parseInt(storyId));
+    const result = await communityService.approveSuccessStory(parseInt(storyId));
     res.json(result);
   } catch (error) {
     console.error('Error approving story:', error);
@@ -286,7 +275,7 @@ router.post('/community/stories/approve', ensureInitialized, (req, res) => {
 // ==================== DISCUSSION BOARDS ====================
 
 // Create discussion topic
-router.post('/community/topics', ensureInitialized, (req, res) => {
+router.post('/community/topics', async (req, res) => {
   try {
     const { title, description, category, createdBy } = req.body;
     
@@ -297,7 +286,7 @@ router.post('/community/topics', ensureInitialized, (req, res) => {
       });
     }
     
-    const result = communityService.createDiscussionTopic({
+    const result = await communityService.createDiscussionTopic({
       title,
       description,
       category,
@@ -312,10 +301,10 @@ router.post('/community/topics', ensureInitialized, (req, res) => {
 });
 
 // Get discussion topics
-router.get('/community/topics', ensureInitialized, (req, res) => {
+router.get('/community/topics', async (req, res) => {
   try {
     const { category } = req.query;
-    const result = communityService.getDiscussionTopics(category);
+    const result = await communityService.getDiscussionTopics(category);
     res.json(result);
   } catch (error) {
     console.error('Error fetching topics:', error);
@@ -324,9 +313,9 @@ router.get('/community/topics', ensureInitialized, (req, res) => {
 });
 
 // Get posts in topic
-router.get('/community/topics/:id/posts', ensureInitialized, (req, res) => {
+router.get('/community/topics/:id/posts', async (req, res) => {
   try {
-    const result = communityService.getTopicPosts(parseInt(req.params.id));
+    const result = await communityService.getTopicPosts(parseInt(req.params.id));
     res.json(result);
   } catch (error) {
     console.error('Error fetching posts:', error);
@@ -335,7 +324,7 @@ router.get('/community/topics/:id/posts', ensureInitialized, (req, res) => {
 });
 
 // Post to discussion
-router.post('/community/posts', ensureInitialized, (req, res) => {
+router.post('/community/posts', async (req, res) => {
   try {
     const { topicId, content, authorPhone, authorName } = req.body;
     
@@ -346,7 +335,7 @@ router.post('/community/posts', ensureInitialized, (req, res) => {
       });
     }
     
-    const result = communityService.postToDiscussion({
+    const result = await communityService.postToDiscussion({
       topicId: parseInt(topicId),
       content,
       authorPhone,
@@ -363,9 +352,9 @@ router.post('/community/posts', ensureInitialized, (req, res) => {
 // ==================== COMMUNITY STATS ====================
 
 // Get community statistics
-router.get('/community/stats', ensureInitialized, (req, res) => {
+router.get('/community/stats', async (req, res) => {
   try {
-    const result = communityService.getCommunityStats();
+    const result = await communityService.getCommunityStats();
     res.json(result);
   } catch (error) {
     console.error('Error fetching stats:', error);
@@ -374,4 +363,3 @@ router.get('/community/stats', ensureInitialized, (req, res) => {
 });
 
 export default router;
-

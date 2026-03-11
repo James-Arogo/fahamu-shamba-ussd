@@ -21,7 +21,7 @@ import { initializeAuthTables } from './init-auth-tables.js';
 import { handleUSSD } from './ussd-service.js';
 import communityRoutes from './community-routes.js';
 import feedbackRoutes from './feedback-routes.js';
-import communityService from './community-service.js';
+import communityService from './community-service-async.js';
 import feedbackService from './feedback-service.js';
 import marketRoutes from './market-routes.js';
 import marketPricesApi from './market-prices-api.js';
@@ -191,15 +191,15 @@ if (!USE_POSTGRES) {
 }
 
 // Initialize community and feedback databases with the main db connection
-if (!USE_POSTGRES) {
-  console.log('👥 Initializing community database...');
-  try {
-    communityService.initializeCommunityDatabase(db);
-    console.log('✅ Community database initialized');
-  } catch (error) {
-    console.error('⚠️ Error initializing community database:', error.message);
-  }
+console.log('👥 Initializing community service...');
+try {
+  communityService.initializeCommunityDatabase(db, dbAsync);
+  console.log('✅ Community service initialized (async/PostgreSQL ready)');
+} catch (error) {
+  console.error('⚠️ Error initializing community service:', error.message);
+}
 
+if (!USE_POSTGRES) {
   console.log('📝 Initializing feedback database...');
   try {
     feedbackService.initializeFeedbackDatabase(db, dbAsync);
@@ -208,7 +208,7 @@ if (!USE_POSTGRES) {
     console.error('⚠️ Error initializing feedback database:', error.message);
   }
 } else {
-  console.log('✅ Using PostgreSQL - community and feedback tables already migrated');
+  console.log('✅ Using PostgreSQL - feedback tables already migrated');
 }
 console.log('🚀 Registering authentication routes...');
 const authRoutes = initAuthRoutes(db, dbAsync);
