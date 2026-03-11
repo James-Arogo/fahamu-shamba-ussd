@@ -48,9 +48,33 @@ button, a, .btn, .nav-item, .clickable,
     gap: 12px;
 }
 
-/* ===== BREAKPOINT: 1280px (TABLET LANDSCAPE) ===== */
-@media (max-width: 1280px) {
-    /* Sidebar adjustments */
+/* ===== BREAKPOINT: 1280px (DESKTOP/LAPTOP - Keep sidebar visible) ===== */
+@media (max-width: 1280px) and (min-width: 993px) {
+    /* On laptop screens, keep sidebar visible but ensure overlay is properly hidden */
+    /* CRITICAL FIX: Sidebar overlay - MUST be hidden on desktop */
+    .sidebar-overlay,
+    #sidebarOverlay,
+    div[class*="sidebar-overlay"],
+    div[id*="sidebarOverlay"] {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+    }
+    
+    /* Ensure interactive elements are clickable */
+    .main-content,
+    .page-container,
+    .form-container,
+    input, select, textarea, button {
+        pointer-events: auto !important;
+        position: relative !important;
+    }
+}
+
+/* ===== BREAKPOINT: 992px (TABLET AND MOBILE - Hide sidebar by default) ===== */
+@media (max-width: 992px) {
+    /* Sidebar adjustments - hide by default on mobile/tablet */
     .sidebar {
         transform: translateX(-100%);
         width: min(82vw, 280px) !important;
@@ -96,6 +120,11 @@ button, a, .btn, .nav-item, .clickable,
         pointer-events: auto !important;
         position: relative !important;
         z-index: 1 !important;
+    }
+    
+    /* Remove left margin on mobile/tablet */
+    .main-content {
+        margin-left: 0 !important;
     }
     
     /* Header adjustments */
