@@ -62,25 +62,40 @@ button, a, .btn, .nav-item, .clickable,
         z-index: 2000 !important;
     }
     
-    /* Sidebar overlay fix - must be below sidebar and hidden when closed */
-    .sidebar-overlay {
+    /* CRITICAL FIX: Sidebar overlay - MUST be hidden when sidebar is closed */
+    .sidebar-overlay,
+    #sidebarOverlay,
+    div[class*="sidebar-overlay"],
+    div[id*="sidebarOverlay"] {
         z-index: 1500 !important;
         display: none !important;
+        visibility: hidden !important;
         opacity: 0 !important;
         pointer-events: none !important;
+        position: fixed !important;
     }
     
-    .sidebar-overlay.mobile-open {
+    .sidebar-overlay.mobile-open,
+    .sidebar-overlay.active,
+    #sidebarOverlay.mobile-open,
+    #sidebarOverlay.active,
+    div[class*="sidebar-overlay"].mobile-open,
+    div[class*="sidebar-overlay"].active {
         z-index: 1500 !important;
         display: block !important;
+        visibility: visible !important;
         opacity: 1 !important;
         pointer-events: auto !important;
     }
     
-    .main-content {
-        margin-left: 0 !important;
-        width: 100% !important;
+    /* Ensure main content is ALWAYS clickable */
+    .main-content,
+    .page-container,
+    .form-container,
+    input, select, textarea, button {
         pointer-events: auto !important;
+        position: relative !important;
+        z-index: 1 !important;
     }
     
     /* Header adjustments */
