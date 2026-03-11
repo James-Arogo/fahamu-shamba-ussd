@@ -349,6 +349,7 @@ if (typeof translations === 'undefined') {
     phone_already_registered: 'Namba mar simu osejajili',
   }
 };
+}
 
 function getBrowserLanguage() {
   const lang = navigator.language || navigator.userLanguage;

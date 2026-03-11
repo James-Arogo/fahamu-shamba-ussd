@@ -11,3 +11,6 @@ android-studio/FahamuShamba/build/
 android-studio/FahamuShamba/local.properties
 android-studio/FahamuShamba/.idea/deviceManager.xml
 *.db
+
+# OpenMemory - IDE/Assistant specific rules
+.cursor\rules\openmemory.mdc

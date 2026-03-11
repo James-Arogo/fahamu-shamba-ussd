@@ -7,9 +7,11 @@
     <link rel="icon" href="/fahamu-logo.png" type="image/png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/css/sidebar.css">
+    <link rel="stylesheet" href="/css/navbar.css">
     <link rel="stylesheet" href="/css/toast.css">
     <script src="/language-utils.js"></script>
     <script src="/js/sidebar.js" defer></script>
+    <script src="/js/navbar.js" defer></script>
     <script src="/js/toast.js" defer></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -120,12 +122,6 @@
          .photo-upload-btn { display: inline-block; padding: 12px 24px; background: var(--primary); color: white; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s ease; }
          .photo-upload-btn:hover { background: var(--primary-dark); transform: translateY(-2px); }
     </style>
-    <link rel="stylesheet" href="/css/sidebar.css">
-    <link rel="stylesheet" href="/css/navbar.css">
-    <link rel="stylesheet" href="/css/toast.css">
-    <script src="/js/sidebar.js" defer></script>
-    <script src="/js/navbar.js" defer></script>
-    <script src="/js/toast.js" defer></script>
 </head>
 <body>
     <div id="sidebar-container"></div>
@@ -270,56 +266,59 @@
          function displayUserData() {
              if (!currentUser) return;
              
-             const nameEl = document.getElementById('userName');
-             const phoneEl = document.getElementById('userPhone');
              const profileNameEl = document.getElementById('profileName');
              const profileLocEl = document.getElementById('profileLocation');
              
-             if (nameEl) nameEl.textContent = currentUser.name || currentUser.username || 'Farmer';
-             if (phoneEl) phoneEl.textContent = currentUser.phone || '—';
              if (profileNameEl) profileNameEl.textContent = currentUser.name || currentUser.username || 'Farmer';
              if (profileLocEl) profileLocEl.textContent = 'Location: ' + (currentUser.sub_county || '—');
              
-             // Display profile photo
+             // Display profile photo in header and form preview
              if (currentUser.profile_photo) {
                  const avatar = document.getElementById('profileAvatar');
-                 avatar.innerHTML = '<img src="' + currentUser.profile_photo + '" alt="Profile Photo">';
+                 if (avatar) avatar.innerHTML = '<img src="' + currentUser.profile_photo + '" alt="Profile Photo" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">';
                  const preview = document.getElementById('photoPreview');
-                 preview.innerHTML = '<img src="' + currentUser.profile_photo + '" alt="Profile Photo">';
+                 if (preview) preview.innerHTML = '<img src="' + currentUser.profile_photo + '" alt="Profile Photo" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">';
              }
              
+             // Sync with nav and sidebar
+             if (typeof loadUserProfile === 'function') loadUserProfile();
+             if (typeof setUserInfo === 'function') setUserInfo();
+             
              // Fill form
-             if (currentUser.name) document.getElementById('name').value = currentUser.name;
-             if (currentUser.phone) document.getElementById('phone').value = currentUser.phone;
-             if (currentUser.sub_county) document.getElementById('subcounty').value = currentUser.sub_county;
-             if (currentUser.ward) document.getElementById('ward').value = currentUser.ward;
-             if (currentUser.farm_size) document.getElementById('farmSize').value = currentUser.farm_size;
-             if (currentUser.main_crop) document.getElementById('mainCrop').value = currentUser.main_crop;
+             if (currentUser.name && document.getElementById('name')) document.getElementById('name').value = currentUser.name;
+             if (currentUser.phone && document.getElementById('phone')) document.getElementById('phone').value = currentUser.phone;
+             if (currentUser.sub_county && document.getElementById('subcounty')) document.getElementById('subcounty').value = currentUser.sub_county;
+             if (currentUser.ward && document.getElementById('ward')) document.getElementById('ward').value = currentUser.ward;
+             if (currentUser.farm_size && document.getElementById('farmSize')) document.getElementById('farmSize').value = currentUser.farm_size;
+             if (currentUser.main_crop && document.getElementById('mainCrop')) document.getElementById('mainCrop').value = currentUser.main_crop;
          }
          
          // Setup photo upload
          function setupPhotoUpload() {
              const photoInput = document.getElementById('photoUploadInput');
+             if (!photoInput) return;
+             
              photoInput.addEventListener('change', function(e) {
                  const file = e.target.files[0];
                  if (file) {
+                     // Check file size (limit to 1MB for localStorage)
+                     if (file.size > 1024 * 1024) {
+                         showToast('Image is too large. Please select a photo under 1MB.', 'error');
+                         return;
+                     }
+                     
                      const reader = new FileReader();
                      reader.onload = function(event) {
                          const photoData = event.target.result;
                          
-                         // Update current user
+                         // Update current user locally
                          currentUser.profile_photo = photoData;
                          
-                         // Display in avatar
-                         const avatar = document.getElementById('profileAvatar');
-                         avatar.innerHTML = '<img src="' + photoData + '" alt="Profile Photo">';
-                         
-                         // Display in preview
-                         const preview = document.getElementById('photoPreview');
-                         preview.innerHTML = '<img src="' + photoData + '" alt="Profile Photo">';
+                         // Update all display areas immediately
+                         displayUserData();
                          
                          // Show success message
-                         showToast('Photo uploaded successfully! Click "Save Changes" to save your profile.', 'success');
+                         showToast('Photo uploaded successfully! Click "Save Changes" to save your profile permanently.', 'success');
                      };
                      reader.readAsDataURL(file);
                  }

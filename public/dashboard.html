@@ -1545,6 +1545,16 @@
                             <div class="detail-label">Sunset</div>
                             <div class="detail-value" id="detailSunset">--:--</div>
                         </div>
+                        <div class="detail-card agromet-card" title="Percentage of moisture in the top 10cm of soil">
+                            <div class="detail-icon">🌱</div>
+                            <div class="detail-label">Soil Moisture</div>
+                            <div class="detail-value" id="detailSoilMoisture">--%</div>
+                        </div>
+                        <div class="detail-card agromet-card" title="Total water lost by soil and plants today">
+                            <div class="detail-icon">🍃</div>
+                            <div class="detail-label">Evapo (ET0)</div>
+                            <div class="detail-value" id="detailEvapo">-- mm</div>
+                        </div>
                     </div>
                 </div>
 
@@ -1722,6 +1732,7 @@
             air: null,
             sun: null,
             uv: null,
+            agromet: null,
             location: 'siaya'
         };
 
@@ -2039,11 +2050,23 @@
             return dirs[Math.round(((degrees + 11.25) % 360) / 22.5)];
         }
 
-        function getFarmerAdvisory(condition, rainChance) {
+        function getFarmerAdvisory(condition, rainChance, temp) {
             const rain = rainChance || 0;
             const cond = (condition || '').toLowerCase();
+            const t = temp || 25;
 
-            if (rain > 0.7) return '⚠️ High rain risk—plan harvesting carefully';
+            // Agricultural Decision Logic
+            if (rain > 0.7 && t < 30) {
+                return '🌧️ Perfect for Sowing! High moisture expected. Delay digging to avoid mud.';
+            }
+            if (rain < 0.2 && t > 28) {
+                return '☀️ Ideal for Digging! Soil is dry and manageable. Avoid planting today.';
+            }
+            if (rain >= 0.3 && rain <= 0.6) {
+                return '🌱 Good for Planting! Moderate rain will help seeds germinate.';
+            }
+
+            if (rain > 0.7) return '⚠️ High rain risk—secure your harvested crops';
             if (rain > 0.4) return '🌧️ Moderate rain expected—good for irrigation';
             if (cond.includes('rain') || cond.includes('drizzle')) return '🌧️ Rainy conditions—good for watering';
             if (cond.includes('cloud')) return '☁️ Cloudy—reduced UV risk';
@@ -2259,6 +2282,11 @@
             document.getElementById('detailRainChance').textContent = `${pop}%`;
             document.getElementById('detailSunrise').textContent = formatClock(weatherState.sun?.sunrise);
             document.getElementById('detailSunset').textContent = formatClock(weatherState.sun?.sunset);
+            
+            // Agromet Data
+            const agro = weatherState.agromet || {};
+            document.getElementById('detailSoilMoisture').textContent = agro.soil_moisture ? `${Math.round(agro.soil_moisture * 100)}%` : '--%';
+            document.getElementById('detailEvapo').textContent = agro.evapotranspiration ? `${agro.evapotranspiration.toFixed(1)} mm` : '-- mm';
         }
 
         function setWeatherBackground(description = '') {
@@ -2294,6 +2322,7 @@
                 weatherState.air = data.air || null;
                 weatherState.sun = data.sun || null;
                 weatherState.uv = data.uv_index;
+                weatherState.agromet = c.agromet || null;
                 weatherState.location = subcounty;
                 setActiveCityChip(subcounty);
 
@@ -2301,7 +2330,7 @@
                 document.getElementById('heroWeatherTemp').textContent = `${c.temp ?? '--'}°C`;
                 document.getElementById('heroWeatherDesc').textContent = c.description || 'Weather update';
                 document.getElementById('heroHighLow').textContent = `High: ${c.temp_max ?? '--'}° | Low: ${c.temp_min ?? '--'}°`;
-                document.getElementById('heroFarmerTip').textContent = getFarmerAdvisory(c.description, c.pop || 0) || 'Checking advisory...';
+                document.getElementById('heroFarmerTip').textContent = getFarmerAdvisory(c.description, c.pop || 0, c.temp) || 'Checking advisory...';
                 document.getElementById('heroWeatherUpdated').textContent = new Date().toLocaleTimeString();
 
                 // Render hourly and daily forecasts

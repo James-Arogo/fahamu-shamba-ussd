@@ -97,9 +97,14 @@
 
                 if (nameEl) nameEl.textContent = user.username || user.name || 'Farmer';
                 if (phoneEl) phoneEl.textContent = user.phone || '';
-                if (avatarEl && (user.username || user.name)) {
-                    const initial = (user.username || user.name).charAt(0).toUpperCase();
-                    avatarEl.innerHTML = `<span>${initial}</span>`;
+                
+                if (avatarEl) {
+                    if (user.profile_photo) {
+                        avatarEl.innerHTML = `<img src="${user.profile_photo}" alt="Profile" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`;
+                    } else if (user.username || user.name) {
+                        const initial = (user.username || user.name).charAt(0).toUpperCase();
+                        avatarEl.innerHTML = `<span>${initial}</span>`;
+                    }
                 }
             }
         } catch (e) {
@@ -268,6 +273,7 @@
     window.toggleMobileSidebar = toggleMobileSidebar;
     window.closeMobileSidebar = closeMobileSidebar;
     window.toggleSidebar = toggleSidebar;
+    window.setUserInfo = setUserInfo;
     window.logout = logout;
     window.goToDashboard = () => window.location.href = '/dashboard.html';
     window.goToRecommendations = () => window.location.href = '/recommendations.html';

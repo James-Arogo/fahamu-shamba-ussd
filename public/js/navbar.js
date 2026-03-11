@@ -120,8 +120,12 @@ function loadUserProfile() {
             
             if (navProfileName) navProfileName.textContent = name;
             if (navProfileAvatar) {
-                // Set avatar initial
-                navProfileAvatar.textContent = name.charAt(0).toUpperCase();
+                if (user.profile_photo) {
+                    navProfileAvatar.innerHTML = '<img src="' + user.profile_photo + '" alt="Avatar" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">';
+                } else {
+                    // Set avatar initial
+                    navProfileAvatar.textContent = name.charAt(0).toUpperCase();
+                }
             }
             
             return { name: name, phone: phone };
@@ -246,4 +250,11 @@ window.initNavBar = initNavBar;
 window.getCurrentLanguage = getCurrentLanguage;
 window.setLanguage = setStoredLanguage;
 window.getStoredLanguage = getStoredLanguage;
+
+// Auto-initialize if elements exist
+document.addEventListener('DOMContentLoaded', function() {
+    if (document.getElementById('navProfileAvatar') || document.getElementById('navProfileName')) {
+        loadUserProfile();
+    }
+});
 
