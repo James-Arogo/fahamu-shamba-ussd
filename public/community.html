@@ -9,6 +9,14 @@
     <script src="/language-utils.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        /* Prevent flash of unstyled content during sidebar load */
+        #sidebar-container {
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s ease;
+        }
+        
         :root {
             --primary: #2d7649; --primary-light: #4a9d6f; --primary-dark: #1e5631;
             --secondary: #f57c00; --accent: #87ceeb; --success: #27ae60;

@@ -17,6 +17,10 @@
         const sidebarContainer = document.getElementById('sidebar-container');
         if (!sidebarContainer) return;
 
+        // Add loading class to prevent flash
+        sidebarContainer.style.opacity = '0';
+        sidebarContainer.style.visibility = 'hidden';
+
         try {
             const response = await fetch('/components/sidebar.html');
             if (!response.ok) throw new Error('Failed to fetch sidebar component');
@@ -50,10 +54,20 @@
             // Re-bind hamburger buttons across the page
             bindHamburgerButtons();
             
+            // Fade in sidebar smoothly after everything is loaded
+            requestAnimationFrame(() => {
+                sidebarContainer.style.transition = 'opacity 0.2s ease';
+                sidebarContainer.style.opacity = '1';
+                sidebarContainer.style.visibility = 'visible';
+            });
+            
             console.log('Sidebar component loaded and initialized (Closed state)');
             
         } catch (error) {
             console.error('Error loading sidebar component:', error);
+            // Show container even on error to prevent permanent blank
+            sidebarContainer.style.opacity = '1';
+            sidebarContainer.style.visibility = 'visible';
         }
     }
 
