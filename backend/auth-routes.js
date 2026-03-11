@@ -67,7 +67,8 @@ export function initAuthRoutes(db, dbAsync = null) {
 
   // Helper: Validate phone format
   const isValidPhone = (phone) => {
-    const phoneRegex = /^\+?254[0-9]{9}$/; // E.164: +2547XXXXXXXX or 2547XXXXXXXX
+    // Accept multiple formats: +254XXXXXXXXX, 254XXXXXXXXX, 07XXXXXXXX, 7XXXXXXXX
+    const phoneRegex = /^(\+?254|0)?[7][0-9]{8}$/;
     return phoneRegex.test(phone.replace(/\s/g, ''));
   };
 
