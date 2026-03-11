@@ -11,6 +11,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 let db;
+let dbAsync; // Async wrapper for PostgreSQL
 
 function getDb() {
   if (!db) {
@@ -19,9 +20,24 @@ function getDb() {
   return db;
 }
 
+// Set async database helper (for PostgreSQL)
+export function setAsyncDb(asyncDbHelper) {
+  dbAsync = asyncDbHelper;
+}
+
+// Get the appropriate database helper
+function getDbHelper() {
+  return dbAsync || getDb();
+}
+
 // Initialize enhanced feedback tables
-export function initializeFeedbackDatabase(dbConnection) {
+export function initializeFeedbackDatabase(dbConnection, asyncDbConnection) {
   const database = dbConnection || getDb();
+  
+  // Set async db if provided
+  if (asyncDbConnection) {
+    setAsyncDb(asyncDbConnection);
+  }
   
   // Enhanced feedback with ratings
   database.exec(`
@@ -678,4 +694,3 @@ export default {
   getActiveAlertsForCrop,
   getMLTrainingData
 };
-

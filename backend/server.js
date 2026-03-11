@@ -202,7 +202,7 @@ if (!USE_POSTGRES) {
 
   console.log('📝 Initializing feedback database...');
   try {
-    feedbackService.initializeFeedbackDatabase(db);
+    feedbackService.initializeFeedbackDatabase(db, dbAsync);
     console.log('✅ Feedback database initialized');
   } catch (error) {
     console.error('⚠️ Error initializing feedback database:', error.message);
