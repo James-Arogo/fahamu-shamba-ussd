@@ -31,14 +31,19 @@ async function ensureInitialized(req, res, next) {
 // Get market prices in frontend-compatible format
 router.get('/api/market/prices', ensureInitialized, async (req, res) => {
   try {
+    console.log('📊 Fetching market prices, USE_POSTGRES:', USE_POSTGRES);
     const result = USE_POSTGRES
       ? await marketServicePostgres.getCurrentPricesPostgres()
       : marketService.getCurrentPrices();
     
+    console.log('📊 Result success:', result.success, 'Prices count:', result.prices?.length);
+    
     if (!result.success || !result.prices || result.prices.length === 0) {
+      console.warn('⚠️ No prices returned:', result);
       return res.json({
         success: false,
-        message: 'No market data available'
+        message: 'No market data available',
+        debug: { usePostgres: USE_POSTGRES, resultSuccess: result.success, priceCount: result.prices?.length }
       });
     }
 
@@ -96,10 +101,16 @@ router.get('/api/market/prices', ensureInitialized, async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error fetching market prices:', error);
+    console.error('❌ Error fetching market prices:', error.message);
+    console.error('Stack:', error.stack);
     res.status(500).json({
       success: false,
-      error: 'Failed to fetch market prices'
+      error: 'Failed to fetch market prices',
+      debug: {
+        message: error.message,
+        usePostgres: USE_POSTGRES,
+        databaseUrl: process.env.DATABASE_URL ? 'SET' : 'NOT SET'
+      }
     });
   }
 });
