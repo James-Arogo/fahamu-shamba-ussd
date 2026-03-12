@@ -400,16 +400,16 @@ export const demoData = {
 
   // Market prices for crops (KSh per kg)
   marketPrices: [
-    { crop: 'Maize', bondo: 65, ugunja: 68, yala: 62, gem: 66, alego: 63, trend: 'down', lastUpdated: '2025-12-01' },
-    { crop: 'Beans', bondo: 85, ugunja: 82, yala: 88, gem: 84, alego: 86, trend: 'up', lastUpdated: '2025-12-01' },
-    { crop: 'Rice', bondo: 120, ugunja: 118, yala: 125, gem: 119, alego: 122, trend: 'up', lastUpdated: '2025-12-01' },
-    { crop: 'Sorghum', bondo: 95, ugunja: 92, yala: 98, gem: 94, alego: 97, trend: 'up', lastUpdated: '2025-12-01' },
-    { crop: 'Groundnuts', bondo: 110, ugunja: 108, yala: 112, gem: 109, alego: 111, trend: 'stable', lastUpdated: '2025-12-01' },
-    { crop: 'Cassava', bondo: 35, ugunja: 32, yala: 37, gem: 34, alego: 38, trend: 'stable', lastUpdated: '2025-12-01' },
-    { crop: 'Sweet Potatoes', bondo: 40, ugunja: 38, yala: 42, gem: 39, alego: 41, trend: 'up', lastUpdated: '2025-12-01' },
-    { crop: 'Tomatoes', bondo: 75, ugunja: 72, yala: 78, gem: 74, alego: 76, trend: 'down', lastUpdated: '2025-12-01' },
-    { crop: 'Soybean', bondo: 55, ugunja: 53, yala: 57, gem: 54, alego: 56, trend: 'up', lastUpdated: '2025-12-01' },
-    { crop: 'Kales', bondo: 50, ugunja: 48, yala: 52, gem: 49, alego: 51, trend: 'stable', lastUpdated: '2025-12-01' }
+    { crop: 'Maize', bondo: 65, ugunja: 68, gem: 66, alego: 63, rarieda: 63, ugenya: 64, trend: 'down', lastUpdated: '2025-12-01' },
+    { crop: 'Beans', bondo: 85, ugunja: 82, gem: 84, alego: 86, rarieda: 86, ugenya: 83, trend: 'up', lastUpdated: '2025-12-01' },
+    { crop: 'Rice', bondo: 120, ugunja: 118, gem: 119, alego: 122, rarieda: 122, ugenya: 125, trend: 'up', lastUpdated: '2025-12-01' },
+    { crop: 'Sorghum', bondo: 95, ugunja: 92, gem: 94, alego: 97, rarieda: 97, ugenya: 98, trend: 'up', lastUpdated: '2025-12-01' },
+    { crop: 'Groundnuts', bondo: 110, ugunja: 108, gem: 109, alego: 111, rarieda: 111, ugenya: 112, trend: 'stable', lastUpdated: '2025-12-01' },
+    { crop: 'Cassava', bondo: 35, ugunja: 32, gem: 34, alego: 38, rarieda: 38, ugenya: 38, trend: 'stable', lastUpdated: '2025-12-01' },
+    { crop: 'Sweet Potatoes', bondo: 40, ugunja: 38, gem: 39, alego: 41, rarieda: 41, ugenya: 42, trend: 'up', lastUpdated: '2025-12-01' },
+    { crop: 'Tomatoes', bondo: 75, ugunja: 72, gem: 74, alego: 76, rarieda: 76, ugenya: 78, trend: 'down', lastUpdated: '2025-12-01' },
+    { crop: 'Soybean', bondo: 55, ugunja: 53, gem: 54, alego: 56, rarieda: 56, ugenya: 58, trend: 'up', lastUpdated: '2025-12-01' },
+    { crop: 'Kales', bondo: 50, ugunja: 48, gem: 49, alego: 51, rarieda: 51, ugenya: 52, trend: 'stable', lastUpdated: '2025-12-01' }
   ],
 
   // Sample farmers for demo

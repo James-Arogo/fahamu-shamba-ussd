@@ -6,82 +6,100 @@ export default function handler(req, res) {
   const now = new Date();
   const lastUpdated = now.toISOString().split('T')[0];
   
-  // Weekly prices data for Siaya County
+  // Weekly prices data for Siaya County (all 6 sub-counties)
   // These would be updated weekly via cron job or database
   const weeklyPrices = {
     lastUpdated: lastUpdated,
     prices: [
       {
         crop: "Maize",
-        bondo: 52,
-        ugunja: 55,
-        yala: 53,
-        gem: 51,
-        alego: 56,
-        trend: "up"
-      },
-      {
-        crop: "Beans",
-        bondo: 92,
-        ugunja: 95,
-        yala: 93,
-        gem: 90,
-        alego: 96,
-        trend: "stable"
-      },
-      {
-        crop: "Sorghum",
-        bondo: 68,
-        ugunja: 72,
-        yala: 70,
-        gem: 67,
-        alego: 73,
-        trend: "up"
-      },
-      {
-        crop: "Millet",
-        bondo: 75,
-        ugunja: 78,
-        yala: 76,
-        gem: 73,
-        alego: 79,
+        bondo: 65,
+        ugunja: 68,
+        gem: 66,
+        alego: 63,
+        rarieda: 63,
+        ugenya: 64,
         trend: "down"
       },
       {
+        crop: "Beans",
+        bondo: 85,
+        ugunja: 82,
+        gem: 84,
+        alego: 86,
+        rarieda: 86,
+        ugenya: 83,
+        trend: "up"
+      },
+      {
         crop: "Rice",
-        bondo: 135,
-        ugunja: 140,
-        yala: 138,
-        gem: 132,
-        alego: 142,
+        bondo: 120,
+        ugunja: 118,
+        gem: 119,
+        alego: 122,
+        rarieda: 122,
+        ugenya: 125,
+        trend: "up"
+      },
+      {
+        crop: "Sorghum",
+        bondo: 95,
+        ugunja: 92,
+        gem: 94,
+        alego: 97,
+        rarieda: 97,
+        ugenya: 98,
         trend: "up"
       },
       {
         crop: "Groundnuts",
-        bondo: 155,
-        ugunja: 160,
-        yala: 157,
-        gem: 152,
-        alego: 162,
+        bondo: 110,
+        ugunja: 108,
+        gem: 109,
+        alego: 111,
+        rarieda: 111,
+        ugenya: 112,
         trend: "stable"
       },
       {
-        crop: "Cowpeas",
-        bondo: 88,
-        ugunja: 92,
-        yala: 90,
-        gem: 86,
-        alego: 93,
-        trend: "up"
+        crop: "Cassava",
+        bondo: 35,
+        ugunja: 32,
+        gem: 34,
+        alego: 38,
+        rarieda: 38,
+        ugenya: 38,
+        trend: "stable"
       },
       {
         crop: "Sweet Potatoes",
-        bondo: 48,
-        ugunja: 52,
-        yala: 50,
-        gem: 47,
-        alego: 53,
+        bondo: 40,
+        ugunja: 38,
+        gem: 39,
+        alego: 41,
+        rarieda: 41,
+        ugenya: 42,
+        trend: "up"
+      },
+      {
+        crop: "Tomatoes",
+        bondo: 75,
+        ugunja: 72,
+        gem: 74,
+        alego: 76,
+        rarieda: 76,
+        ugenya: 78,
         trend: "down"
+      },
+      {
+        crop: "Soybean",
+        bondo: 55,
+        ugunja: 53,
+        gem: 54,
+        alego: 56,
+        rarieda: 56,
+        ugenya: 58,
+        trend: "up"
       }
     ]
   };

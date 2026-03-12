@@ -161,36 +161,34 @@ async function loadMarketData() {
                     <thead>
                         <tr>
                             <th>Crop</th>
-                            <th>Siaya Town Market</th>
-                            <th>Bondo Market</th>
-                            <th>Yala Market</th>
-                            <th>Ugunja Market</th>
-                            <th>Gem Market</th>
-                            <th>Current Status</th>
+                            <th>Bondo</th>
+                            <th>Ugunja</th>
+                            <th>Gem</th>
+                            <th>Alego</th>
+                            <th>Rarieda</th>
+                            <th>Ugenya</th>
                         </tr>
                     </thead>
                     <tbody>
             `;
             
-            Object.entries(pricesByMarket).forEach(([crop, markets]) => {
-                const prices = Object.values(markets).filter(p => typeof p === 'number');
-                const avgPrice = prices.length > 0 ? (prices.reduce((a, b) => a + b, 0) / prices.length).toFixed(0) : '-';
-                
-                const siayaPrice = markets['Siaya Town Market'] || '-';
-                const bondoPrice = markets['Bondo Market'] || '-';
-                const yalaPrice = markets['Yala Market'] || '-';
-                const ugunjPrice = markets['Ugunja Market'] || '-';
-                const gemPrice = markets['Gem Market'] || '-';
+            Object.entries(pricesByMarket).forEach(([crop, prices]) => {
+                const bondoPrice = prices.bondo || prices['Bondo Market'] || '-';
+                const ugunjPrice = prices.ugunja || prices['Ugunja Market'] || '-';
+                const gemPrice = prices.gem || prices['Gem Market'] || '-';
+                const alegoPrice = prices.alego || prices['Siaya Town Market'] || '-';
+                const rariedaPrice = prices.rarieda || '-';
+                const ugenyaPrice = prices.ugenya || '-';
                 
                 tableHtml += `
                     <tr>
                         <td><strong>${crop}</strong></td>
-                        <td>${typeof siayaPrice === 'number' ? 'KES ' + siayaPrice : siayaPrice}</td>
-                        <td>${typeof bondoPrice === 'number' ? 'KES ' + bondoPrice : bondoPrice}</td>
-                        <td>${typeof yalaPrice === 'number' ? 'KES ' + yalaPrice : yalaPrice}</td>
-                        <td>${typeof ugunjPrice === 'number' ? 'KES ' + ugunjPrice : ugunjPrice}</td>
-                        <td>${typeof gemPrice === 'number' ? 'KES ' + gemPrice : gemPrice}</td>
-                        <td><span style="color: #27ae60; font-weight: 600;">✓ Live</span></td>
+                        <td>${typeof bondoPrice === 'number' ? 'KSh ' + bondoPrice : bondoPrice}</td>
+                        <td>${typeof ugunjPrice === 'number' ? 'KSh ' + ugunjPrice : ugunjPrice}</td>
+                        <td>${typeof gemPrice === 'number' ? 'KSh ' + gemPrice : gemPrice}</td>
+                        <td>${typeof alegoPrice === 'number' ? 'KSh ' + alegoPrice : alegoPrice}</td>
+                        <td>${typeof rariedaPrice === 'number' ? 'KSh ' + rariedaPrice : rariedaPrice}</td>
+                        <td>${typeof ugenyaPrice === 'number' ? 'KSh ' + ugenyaPrice : ugenyaPrice}</td>
                     </tr>
                 `;
             });
@@ -242,7 +240,7 @@ async function loadMarketTrends() {
             labels: periodData.map(d => formatDate(d.date, currentTrendPeriod)),
             datasets: [
                 {
-                    label: 'Bondo Market',
+                    label: 'Bondo',
                     data: periodData.map(d => d.bondo),
                     borderColor: '#2E8B57',
                     backgroundColor: 'rgba(46, 139, 87, 0.1)',
@@ -251,7 +249,7 @@ async function loadMarketTrends() {
                     borderWidth: 3
                 },
                 {
-                    label: 'Ugunja Market',
+                    label: 'Ugunja',
                     data: periodData.map(d => d.ugunja),
                     borderColor: '#FFD700',
                     backgroundColor: 'rgba(255, 215, 0, 0.1)',
@@ -260,10 +258,37 @@ async function loadMarketTrends() {
                     borderWidth: 3
                 },
                 {
-                    label: 'Yala Market',
-                    data: periodData.map(d => d.yala),
-                    borderColor: '#17a2b8',
-                    backgroundColor: 'rgba(23, 162, 184, 0.1)',
+                    label: 'Gem',
+                    data: periodData.map(d => d.gem),
+                    borderColor: '#9b59b6',
+                    backgroundColor: 'rgba(155, 89, 182, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    borderWidth: 3
+                },
+                {
+                    label: 'Alego',
+                    data: periodData.map(d => d.alego),
+                    borderColor: '#27ae60',
+                    backgroundColor: 'rgba(39, 174, 96, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    borderWidth: 3
+                },
+                {
+                    label: 'Rarieda',
+                    data: periodData.map(d => d.rarieda),
+                    borderColor: '#e67e22',
+                    backgroundColor: 'rgba(230, 126, 34, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    borderWidth: 3
+                },
+                {
+                    label: 'Ugenya',
+                    data: periodData.map(d => d.ugenya),
+                    borderColor: '#3498db',
+                    backgroundColor: 'rgba(52, 152, 219, 0.1)',
                     tension: 0.4,
                     fill: true,
                     borderWidth: 3

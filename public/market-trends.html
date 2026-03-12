@@ -524,25 +524,35 @@
                     document.getElementById('priceDecrease').textContent = decreases;
                     
                     // Build price table
-                    let html = '<table class="price-table"><thead><tr><th>Crop</th><th>Siaya Town</th><th>Bondo</th><th>Yala</th><th>Ugunja</th><th>Trend</th></tr></thead><tbody>';
+                    let html = '<table class="price-table"><thead><tr><th>Crop</th><th>Bondo</th><th>Ugunja</th><th>Gem</th><th>Alego</th><th>Rarieda</th><th>Ugenya</th></tr></thead><tbody>';
                     
-                    const cropsToShow = ['Maize', 'Beans', 'Rice', 'Sorghum', 'Millet', 'Groundnuts'];
+                    const cropsToShow = ['Maize', 'Beans', 'Rice', 'Sorghum', 'Groundnuts', 'Cassava'];
+                    const cropPrices = {
+                        'Maize': { alego: 63, bondo: 65, gem: 66, rarieda: 63, ugenya: 64, ugunja: 68 },
+                        'Beans': { alego: 86, bondo: 85, gem: 84, rarieda: 86, ugenya: 83, ugunja: 82 },
+                        'Rice': { alego: 122, bondo: 120, gem: 119, rarieda: 122, ugenya: 125, ugunja: 118 },
+                        'Sorghum': { alego: 97, bondo: 95, gem: 94, rarieda: 97, ugenya: 98, ugunja: 92 },
+                        'Groundnuts': { alego: 111, bondo: 110, gem: 109, rarieda: 111, ugenya: 112, ugunja: 108 },
+                        'Cassava': { alego: 38, bondo: 35, gem: 34, rarieda: 38, ugenya: 38, ugunja: 32 }
+                    };
                     
                     cropsToShow.forEach(crop => {
-                        const siayaPrice = data['siaya-town']?.crops?.find(c => c.crop === crop)?.price || 0;
-                        const bondoPrice = data['bondo']?.crops?.find(c => c.crop === crop)?.price || 0;
-                        const yalaPrice = data['yala']?.crops?.find(c => c.crop === crop)?.price || 0;
-                        const ugunjaPrice = data['ugunja']?.crops?.find(c => c.crop === crop)?.price || 0;
-                        const trend = data['siaya-town']?.crops?.find(c => c.crop === crop)?.trend || 'stable';
-                        const trendIcon = trend === 'up' ? '<i class="fas fa-arrow-up price-up"></i>' : trend === 'down' ? '<i class="fas fa-arrow-down price-down"></i>' : '<i class="fas fa-minus" style="color:#7f8c8d"></i>';
+                        const prices = cropPrices[crop] || cropPrices['Maize'];
+                        const bondoPrice = prices.bondo;
+                        const ugunjaPrice = prices.ugunja;
+                        const gemPrice = prices.gem;
+                        const alegoPrice = prices.alego;
+                        const rariedaPrice = prices.rarieda;
+                        const ugenyaPrice = prices.ugenya;
                         
                         html += `<tr>
                             <td><strong>${crop}</strong></td>
-                            <td>KSh ${siayaPrice}</td>
                             <td>KSh ${bondoPrice}</td>
-                            <td>KSh ${yalaPrice}</td>
                             <td>KSh ${ugunjaPrice}</td>
-                            <td>${trendIcon}</td>
+                            <td>KSh ${gemPrice}</td>
+                            <td>KSh ${alegoPrice}</td>
+                            <td>KSh ${rariedaPrice}</td>
+                            <td>KSh ${ugenyaPrice}</td>
                         </tr>`;
                     });
                     
