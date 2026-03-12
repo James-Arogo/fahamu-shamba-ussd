@@ -105,11 +105,9 @@ router.get('/market/prices/compare', ensureInitialized, async (req, res) => {
 // ==================== MARKETS ====================
 
 // Get all markets
-router.get('/market/centers', ensureInitialized, async (req, res) => {
+router.get('/market/centers', ensureInitialized, (req, res) => {
   try {
-    const result = USE_POSTGRES
-      ? await marketServicePostgres.getMarketsPostgres()
-      : marketService.getMarkets();
+    const result = marketService.getMarkets();
     res.json(result);
   } catch (error) {
     console.error('Error fetching markets:', error);
@@ -120,12 +118,10 @@ router.get('/market/centers', ensureInitialized, async (req, res) => {
 // ==================== PRICE PREDICTIONS ====================
 
 // Get price predictions
-router.get('/market/predictions', ensureInitialized, async (req, res) => {
+router.get('/market/predictions', ensureInitialized, (req, res) => {
   try {
     const { crop, market } = req.query;
-    const result = USE_POSTGRES
-      ? await marketServicePostgres.getPricePredictionsPostgres(crop, market)
-      : marketService.getPricePredictions(crop, market);
+    const result = marketService.getPricePredictions(crop, market);
     res.json(result);
   } catch (error) {
     console.error('Error fetching predictions:', error);
@@ -134,7 +130,7 @@ router.get('/market/predictions', ensureInitialized, async (req, res) => {
 });
 
 // Generate price prediction
-router.get('/market/predictions/generate', ensureInitialized, async (req, res) => {
+router.get('/market/predictions/generate', ensureInitialized, (req, res) => {
   try {
     const { crop, market } = req.query;
     
@@ -145,9 +141,7 @@ router.get('/market/predictions/generate', ensureInitialized, async (req, res) =
       });
     }
     
-    const result = USE_POSTGRES
-      ? await marketServicePostgres.generatePricePredictionPostgres(crop, market)
-      : marketService.generatePricePrediction(crop, market);
+    const result = marketService.generatePricePrediction(crop, market);
     res.json(result);
   } catch (error) {
     console.error('Error generating prediction:', error);
@@ -158,7 +152,7 @@ router.get('/market/predictions/generate', ensureInitialized, async (req, res) =
 // ==================== PRICE ALERTS ====================
 
 // Set price alert
-router.post('/market/alerts', ensureInitialized, async (req, res) => {
+router.post('/market/alerts', ensureInitialized, (req, res) => {
   try {
     const { phoneNumber, crop, market, thresholdType, thresholdPrice } = req.body;
     
@@ -169,21 +163,13 @@ router.post('/market/alerts', ensureInitialized, async (req, res) => {
       });
     }
     
-    const result = USE_POSTGRES
-      ? await marketServicePostgres.setPriceAlertPostgres({
-          phoneNumber,
-          crop,
-          market,
-          thresholdType,
-          thresholdPrice
-        })
-      : marketService.setPriceAlert({
-          phoneNumber,
-          crop,
-          market,
-          thresholdType,
-          thresholdPrice
-        });
+    const result = marketService.setPriceAlert({
+      phoneNumber,
+      crop,
+      market,
+      thresholdType,
+      thresholdPrice
+    });
     
     res.json(result);
   } catch (error) {
@@ -193,12 +179,10 @@ router.post('/market/alerts', ensureInitialized, async (req, res) => {
 });
 
 // Get user price alerts
-router.get('/market/alerts/:phoneNumber', ensureInitialized, async (req, res) => {
+router.get('/market/alerts/:phoneNumber', ensureInitialized, (req, res) => {
   try {
     const { phoneNumber } = req.params;
-    const result = USE_POSTGRES
-      ? await marketServicePostgres.getUserPriceAlertsPostgres(phoneNumber)
-      : marketService.getUserPriceAlerts(phoneNumber);
+    const result = marketService.getUserPriceAlerts(phoneNumber);
     res.json(result);
   } catch (error) {
     console.error('Error fetching alerts:', error);
@@ -207,12 +191,10 @@ router.get('/market/alerts/:phoneNumber', ensureInitialized, async (req, res) =>
 });
 
 // Delete price alert
-router.delete('/market/alerts/:id', ensureInitialized, async (req, res) => {
+router.delete('/market/alerts/:id', ensureInitialized, (req, res) => {
   try {
     const { id } = req.params;
-    const result = USE_POSTGRES
-      ? await marketServicePostgres.deletePriceAlertPostgres(parseInt(id))
-      : marketService.deletePriceAlert(parseInt(id));
+    const result = marketService.deletePriceAlert(parseInt(id));
     res.json(result);
   } catch (error) {
     console.error('Error deleting alert:', error);
@@ -221,11 +203,9 @@ router.delete('/market/alerts/:id', ensureInitialized, async (req, res) => {
 });
 
 // Check price alerts (for cron job)
-router.get('/market/alerts/check', ensureInitialized, async (req, res) => {
+router.get('/market/alerts/check', ensureInitialized, (req, res) => {
   try {
-    const result = USE_POSTGRES
-      ? await marketServicePostgres.checkPriceAlertsPostgres()
-      : marketService.checkPriceAlerts();
+    const result = marketService.checkPriceAlerts();
     res.json(result);
   } catch (error) {
     console.error('Error checking alerts:', error);
@@ -236,7 +216,7 @@ router.get('/market/alerts/check', ensureInitialized, async (req, res) => {
 // ==================== BUYERS ====================
 
 // Register buyer
-router.post('/market/buyers', ensureInitialized, async (req, res) => {
+router.post('/market/buyers', ensureInitialized, (req, res) => {
   try {
     const {
       buyerName, buyerType, contactPerson, phone, email,
@@ -250,15 +230,10 @@ router.post('/market/buyers', ensureInitialized, async (req, res) => {
       });
     }
     
-    const result = USE_POSTGRES
-      ? await marketServicePostgres.registerBuyerPostgres({
-          buyerName, buyerType, contactPerson, phone, email,
-          location, county, cropsInterested, quantityNeeded, priceOffering
-        })
-      : marketService.registerBuyer({
-          buyerName, buyerType, contactPerson, phone, email,
-          location, county, cropsInterested, quantityNeeded, priceOffering
-        });
+    const result = marketService.registerBuyer({
+      buyerName, buyerType, contactPerson, phone, email,
+      location, county, cropsInterested, quantityNeeded, priceOffering
+    });
     
     res.json(result);
   } catch (error) {
@@ -268,12 +243,10 @@ router.post('/market/buyers', ensureInitialized, async (req, res) => {
 });
 
 // Get buyers
-router.get('/market/buyers', ensureInitialized, async (req, res) => {
+router.get('/market/buyers', ensureInitialized, (req, res) => {
   try {
     const { county, crop } = req.query;
-    const result = USE_POSTGRES
-      ? await marketServicePostgres.getBuyersPostgres({ county, crop })
-      : marketService.getBuyers({ county, crop });
+    const result = marketService.getBuyers({ county, crop });
     res.json(result);
   } catch (error) {
     console.error('Error fetching buyers:', error);
@@ -282,12 +255,10 @@ router.get('/market/buyers', ensureInitialized, async (req, res) => {
 });
 
 // Get buyer details
-router.get('/market/buyers/:id', ensureInitialized, async (req, res) => {
+router.get('/market/buyers/:id', ensureInitialized, (req, res) => {
   try {
     const { id } = req.params;
-    const result = USE_POSTGRES
-      ? await marketServicePostgres.getBuyerDetailsPostgres(parseInt(id))
-      : marketService.getBuyerDetails(parseInt(id));
+    const result = marketService.getBuyerDetails(parseInt(id));
     res.json(result);
   } catch (error) {
     console.error('Error fetching buyer:', error);
@@ -298,7 +269,7 @@ router.get('/market/buyers/:id', ensureInitialized, async (req, res) => {
 // ==================== AGRO-DEALERS ====================
 
 // Register agro-dealer
-router.post('/market/dealers', ensureInitialized, async (req, res) => {
+router.post('/market/dealers', ensureInitialized, (req, res) => {
   try {
     const {
       shopName, ownerName, phone, email,
@@ -313,17 +284,11 @@ router.post('/market/dealers', ensureInitialized, async (req, res) => {
       });
     }
     
-    const result = USE_POSTGRES
-      ? await marketServicePostgres.registerAgroDealerPostgres({
-          shopName, ownerName, phone, email,
-          location, county, subCounty, products, brands,
-          hasDelivery, deliveryArea
-        })
-      : marketService.registerAgroDealer({
-          shopName, ownerName, phone, email,
-          location, county, subCounty, products, brands,
-          hasDelivery, deliveryArea
-        });
+    const result = marketService.registerAgroDealer({
+      shopName, ownerName, phone, email,
+      location, county, subCounty, products, brands,
+      hasDelivery, deliveryArea
+    });
     
     res.json(result);
   } catch (error) {
@@ -333,12 +298,10 @@ router.post('/market/dealers', ensureInitialized, async (req, res) => {
 });
 
 // Get agro-dealers
-router.get('/market/dealers', ensureInitialized, async (req, res) => {
+router.get('/market/dealers', ensureInitialized, (req, res) => {
   try {
     const { county, subCounty, product } = req.query;
-    const result = USE_POSTGRES
-      ? await marketServicePostgres.getAgroDealersPostgres({ county, subCounty, product })
-      : marketService.getAgroDealers({ county, subCounty, product });
+    const result = marketService.getAgroDealers({ county, subCounty, product });
     res.json(result);
   } catch (error) {
     console.error('Error fetching dealers:', error);
@@ -347,12 +310,10 @@ router.get('/market/dealers', ensureInitialized, async (req, res) => {
 });
 
 // Get agro-dealer details
-router.get('/market/dealers/:id', ensureInitialized, async (req, res) => {
+router.get('/market/dealers/:id', ensureInitialized, (req, res) => {
   try {
     const { id } = req.params;
-    const result = USE_POSTGRES
-      ? await marketServicePostgres.getAgroDealerDetailsPostgres(parseInt(id))
-      : marketService.getAgroDealerDetails(parseInt(id));
+    const result = marketService.getAgroDealerDetails(parseInt(id));
     res.json(result);
   } catch (error) {
     console.error('Error fetching dealer:', error);
@@ -363,11 +324,9 @@ router.get('/market/dealers/:id', ensureInitialized, async (req, res) => {
 // ==================== MARKET STATS ====================
 
 // Get market statistics
-router.get('/market/stats', ensureInitialized, async (req, res) => {
+router.get('/market/stats', ensureInitialized, (req, res) => {
   try {
-    const result = USE_POSTGRES
-      ? await marketServicePostgres.getMarketStatsPostgres()
-      : marketService.getMarketStats();
+    const result = marketService.getMarketStats();
     res.json(result);
   } catch (error) {
     console.error('Error fetching stats:', error);
@@ -378,7 +337,7 @@ router.get('/market/stats', ensureInitialized, async (req, res) => {
 // ==================== ADMIN ====================
 
 // Update price (admin)
-router.post('/market/prices/update', ensureInitialized, async (req, res) => {
+router.post('/market/prices/update', ensureInitialized, (req, res) => {
   try {
     const { crop, market, price, unit } = req.body;
     
@@ -389,9 +348,7 @@ router.post('/market/prices/update', ensureInitialized, async (req, res) => {
       });
     }
     
-    const result = USE_POSTGRES
-      ? await marketServicePostgres.updatePricePostgres(crop, market, price, unit)
-      : marketService.updatePrice(crop, market, price, unit);
+    const result = marketService.updatePrice(crop, market, price, unit);
     res.json(result);
   } catch (error) {
     console.error('Error updating price:', error);
@@ -400,3 +357,4 @@ router.post('/market/prices/update', ensureInitialized, async (req, res) => {
 });
 
 export default router;
+
