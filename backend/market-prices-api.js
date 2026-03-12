@@ -32,14 +32,18 @@ router.get('/api/market/prices', ensureInitialized, (req, res) => {
     }
 
     // Group prices by crop and map to sub-counties
-    const subcounties = ['bondo', 'ugunja', 'yala', 'gem', 'alego'];
+    // Fixed: Use all 6 valid Siaya sub-counties (removed invalid 'yala', added 'rarieda' and 'ugenya')
+    const subcounties = ['alego', 'bondo', 'gem', 'rarieda', 'ugenya', 'ugunja'];
     const marketToSubcounty = {
+      'Alego Usonga Market': 'alego',
       'Bondo Market': 'bondo',
-      'Ugunja Market': 'ugunja', 
-      'Yala Market': 'yala',
       'Gem Market': 'gem',
-      'Siaya Town Market': 'alego', // Using alego as default for Siaya Town
-      'Siaya Town': 'alego' // Also handle without "Market" suffix
+      'Rarieda Market': 'rarieda',
+      'Ugenya Market': 'ugenya',
+      'Ugunja Market': 'ugunja',
+      'Siaya Town Market': 'alego', // Siaya Town maps to Alego Usonga
+      'Siaya Town': 'alego', // Also handle without "Market" suffix
+      'Yala Market': 'ugunja' // Yala is in Ugunja sub-county
     };
 
     // Create a map to group by crop
@@ -54,11 +58,12 @@ router.get('/api/market/prices', ensureInitialized, (req, res) => {
       if (!cropMap.has(crop)) {
         cropMap.set(crop, {
           crop: crop,
-          bondo: 0,
-          ugunja: 0,
-          yala: 0,
-          gem: 0,
           alego: 0,
+          bondo: 0,
+          gem: 0,
+          rarieda: 0,
+          ugenya: 0,
+          ugunja: 0,
           trend: price.trend || 'stable'
         });
       }
@@ -143,7 +148,7 @@ router.get('/api/market-trends', ensureInitialized, (req, res) => {
   }
 });
 
-// Generate demo trends for Chart.js
+// Generate demo trends for Chart.js with all 6 valid Siaya sub-counties
 function generateDemoTrends(crop) {
   const weeks = [];
   const basePrice = crop === 'Maize' ? 55 : crop === 'Beans' ? 90 : 70;
@@ -153,7 +158,8 @@ function generateDemoTrends(crop) {
     date.setDate(date.getDate() - (i * 7));
     const weekStart = date.toISOString().split('T')[0];
     
-    const subcounties = ['bondo', 'ugunja', 'yala', 'gem', 'alego'];
+    // All 6 valid Siaya County sub-counties (fixed: removed 'yala', added 'rarieda' and 'ugenya')
+    const subcounties = ['alego', 'bondo', 'gem', 'rarieda', 'ugenya', 'ugunja'];
     const trends = subcounties.map(sc => ({
       subcounty: sc,
       week_start: weekStart,
