@@ -18,6 +18,8 @@ import { initializeEmailService } from './email-service.js';
 import { initAuthRoutes } from './auth-routes.js';
 import { initializeAuthTables } from './init-auth-tables.js';
 import { handleUSSD } from './ussd-service.js';
+import { handleTwilioUSSD, TWILIO_USSD_WEBHOOK } from './ussd-twilio-handler.js';
+import { handleAfricaTalkingUSSD, AFRICASTALKING_USSD_WEBHOOK } from './ussd-africastalking-handler.js';
 import communityRoutes from './community-routes.js';
 import feedbackRoutes from './feedback-routes.js';
 import communityService from './community-service-async.js';
@@ -1845,6 +1847,12 @@ app.post('/api/ussd', (req, res) => {
     res.send(response);
   }
 });
+
+// Twilio USSD webhook endpoint
+app.post(TWILIO_USSD_WEBHOOK, handleTwilioUSSD);
+
+// Africa's Talking USSD webhook endpoint
+app.post(AFRICASTALKING_USSD_WEBHOOK, handleAfricaTalkingUSSD);
 
 // Save user feedback about recommendations - DEPRECATED, use /api/feedback from feedback-routes.js
 // This endpoint is kept for backward compatibility but delegates to the new service
