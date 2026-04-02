@@ -566,6 +566,39 @@ function initializeDatabase() {
       preferred_language TEXT DEFAULT 'english',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
+    // Backfill newer farmer-profile columns for older local databases.
+    // This keeps /api/farmers/register compatible without requiring a DB reset.
+    try {
+      const existingColumns = db.prepare('PRAGMA table_info(farmers)').all().map(col => col.name);
+      const missingColumnDDL = [
+        { name: 'first_name', ddl: 'ALTER TABLE farmers ADD COLUMN first_name TEXT' },
+        { name: 'last_name', ddl: 'ALTER TABLE farmers ADD COLUMN last_name TEXT' },
+        { name: 'email', ddl: 'ALTER TABLE farmers ADD COLUMN email TEXT' },
+        { name: 'farm_size', ddl: 'ALTER TABLE farmers ADD COLUMN farm_size REAL' },
+        { name: 'water_source', ddl: 'ALTER TABLE farmers ADD COLUMN water_source TEXT' },
+        { name: 'budget', ddl: 'ALTER TABLE farmers ADD COLUMN budget REAL' },
+        { name: 'is_group', ddl: 'ALTER TABLE farmers ADD COLUMN is_group BOOLEAN DEFAULT 0' },
+        { name: 'group_name', ddl: 'ALTER TABLE farmers ADD COLUMN group_name TEXT' },
+        { name: 'group_registration_number', ddl: 'ALTER TABLE farmers ADD COLUMN group_registration_number TEXT' },
+        { name: 'group_description', ddl: 'ALTER TABLE farmers ADD COLUMN group_description TEXT' },
+        { name: 'leader_first_name', ddl: 'ALTER TABLE farmers ADD COLUMN leader_first_name TEXT' },
+        { name: 'leader_last_name', ddl: 'ALTER TABLE farmers ADD COLUMN leader_last_name TEXT' },
+        { name: 'leader_phone', ddl: 'ALTER TABLE farmers ADD COLUMN leader_phone TEXT' },
+        { name: 'leader_email', ddl: 'ALTER TABLE farmers ADD COLUMN leader_email TEXT' },
+        { name: 'profile_complete', ddl: 'ALTER TABLE farmers ADD COLUMN profile_complete BOOLEAN DEFAULT 0' },
+        { name: 'last_recommendation', ddl: 'ALTER TABLE farmers ADD COLUMN last_recommendation TEXT' },
+        { name: 'updated_at', ddl: 'ALTER TABLE farmers ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP' }
+      ];
+
+      for (const column of missingColumnDDL) {
+        if (!existingColumns.includes(column.name)) {
+          db.exec(column.ddl);
+        }
+      }
+      console.log('✅ Farmers schema compatibility check complete');
+    } catch (schemaErr) {
+      console.error('⚠️ Farmers schema compatibility update failed:', schemaErr.message);
+    }
     console.log('✅ Farmers table ready');
 
     db.exec(`CREATE TABLE IF NOT EXISTS predictions (

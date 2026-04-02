@@ -3,88 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Cache-Control" content="max-age=31536000, must-revalidate">
     <title>Login - Fahamu Shamba</title>
-    
-    <!-- Preload Critical Assets -->
-    <link rel="preload" href="/fahamu-logo.png" as="image">
-    <link rel="preload" href="/language-utils.js" as="script">
-    
     <link rel="icon" href="/fahamu-logo.png" type="image/png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="/css/toast.css">
-    <link rel="stylesheet" href="/css/mobile-responsiveness-fixes.css">
-    <script src="/language-utils.js"></script>
-    <script src="/js/toast.js" defer></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Segoe UI', 'Roboto', sans-serif;
-            background: url('/images/irewolede-PvwdlXqo85k-unsplash.jpg') center/cover no-repeat fixed;
+            background: url('/images/irewolede-PvwdlXqo85k-unsplash.jpg') center center / cover no-repeat fixed;
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 20px;
-            opacity: 0;
-            transition: opacity 0.5s ease-in-out;
-            position: relative;
-            color: #fff;
-        }
-
-        body::after {
-            content: '';
-            position: fixed;
-            inset: 0;
-            background: rgba(16, 58, 35, 0.55);
-            z-index: 0;
-            pointer-events: none;
-        }
-        body.loaded {
-            opacity: 1;
         }
         
-        /* Page Loader */
-        .page-loader {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: #ffffff;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 9999;
-            transition: opacity 0.5s ease, visibility 0.5s ease;
-        }
-        .loader-logo {
-            width: 150px;
-            height: 150px;
-            margin-bottom: 20px;
-            animation: pulse 1.5s ease-in-out infinite;
-        }
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-        }
-        .page-loader.fade-out {
-            opacity: 0;
-            visibility: hidden;
-        }
-        .loader-spinner {
-            width: 50px;
-            height: 50px;
-            border: 5px solid #f3f3f3;
-            border-top: 5px solid #2E7D32;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
         .container {
             background: rgba(255, 255, 255, 0.95);
             border-radius: 20px;
@@ -92,358 +25,269 @@
             width: 100%;
             max-width: 400px;
             box-shadow: 0 20px 40px rgba(0,0,0,0.3);
-            position: relative;
-            z-index: 1;
         }
+        
         .logo {
             text-align: center;
             margin-bottom: 30px;
         }
+        
         .logo img {
+            width: 80px;
             height: 80px;
             margin-bottom: 10px;
         }
+        
         .logo h1 {
             color: #2E7D32;
             font-size: 24px;
+            margin-bottom: 5px;
         }
-        h2 {
-            text-align: center;
-            color: #333;
-            margin-bottom: 30px;
+        
+        .logo p {
+            color: #666;
+            font-size: 14px;
         }
+        
         .form-group {
             margin-bottom: 20px;
         }
-        label {
+        
+        .form-group label {
             display: block;
-            margin-bottom: 8px;
-            color: #555;
-            font-weight: 600;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 500;
         }
-        input {
+        
+        .form-group input {
             width: 100%;
-            padding: 14px;
+            padding: 12px;
             border: 2px solid #ddd;
-            border-radius: 10px;
+            border-radius: 8px;
             font-size: 16px;
             transition: border-color 0.3s;
         }
-        input:focus {
+        
+        .form-group input:focus {
             outline: none;
             border-color: #2E7D32;
         }
+        
         .btn {
             width: 100%;
             padding: 14px;
             background: #2E7D32;
             color: white;
             border: none;
-            border-radius: 10px;
+            border-radius: 8px;
             font-size: 16px;
-            font-weight: 700;
+            font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: background 0.3s;
         }
+        
         .btn:hover {
             background: #1B5E20;
-            transform: translateY(-2px);
         }
+        
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
         .links {
             text-align: center;
             margin-top: 20px;
         }
+        
         .links a {
             color: #2E7D32;
             text-decoration: none;
-            font-weight: 600;
+            font-size: 14px;
         }
+        
         .links a:hover {
             text-decoration: underline;
         }
-        .back-link {
-            text-align: center;
-            margin-top: 20px;
-        }
-        .back-link a {
-            color: #666;
-            text-decoration: none;
-        }
         
-        /* ===== LANGUAGE SELECTOR ===== */
-        .language-wrapper {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-        .language-label {
-            font-weight: bold;
-            color: #2E7D32;
-            font-size: 0.9rem;
-        }
-        .language-dropdown-container {
-            position: relative;
-            display: inline-block;
-        }
-        .language-dropdown-btn {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 8px;
-            padding: 8px 14px;
-            background: #2E7D32;
-            color: white;
-            border: 2px solid white;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            cursor: pointer;
-            min-width: 120px;
-            transition: all 0.3s ease;
-        }
-        .language-dropdown-btn:hover {
-            background: #1B5E20;
-        }
-        .language-dropdown-btn i {
-            font-size: 0.75rem;
-        }
-        .language-dropdown-menu {
+        .message {
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
             display: none;
-            position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
-            z-index: 1000;
-            margin-top: 5px;
-            overflow: hidden;
-        }
-        .language-dropdown-menu.show {
-            display: block;
-        }
-        .language-option {
-            padding: 10px 14px;
-            color: #333;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            font-weight: 500;
-            font-size: 0.85rem;
-        }
-        .language-option:hover {
-            background: #2E7D32;
-            color: white;
         }
         
-        /* Password toggle styles */
-        .password-wrapper {
-            position: relative;
+        .message.error {
+            background: #ffebee;
+            color: #c62828;
+            border: 1px solid #ffcdd2;
         }
-        .password-toggle {
-            position: absolute;
-            right: 12px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: none;
-            border: none;
-            cursor: pointer;
+        
+        .message.success {
+            background: #e8f5e8;
+            color: #2e7d32;
+            border: 1px solid #c8e6c9;
+        }
+        
+        .demo-info {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 12px;
+        }
+        
+        .demo-info h4 {
+            color: #2E7D32;
+            margin-bottom: 8px;
+        }
+        
+        .demo-info p {
+            margin: 4px 0;
             color: #666;
-            font-size: 18px;
-            padding: 5px;
-            transition: color 0.3s;
-        }
-        .password-toggle:hover {
-            color: #2E7D32;
-        }
-        .forgot-password {
-            text-align: right;
-            margin-top: 8px;
-        }
-        .forgot-password a {
-            color: #2E7D32;
-            text-decoration: none;
-            font-size: 14px;
-            font-weight: 600;
-        }
-        .forgot-password a:hover {
-            text-decoration: underline;
         }
     </style>
 </head>
-<body class="loading">
-    <div class="page-loader" id="pageLoader">
-        <img src="/fahamu-logo.png" alt="Loading..." class="loader-logo">
-        <div class="loader-spinner"></div>
-    </div>
+<body>
     <div class="container">
-        <div class="language-wrapper">
-            <span class="language-label">Language:</span>
-            <div class="language-dropdown-container">
-                <button type="button" class="language-dropdown-btn" id="languageBtn" onclick="toggleLanguageDropdown()">
-                    <span id="languageBtnText">Choose Language</span>
-                    <i class="fas fa-chevron-down"></i>
-                </button>
-                <div class="language-dropdown-menu" id="languageDropdownMenu">
-                    <div class="language-option" onclick="selectLanguage('en', '🌐 English')">🌐 English</div>
-                    <div class="language-option" onclick="selectLanguage('sw', '🌐 Kiswahili')">🌐 Kiswahili</div>
-                    <div class="language-option" onclick="selectLanguage('luo', '🌐 Dholuo')">🌐 Dholuo</div>
-                </div>
-            </div>
-            <select id="languageSelect" onchange="changeLanguage(this.value)" style="display:none;">
-                <option value="en">English</option>
-                <option value="sw">Kiswahili</option>
-                <option value="luo">Dholuo</option>
-            </select>
-        </div>
         <div class="logo">
-            <img src="/fahamu-logo.png" alt="Fahamu Shamba">
-            <h1 data-i18n="landing_title">Fahamu Shamba</h1>
+            <img src="/fahamu-logo.png" alt="Fahamu Shamba" onerror="this.style.display='none'">
+            <h1>Fahamu Shamba</h1>
+            <p>Smart Farming Solutions</p>
         </div>
-        <h2 data-i18n="welcome_back"></h2>
+        
+        <div class="demo-info">
+            <h4>Demo Credentials</h4>
+            <p><strong>Username:</strong> Jemo</p>
+            <p><strong>Password:</strong> Jemo@721</p>
+        </div>
+        
+        <div id="message" class="message"></div>
+        
         <form id="loginForm">
             <div class="form-group">
-                <label data-i18n="username"></label>
-                <input type="text" id="username" data-i18n-placeholder="enter_username" required>
+                <label for="email">Username or Email</label>
+                <input type="text" id="email" name="email" required placeholder="Enter username or email">
             </div>
+            
             <div class="form-group">
-                <label data-i18n="password"></label>
-                <div class="password-wrapper">
-                    <input type="password" id="password" data-i18n-placeholder="create_password" required>
-                    <button type="button" class="password-toggle" onclick="togglePassword('password')">
-                        <i class="fas fa-eye" id="password-icon"></i>
-                    </button>
-                </div>
-                <div class="forgot-password">
-                    <a href="#" onclick="alert('Please contact support at support@fahamushamba.com or call +254700000000 to reset your password.'); return false;">Forgot Password?</a>
-                </div>
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required placeholder="Enter your password">
             </div>
-            <button type="submit" class="btn" data-i18n="login"></button>
+            
+            <button type="submit" class="btn" id="loginBtn">
+                Login
+            </button>
         </form>
+        
         <div class="links">
-            <p><span data-i18n="dont_have_account"></span> <a href="/signup.html" data-i18n="register"></a></p>
-        </div>
-        <div class="back-link">
-            <a href="/"><i class="fas fa-arrow-left"></i> <span data-i18n="back_home"></span></a>
+            <p>Don't have an account? <a href="/signup.html">Register here</a></p>
+            <p><a href="/">Back to Home</a></p>
         </div>
     </div>
+
     <script>
-        // Initialize language on page load
-        document.addEventListener('DOMContentLoaded', () => {
-            initializeLanguage();
+        const loginForm = document.getElementById('loginForm');
+        const loginBtn = document.getElementById('loginBtn');
+        const messageDiv = document.getElementById('message');
+
+        function showMessage(message, type) {
+            messageDiv.textContent = message;
+            messageDiv.className = `message ${type}`;
+            messageDiv.style.display = 'block';
             
-            // Allow small delay for translations to apply before showing page
+            // Hide message after 5 seconds
             setTimeout(() => {
-                const loader = document.getElementById('pageLoader');
-                if (loader) loader.classList.add('fade-out');
-                document.body.classList.add('loaded');
-                document.body.classList.remove('loading');
-            }, 500);
-        });
-        
-        // Language functions
-        function changeLanguage(lang) {
-            setLanguage(lang);
-            translatePage(lang);
+                messageDiv.style.display = 'none';
+            }, 5000);
         }
-        
-        // Custom dropdown functions
-        function toggleLanguageDropdown() {
-            const menu = document.getElementById('languageDropdownMenu');
-            if (menu) menu.classList.toggle('show');
-        }
-        
-        function selectLanguage(lang, text) {
-            const btnText = document.getElementById('languageBtnText');
-            if (btnText) btnText.textContent = text;
-            
-            const normalizedLang = {
-                'en': 'english',
-                'sw': 'swahili',
-                'luo': 'luo'
-            }[lang] || 'english';
 
-            const select = document.getElementById('languageSelect');
-            if (select) select.value = normalizedLang;
-
-            const menu = document.getElementById('languageDropdownMenu');
-            if (menu) menu.classList.remove('show');
-            changeLanguage(normalizedLang);
-        }
-        
-        // Close dropdown when clicking outside
-        document.addEventListener('click', function(event) {
-            const container = document.querySelector('.language-dropdown-container');
-            if (container && !container.contains(event.target)) {
-                const menu = document.getElementById('languageDropdownMenu');
-                if (menu) menu.classList.remove('show');
-            }
-        });
-        
-        // Toggle password visibility
-        function togglePassword(inputId) {
-            const input = document.getElementById(inputId);
-            const icon = document.getElementById(inputId + '-icon');
-            
-            if (input.type === 'password') {
-                input.type = 'text';
-                icon.classList.remove('fa-eye');
-                icon.classList.add('fa-eye-slash');
-            } else {
-                input.type = 'password';
-                icon.classList.remove('fa-eye-slash');
-                icon.classList.add('fa-eye');
-            }
-        }
-        
-        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+        loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            const username = document.getElementById('username').value.trim();
+            const identifier = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
-            const submitBtn = document.querySelector('#loginForm .btn');
             
-            if (!username || !password) {
-                showToast(t('all_fields_required'), 'error');
+            if (!identifier || !password) {
+                showMessage('Please fill in all fields', 'error');
                 return;
             }
-
-            // Strictly use username for login (matching create account page)
-            const loginData = { username: username.toLowerCase(), password };
-
+            
+            // Show loading state
+            loginBtn.disabled = true;
+            loginBtn.textContent = 'Logging in...';
+            
             try {
-                submitBtn.disabled = true;
-                submitBtn.textContent = t('loading');
+                // Try canonical auth endpoint first (server.js), then fallback to legacy endpoint (serverless-server.js)
+                const payloads = [
+                    { url: '/api/auth/login', body: { username: identifier.toLowerCase(), password } },
+                    { url: '/api/login', body: { username: identifier, email: identifier, password } }
+                ];
 
-                const response = await fetch('/api/auth/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(loginData)
-                });
+                let data = null;
+                let loginOk = false;
+                let lastErrorMessage = 'Login failed';
 
-                const result = await response.json();
-                if (!response.ok || result.status !== 'success') {
-                    throw new Error(result.message || t('invalid_credentials'));
+                for (const attempt of payloads) {
+                    const response = await fetch(attempt.url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(attempt.body)
+                    });
+
+                    let responseData = {};
+                    try {
+                        responseData = await response.json();
+                    } catch (_) {
+                        responseData = {};
+                    }
+
+                    const successFlag = responseData.success === true || responseData.status === 'success';
+                    if (response.ok && successFlag && responseData.token) {
+                        data = responseData;
+                        loginOk = true;
+                        break;
+                    }
+
+                    lastErrorMessage = responseData.message || lastErrorMessage;
                 }
 
-                localStorage.setItem('token', result.token);
-                localStorage.setItem('user', JSON.stringify(result.user || {}));
-                
-                // Apply user's language preference after successful login
-                if (result.user && result.user.preferred_language) {
-                    setLanguage(result.user.preferred_language);
-                    localStorage.setItem('fahamuShamba_language', result.user.preferred_language);
-                    console.log('Applied language preference after login:', result.user.preferred_language);
+                if (loginOk && data) {
+                    showMessage('Login successful! Redirecting...', 'success');
+
+                    // Keep both key formats for compatibility across old/new pages.
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('user', JSON.stringify(data.user || {}));
+                    localStorage.setItem('fahamu_token', data.token);
+                    localStorage.setItem('fahamu_user', JSON.stringify(data.user || {}));
+
+                    // Redirect to dashboard page (works for both static and routed deployments).
+                    setTimeout(() => {
+                        window.location.href = '/dashboard.html';
+                    }, 800);
+                } else {
+                    showMessage(lastErrorMessage, 'error');
                 }
-                
-                window.location.href = '/dashboard.html';
             } catch (error) {
-                showToast(error.message || t('invalid_credentials'), 'error');
+                console.error('Login error:', error);
+                showMessage('Network error. Please try again.', 'error');
             } finally {
-                submitBtn.disabled = false;
-                submitBtn.textContent = t('login');
+                // Reset button state
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Login';
+            }
+        });
+
+        // Prefill username after successful signup
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const username = urlParams.get('username');
+            const emailInput = document.getElementById('email');
+            if (username && emailInput) {
+                emailInput.value = username;
             }
         });
     </script>

@@ -2169,8 +2169,26 @@
                 const response = await fetch('/api/auth/user', {
                     headers: { Authorization: `Bearer ${token}` }
                 });
-                const payload = await response.json();
+                let payload = {};
+                try {
+                    payload = await response.json();
+                } catch (_) {
+                    payload = {};
+                }
+
                 if (!response.ok || payload.status !== 'success') {
+                    // Compatibility path for legacy/serverless deployments where /api/auth/user
+                    // is not implemented but login token/user are still stored in localStorage.
+                    if (response.status === 404 || response.status === 405) {
+                        const cachedUser = localStorage.getItem('user');
+                        if (cachedUser) {
+                            try {
+                                return JSON.parse(cachedUser);
+                            } catch (_) {
+                                // Fall through to normal invalid-session handling below.
+                            }
+                        }
+                    }
                     throw new Error(payload.message || 'Invalid session');
                 }
 
