@@ -1,0 +1,93 @@
+{
+  "trained_at": "2026-04-03T20:26:05.317Z",
+  "algorithm": "categorical_naive_bayes",
+  "features": [
+    "sub_county",
+    "season",
+    "soil_type",
+    "temperature_bucket",
+    "rain_bucket",
+    "humidity_bucket",
+    "market_signal"
+  ],
+  "classes": [
+    "Maize"
+  ],
+  "priors": {
+    "Maize": 1
+  },
+  "class_counts": {
+    "Maize": 7672
+  },
+  "feature_counts": {
+    "Maize": {
+      "sub_county": {
+        "Alego Usonga": 7672
+      },
+      "season": {
+        "dry": 3808,
+        "long_rains": 1932,
+        "short_rains": 1932
+      },
+      "soil_type": {
+        "loam": 7672
+      },
+      "temperature_bucket": {
+        "moderate": 7502,
+        "cool": 165,
+        "hot": 5
+      },
+      "rain_bucket": {
+        "none": 2030,
+        "moderate": 2506,
+        "heavy": 523,
+        "light": 2613
+      },
+      "humidity_bucket": {
+        "humid": 7093,
+        "normal": 571,
+        "dry": 8
+      },
+      "market_signal": {
+        "fair": 7672
+      }
+    }
+  },
+  "feature_values": {
+    "sub_county": [
+      "Alego Usonga"
+    ],
+    "season": [
+      "dry",
+      "long_rains",
+      "short_rains"
+    ],
+    "soil_type": [
+      "loam"
+    ],
+    "temperature_bucket": [
+      "moderate",
+      "cool",
+      "hot"
+    ],
+    "rain_bucket": [
+      "none",
+      "moderate",
+      "heavy",
+      "light"
+    ],
+    "humidity_bucket": [
+      "humid",
+      "normal",
+      "dry"
+    ],
+    "market_signal": [
+      "fair"
+    ]
+  },
+  "metrics": {
+    "train_samples": 7672,
+    "eval_samples": 1918,
+    "accuracy": 1
+  }
+}

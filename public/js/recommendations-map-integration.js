@@ -2,6 +2,7 @@
     'use strict';
 
     const boundaries = window.SIAYA_BOUNDARIES;
+    const soilMapData = window.SIAYA_SOIL_MAP_DATA;
 
     if (!boundaries || !Array.isArray(boundaries.features)) {
         return;
@@ -45,6 +46,7 @@
 
     document.addEventListener('DOMContentLoaded', () => {
         buildMap();
+        bindGpsLocator();
         patchDemoLoader();
         const profileLocation = document.getElementById('location')?.value;
         const matchedFeature = features.find((feature) => normalizeSubCountyForPrediction(feature.subCounty) === profileLocation);
@@ -60,6 +62,7 @@
         const legend = document.getElementById('recommendationMapLegend');
         const regions = document.getElementById('recommendationMapRegions');
         const labels = document.getElementById('recommendationMapLabels');
+        const mapStage = document.querySelector('.map-selection-stage');
 
         filter.innerHTML = '<option value="">All Siaya County</option>' + subCounties.map((subCounty) =>
             `<option value="${subCounty}">${subCounty}</option>`
@@ -103,6 +106,11 @@
             });
         });
 
+        if (mapStage) {
+            // Delegate pointer selection so ward picking still works under browser zoom/tap inaccuracies.
+            mapStage.addEventListener('pointerup', handleMapPointerSelection);
+        }
+
         filter.addEventListener('change', () => {
             mapState.selectedSubCounty = filter.value;
             updateWardOptions();
@@ -120,6 +128,118 @@
         });
 
         updateWardOptions();
+    }
+
+    function bindGpsLocator() {
+        const gpsButton = document.getElementById('gpsLocateRecommendationBtn');
+        const gpsHint = document.getElementById('gpsPermissionHint');
+        if (!gpsButton) return;
+
+        const setGpsHint = (message) => {
+            if (gpsHint) gpsHint.textContent = message;
+        };
+
+        const deniedHelpText = 'Location permission is blocked. On Android Chrome: tap the lock icon in the address bar > Permissions/Site settings > Location > Allow, then reload this page.';
+
+        const checkPermissionState = async () => {
+            try {
+                if (!navigator.permissions || !navigator.permissions.query) return null;
+                const status = await navigator.permissions.query({ name: 'geolocation' });
+                return status?.state || null;
+            } catch {
+                return null;
+            }
+        };
+
+        gpsButton.addEventListener('click', async () => {
+            if (!navigator.geolocation) {
+                setGpsHint('GPS is not supported on this device/browser.');
+                if (typeof window.showToast === 'function') {
+                    window.showToast('GPS is not supported on this device/browser.', 'error');
+                }
+                return;
+            }
+
+            const permissionState = await checkPermissionState();
+            if (permissionState === 'denied') {
+                setGpsHint(deniedHelpText);
+                if (typeof window.showToast === 'function') {
+                    window.showToast('Location permission is currently blocked in browser settings.', 'error');
+                }
+                return;
+            }
+
+            gpsButton.disabled = true;
+            const originalText = gpsButton.innerHTML;
+            gpsButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Locating...';
+            setGpsHint('Requesting your GPS location...');
+
+            navigator.geolocation.getCurrentPosition(
+                async (position) => {
+                    try {
+                        const nearestFeature = findNearestWard(
+                            position.coords.latitude,
+                            position.coords.longitude
+                        );
+
+                        if (!nearestFeature) {
+                            throw new Error('No nearby ward found');
+                        }
+
+                        await selectWard(nearestFeature.id);
+                        const distanceKm = haversineDistanceKm(
+                            position.coords.latitude,
+                            position.coords.longitude,
+                            nearestFeature.centroid.lat,
+                            nearestFeature.centroid.lng
+                        );
+
+                        if (typeof window.showToast === 'function') {
+                            window.showToast(
+                                `Mapped via GPS to ${nearestFeature.ward}, ${nearestFeature.subCounty} (${distanceKm.toFixed(1)} km).`,
+                                'success'
+                            );
+                        }
+                        setGpsHint(`GPS mapped successfully to ${nearestFeature.ward}, ${nearestFeature.subCounty}.`);
+                    } catch (error) {
+                        setGpsHint('Could not map GPS to a ward. You can still select a ward manually from the map.');
+                        if (typeof window.showToast === 'function') {
+                            window.showToast('Could not map your GPS location to a ward right now.', 'error');
+                        }
+                    } finally {
+                        gpsButton.disabled = false;
+                        gpsButton.innerHTML = originalText;
+                    }
+                },
+                (error) => {
+                    gpsButton.disabled = false;
+                    gpsButton.innerHTML = originalText;
+
+                    const message = error?.code === 1
+                        ? 'Location permission denied. Enable GPS permission and try again.'
+                        : 'Unable to fetch GPS location right now.';
+
+                    if (error?.code === 1) {
+                        setGpsHint(deniedHelpText);
+                    } else if (error?.code === 2) {
+                        setGpsHint('Location signal unavailable. Ensure GPS/location services are turned on and try again.');
+                    } else if (error?.code === 3) {
+                        setGpsHint('GPS lookup timed out. Move to an open area and try again.');
+                    } else {
+                        setGpsHint('GPS lookup failed. You can continue by selecting a ward manually.');
+                    }
+
+                    if (typeof window.showToast === 'function') {
+                        window.showToast(message, 'error');
+                    }
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 15000,
+                    maximumAge: 120000
+                }
+            );
+        });
     }
 
     function projectPoint([lng, lat]) {
@@ -140,9 +260,86 @@
     }
 
     function normalizeSubCountyForPrediction(subCountyName) {
-        const normalized = String(subCountyName || '').toLowerCase();
-        if (normalized === 'alego usonga') return 'alego';
-        return normalized.split(' ')[0];
+        const normalized = String(subCountyName || '').trim().toLowerCase();
+        const map = {
+            alego: 'Alego Usonga',
+            'alego usonga': 'Alego Usonga',
+            bondo: 'Bondo',
+            gem: 'Gem',
+            rarieda: 'Rarieda',
+            ugenya: 'Ugenya',
+            ugunja: 'Ugunja'
+        };
+        return map[normalized] || subCountyName;
+    }
+
+    function normalizeSubCountyKeyForDataset(subCountyName) {
+        const normalized = String(subCountyName || '').trim().toLowerCase();
+        const map = {
+            'alego usonga': 'alego',
+            bondo: 'bondo',
+            gem: 'gem',
+            rarieda: 'rarieda',
+            ugenya: 'ugenya',
+            ugunja: 'ugunja'
+        };
+        return map[normalized] || normalized;
+    }
+
+    function deriveSoilCategory(soilTypeText) {
+        const value = String(soilTypeText || '').toLowerCase();
+        if (value.includes('volcanic')) return 'volcanic';
+        if (value.includes('sandy')) return 'sandy';
+        if (value.includes('clay')) return 'clay';
+        if (value.includes('loam')) return 'loam';
+        return '';
+    }
+
+    function getWardSoilFromDataset(feature) {
+        const wards = soilMapData?.wards;
+        if (!Array.isArray(wards) || !feature?.centroid) return null;
+
+        const subCountyKey = normalizeSubCountyKeyForDataset(feature.subCounty);
+        const candidates = wards.filter((ward) => normalizeSubCountyKeyForDataset(ward.subCounty) === subCountyKey);
+        if (!candidates.length) return null;
+
+        let nearest = null;
+        let nearestDistance = Number.POSITIVE_INFINITY;
+        candidates.forEach((ward) => {
+            const distance = haversineDistanceKm(
+                Number(feature.centroid.lat),
+                Number(feature.centroid.lng),
+                Number(ward.lat),
+                Number(ward.lng)
+            );
+            if (distance < nearestDistance) {
+                nearestDistance = distance;
+                nearest = ward;
+            }
+        });
+
+        if (!nearest) return null;
+        const category = deriveSoilCategory(nearest.soilType);
+        if (!category) return null;
+
+        return {
+            category,
+            label: nearest.soilType,
+            source: 'ward_dataset'
+        };
+    }
+
+    function getLocalSoilFallback(subCountyName) {
+        const canonical = normalizeSubCountyForPrediction(subCountyName);
+        const fallbackMap = {
+            'Alego Usonga': 'loam',
+            'Bondo': 'loam',
+            'Gem': 'loam',
+            'Rarieda': 'loam',
+            'Ugenya': 'loam',
+            'Ugunja': 'clay'
+        };
+        return fallbackMap[canonical] || '';
     }
 
     function getVisibleFeatures() {
@@ -207,6 +404,21 @@
         const soilTypeReadout = document.getElementById('soilTypeReadout');
         const selectedSoilDisplay = document.getElementById('selectedSoilDisplay');
         const soilHelperReadout = document.getElementById('soilHelperReadout');
+        const soilHelper = document.getElementById('soilHelper');
+        const soilInsightText = document.getElementById('soilInsightText');
+        const soilSourceBadge = document.getElementById('soilSourceBadge');
+
+        const wardSoil = getWardSoilFromDataset(feature);
+        if (wardSoil) {
+            soilTypeSelect.value = wardSoil.category;
+            soilTypeReadout.value = capitalize(wardSoil.label);
+            selectedSoilDisplay.textContent = capitalize(wardSoil.label);
+            soilHelperReadout.textContent = `📍 Auto-filled from ward soil dataset for ${feature.ward}.`;
+            if (soilHelper) soilHelper.textContent = `Detected ${capitalize(wardSoil.label)} soil for ${feature.ward}.`;
+            if (soilInsightText) soilInsightText.textContent = `${feature.ward}, ${feature.subCounty} maps to ${capitalize(wardSoil.label)} in the ward-level soil dataset.`;
+            if (soilSourceBadge) soilSourceBadge.style.display = 'inline-flex';
+            return;
+        }
 
         try {
             if (typeof window.fetchGeologicalSoilData !== 'function') {
@@ -214,19 +426,34 @@
             }
 
             const soilData = await window.fetchGeologicalSoilData(locationValue);
-            soilTypeSelect.value = soilData.recommendedSoilType || '';
-            soilTypeReadout.value = capitalize(soilData.recommendedSoilType || '');
-            selectedSoilDisplay.textContent = capitalize(soilData.recommendedSoilType || '');
+            const soilTypeValue = String(soilData.recommendedSoilType || '').trim().toLowerCase();
+            soilTypeSelect.value = soilTypeValue;
+            soilTypeReadout.value = capitalize(soilTypeValue);
+            selectedSoilDisplay.textContent = capitalize(soilTypeValue);
             soilHelperReadout.textContent = `📍 Auto-filled from ${feature.ward} in ${feature.subCounty} using the geological soil profile.`;
-
-            if (typeof window.autoUpdateSoilFromLocation === 'function') {
-                await window.autoUpdateSoilFromLocation();
-            }
+            if (soilHelper) soilHelper.textContent = `Detected ${capitalize(soilTypeValue)} soil from ${feature.subCounty} geological profile.`;
+            if (soilInsightText) soilInsightText.textContent = `${feature.ward} currently uses ${capitalize(soilTypeValue)} from the geological soil profile.`;
+            if (soilSourceBadge) soilSourceBadge.style.display = 'inline-flex';
         } catch (error) {
+            const fallbackSoil = getLocalSoilFallback(feature.subCounty);
+            if (fallbackSoil) {
+                soilTypeSelect.value = fallbackSoil;
+                soilTypeReadout.value = capitalize(fallbackSoil);
+                selectedSoilDisplay.textContent = capitalize(fallbackSoil);
+                soilHelperReadout.textContent = `📍 Auto-filled from ${feature.subCounty} local soil fallback profile.`;
+                if (soilHelper) soilHelper.textContent = `Detected ${capitalize(fallbackSoil)} soil from ${feature.subCounty} fallback profile.`;
+                if (soilInsightText) soilInsightText.textContent = `${feature.ward} has no direct row in the soil API yet, so we used ${feature.subCounty} fallback soil data.`;
+                if (soilSourceBadge) soilSourceBadge.style.display = 'inline-flex';
+                return;
+            }
+
             soilTypeSelect.value = '';
             soilTypeReadout.value = '';
             selectedSoilDisplay.textContent = 'Unavailable';
             soilHelperReadout.textContent = '📍 Soil type could not be loaded from the selected region right now.';
+            if (soilHelper) soilHelper.textContent = 'We could not fetch soil data automatically. Please choose the soil type manually.';
+            if (soilInsightText) soilInsightText.textContent = 'Automatic soil detection is unavailable for this ward right now.';
+            if (soilSourceBadge) soilSourceBadge.style.display = 'none';
         }
     }
 
@@ -238,8 +465,9 @@
         climateInsightText.textContent = `Loading climate for ${feature.ward}...`;
 
         try {
-            const apiSubCounty = normalizeSubCountyForPrediction(feature.subCounty);
-            const response = await fetch(`/api/weather/current/${encodeURIComponent(apiSubCounty)}`);
+            const response = await fetch(
+                `/api/weather/current-by-coords?lat=${encodeURIComponent(feature.centroid.lat)}&lon=${encodeURIComponent(feature.centroid.lng)}&ward=${encodeURIComponent(feature.ward)}&subcounty=${encodeURIComponent(feature.subCounty)}`
+            );
             const payload = await response.json();
             if (!response.ok || !payload.success) {
                 throw new Error(payload.error || 'Climate data unavailable');
@@ -291,5 +519,90 @@
 
     function capitalize(text) {
         return text ? text.charAt(0).toUpperCase() + text.slice(1) : '';
+    }
+
+    function handleMapPointerSelection(event) {
+        if (!event || !Number.isFinite(event.clientX) || !Number.isFinite(event.clientY)) return;
+        if (event.target && event.target.closest('.map-ward-shape')) return;
+
+        const mapStage = document.querySelector('.map-selection-stage');
+        if (!mapStage || typeof mapStage.createSVGPoint !== 'function') return;
+
+        const svgPoint = mapStage.createSVGPoint();
+        svgPoint.x = event.clientX;
+        svgPoint.y = event.clientY;
+
+        const ctm = mapStage.getScreenCTM();
+        if (!ctm) return;
+
+        const localPoint = svgPoint.matrixTransform(ctm.inverse());
+        const hitWardId = resolveWardIdFromSvgPoint(localPoint, mapStage);
+        if (hitWardId) {
+            selectWard(hitWardId);
+        }
+    }
+
+    function resolveWardIdFromSvgPoint(localPoint, mapStage) {
+        const shapes = Array.from(document.querySelectorAll('.map-ward-shape'));
+        if (!shapes.length) return '';
+
+        for (const shape of shapes) {
+            if (typeof shape.isPointInFill === 'function' && shape.isPointInFill(localPoint)) {
+                return shape.dataset.wardId || '';
+            }
+        }
+
+        // Fallback: pick nearest centroid if direct hit-testing misses at high/low zoom.
+        let nearestWardId = '';
+        let nearestDistancePx = Number.POSITIVE_INFINITY;
+        features.forEach((feature) => {
+            const [x, y] = projectPoint([feature.centroid.lng, feature.centroid.lat]);
+            const dx = localPoint.x - x;
+            const dy = localPoint.y - y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            if (distance < nearestDistancePx) {
+                nearestDistancePx = distance;
+                nearestWardId = feature.id;
+            }
+        });
+
+        const mapDiagonal = Math.sqrt((mapStage.viewBox.baseVal.width ** 2) + (mapStage.viewBox.baseVal.height ** 2));
+        const adaptiveThreshold = Math.max(48, mapDiagonal * 0.08);
+        return nearestDistancePx <= adaptiveThreshold ? nearestWardId : '';
+    }
+
+    function findNearestWard(lat, lng) {
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+
+        let nearest = null;
+        let nearestDistance = Number.POSITIVE_INFINITY;
+
+        features.forEach((feature) => {
+            const distance = haversineDistanceKm(
+                lat,
+                lng,
+                Number(feature.centroid.lat),
+                Number(feature.centroid.lng)
+            );
+            if (distance < nearestDistance) {
+                nearestDistance = distance;
+                nearest = feature;
+            }
+        });
+
+        return nearest;
+    }
+
+    function haversineDistanceKm(lat1, lon1, lat2, lon2) {
+        const toRadians = (value) => (value * Math.PI) / 180;
+        const earthRadiusKm = 6371;
+
+        const dLat = toRadians(lat2 - lat1);
+        const dLon = toRadians(lon2 - lon1);
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+            + Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2))
+            * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return earthRadiusKm * c;
     }
 })();

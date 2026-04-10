@@ -6,23 +6,85 @@
 import pg from 'pg';
 const { Pool } = pg;
 
-// Create connection pool
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-  max: 20, // Maximum number of connections
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
-});
+const normalizePostgresUrl = (value) => {
+  const raw = (value || '').trim().replace(/^['"]|['"]$/g, '');
+  if (!raw) return '';
 
-// Test connection on startup
-pool.on('connect', () => {
-  console.log('✅ PostgreSQL connected successfully');
-});
+  try {
+    const parsed = new URL(raw);
+    if (parsed.protocol === 'postgres:' || parsed.protocol === 'postgresql:') {
+      return raw;
+    }
+    return '';
+  } catch {
+    // Attempt to repair common malformed URLs where password has unescaped special chars.
+    if (!/^postgres(ql)?:\/\//i.test(raw)) {
+      return '';
+    }
 
-pool.on('error', (err) => {
-  console.error('❌ Unexpected PostgreSQL error:', err);
-});
+    const schemeEnd = raw.indexOf('://') + 3;
+    const atIndex = raw.lastIndexOf('@');
+    if (atIndex === -1 || atIndex <= schemeEnd) return '';
+
+    const slashAfterHost = raw.indexOf('/', atIndex);
+    if (slashAfterHost === -1) return '';
+
+    const credentials = raw.slice(schemeEnd, atIndex);
+    const hostPort = raw.slice(atIndex + 1, slashAfterHost);
+    const pathAndQuery = raw.slice(slashAfterHost);
+    const firstColon = credentials.indexOf(':');
+    if (firstColon === -1) return '';
+
+    const username = credentials.slice(0, firstColon);
+    const password = credentials.slice(firstColon + 1);
+    if (!username || !password || !hostPort) return '';
+
+    const repaired = `${raw.slice(0, schemeEnd)}${username}:${encodeURIComponent(password)}@${hostPort}${pathAndQuery}`;
+    try {
+      const parsedRepaired = new URL(repaired);
+      if (parsedRepaired.protocol === 'postgres:' || parsedRepaired.protocol === 'postgresql:') {
+        return repaired;
+      }
+      return '';
+    } catch {
+      return '';
+    }
+  }
+};
+
+const rawDatabaseUrl = (process.env.DATABASE_URL || '').trim().replace(/^['"]|['"]$/g, '');
+let connectionString = '';
+let pool;
+
+connectionString = normalizePostgresUrl(rawDatabaseUrl);
+
+if (connectionString) {
+  pool = new Pool({
+    connectionString,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+    max: 20,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 2000,
+  });
+
+  // Test connection on startup
+  pool.on('connect', () => {
+    console.log('✅ PostgreSQL connected successfully');
+  });
+
+  pool.on('error', (err) => {
+    console.error('❌ Unexpected PostgreSQL error:', err);
+  });
+} else {
+  console.warn('⚠️ PostgreSQL disabled: DATABASE_URL is missing or invalid.');
+  pool = {
+    query: async () => {
+      throw new Error('PostgreSQL connection is not configured');
+    },
+    on: () => {},
+    end: async () => {}
+  };
+}
 
 /**
  * Execute a query and return all rows

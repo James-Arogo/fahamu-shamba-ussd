@@ -8,6 +8,7 @@ const router = express.Router();
 export function initAuthRoutes(db, dbAsync = null) {
   const isProduction = process.env.NODE_ENV === 'production';
   const JWT_SECRET = process.env.JWT_SECRET || 'dev-only-jwt-secret';
+  const AUTH_COOKIE_NAME = 'fahamu_auth_token';
 
   if (isProduction && !process.env.JWT_SECRET) {
     throw new Error('JWT_SECRET must be set in production');
@@ -111,6 +112,49 @@ export function initAuthRoutes(db, dbAsync = null) {
     }, JWT_SECRET, { expiresIn: '7d' });
   };
 
+  const setAuthCookie = (res, token) => {
+    const cookieParts = [
+      `${AUTH_COOKIE_NAME}=${encodeURIComponent(token)}`,
+      'Path=/',
+      'HttpOnly',
+      'SameSite=Lax',
+      'Max-Age=604800'
+    ];
+    if (isProduction) {
+      cookieParts.push('Secure');
+    }
+    res.setHeader('Set-Cookie', cookieParts.join('; '));
+  };
+
+  const clearAuthCookie = (res) => {
+    const cookieParts = [
+      `${AUTH_COOKIE_NAME}=`,
+      'Path=/',
+      'HttpOnly',
+      'SameSite=Lax',
+      'Max-Age=0'
+    ];
+    if (isProduction) {
+      cookieParts.push('Secure');
+    }
+    res.setHeader('Set-Cookie', cookieParts.join('; '));
+  };
+
+  const extractToken = (req) => {
+    const authHeader = req.headers.authorization || '';
+    if (authHeader.startsWith('Bearer ')) {
+      return authHeader.slice(7).trim();
+    }
+
+    const cookieHeader = req.headers.cookie || '';
+    const cookies = cookieHeader.split(';').map(segment => segment.trim());
+    const authCookie = cookies.find(cookie => cookie.startsWith(`${AUTH_COOKIE_NAME}=`));
+    if (!authCookie) return null;
+
+    const tokenValue = authCookie.slice(AUTH_COOKIE_NAME.length + 1);
+    return tokenValue ? decodeURIComponent(tokenValue) : null;
+  };
+
   // Helper: Validate phone format
   const isValidPhone = (phone) => {
     // Accept multiple formats: +254XXXXXXXXX, 254XXXXXXXXX, 07XXXXXXXX, 7XXXXXXXX
@@ -134,6 +178,20 @@ export function initAuthRoutes(db, dbAsync = null) {
   };
 
   const isValidUsername = (username) => /^[a-zA-Z0-9._-]{3,30}$/.test((username || '').trim());
+
+  const isMissingColumnError = (error, columnName = '') => {
+    if (!error) return false;
+    const message = (error.message || '').toLowerCase();
+    const target = (columnName || '').toLowerCase();
+    const mentionsTarget = !target || message.includes(target);
+
+    // PostgreSQL undefined_column is 42703. SQLite errors mention "no such column".
+    return (
+      (error.code === '42703' && mentionsTarget) ||
+      (message.includes('no such column') && mentionsTarget) ||
+      (message.includes('has no column named') && mentionsTarget)
+    );
+  };
 
   // POST /api/auth/register - Step 1: Phone + Password
   router.post('/register', async (req, res) => {
@@ -199,10 +257,23 @@ export function initAuthRoutes(db, dbAsync = null) {
       const passwordHash = await hashPassword(password);
 
       // Create user
-      const result = await dbHelper.run(
-        'INSERT INTO users (phone, username, password_hash, password_changed_at, created_at, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)',
-        [normalizedPhone, normalizedUsername, passwordHash]
-      );
+      let result;
+      try {
+        result = await dbHelper.run(
+          'INSERT INTO users (phone, username, password_hash, password_changed_at, created_at, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)',
+          [normalizedPhone, normalizedUsername, passwordHash]
+        );
+      } catch (insertError) {
+        // Backward compatibility for older PostgreSQL schemas missing password_changed_at.
+        if (!isMissingColumnError(insertError, 'password_changed_at')) {
+          throw insertError;
+        }
+
+        result = await dbHelper.run(
+          'INSERT INTO users (phone, username, password_hash, created_at, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)',
+          [normalizedPhone, normalizedUsername, passwordHash]
+        );
+      }
 
       res.status(201).json({
         status: 'success',
@@ -267,6 +338,8 @@ export function initAuthRoutes(db, dbAsync = null) {
         farm_size: farm_size || null,
         preferred_language: preferred_language
       });
+
+      setAuthCookie(res, token);
 
       res.status(201).json({
         status: 'success',
@@ -371,10 +444,21 @@ export function initAuthRoutes(db, dbAsync = null) {
           ? new Date(Date.now() + LOCKOUT_DURATION_MINUTES * 60 * 1000).toISOString()
           : null;
 
-        await dbHelper.run(
-          'UPDATE users SET failed_login_attempts = ?, lockout_until = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-          [failedAttempts, lockoutUntil, user.id]
-        );
+        try {
+          await dbHelper.run(
+            'UPDATE users SET failed_login_attempts = ?, lockout_until = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+            [failedAttempts, lockoutUntil, user.id]
+          );
+        } catch (loginAttemptError) {
+          // Backward compatibility for schemas without lockout columns.
+          if (!isMissingColumnError(loginAttemptError)) {
+            throw loginAttemptError;
+          }
+          await dbHelper.run(
+            'UPDATE users SET updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+            [user.id]
+          );
+        }
 
         return res.status(401).json({
           status: 'error',
@@ -383,10 +467,21 @@ export function initAuthRoutes(db, dbAsync = null) {
       }
 
       // Reset failed login count and refresh last_login
-      await dbHelper.run(
-        'UPDATE users SET failed_login_attempts = 0, lockout_until = NULL, last_login = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-        [user.id]
-      );
+      try {
+        await dbHelper.run(
+          'UPDATE users SET failed_login_attempts = 0, lockout_until = NULL, last_login = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+          [user.id]
+        );
+      } catch (resetError) {
+        // Backward compatibility for schemas without lockout/login tracking columns.
+        if (!isMissingColumnError(resetError)) {
+          throw resetError;
+        }
+        await dbHelper.run(
+          'UPDATE users SET updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+          [user.id]
+        );
+      }
 
       // Generate token with user data (fetch farm first, then use it)
       const farm = await dbHelper.get('SELECT location, ward, farm_size, farm_size_unit FROM farms WHERE user_id = ?', [user.id]);
@@ -401,6 +496,8 @@ export function initAuthRoutes(db, dbAsync = null) {
         farm_size: farm ? farm.farm_size : null,
         preferred_language: user.preferred_language
       });
+
+      setAuthCookie(res, token);
 
       res.json({
         status: 'success',
@@ -430,7 +527,7 @@ export function initAuthRoutes(db, dbAsync = null) {
   // GET /api/auth/user - Fetch current user (requires token in Authorization header)
   router.get('/user', async (req, res) => {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
+      const token = extractToken(req);
 
       if (!token) {
         return res.status(401).json({
@@ -509,7 +606,7 @@ export function initAuthRoutes(db, dbAsync = null) {
   // PUT /api/auth/update-profile - Update user profile
   router.put('/update-profile', async (req, res) => {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
+      const token = extractToken(req);
 
       if (!token) {
         return res.status(401).json({
@@ -563,7 +660,7 @@ export function initAuthRoutes(db, dbAsync = null) {
   // POST /api/auth/update-language - Update user's language preference
   router.post('/update-language', async (req, res) => {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
+      const token = extractToken(req);
 
       if (!token) {
         return res.status(401).json({
@@ -631,7 +728,7 @@ export function initAuthRoutes(db, dbAsync = null) {
   // POST /api/auth/upload-profile-photo - Upload profile photo
   router.post('/upload-profile-photo', async (req, res) => {
     try {
-      const token = req.headers.authorization?.split(' ')[1];
+      const token = extractToken(req);
 
       if (!token) {
         return res.status(401).json({
@@ -700,6 +797,7 @@ export function initAuthRoutes(db, dbAsync = null) {
   // POST /api/auth/logout
   router.post('/logout', (req, res) => {
     // JWT is stateless; client should discard token
+    clearAuthCookie(res);
     res.json({
       status: 'success',
       message: 'Logged out. Please discard your token.'

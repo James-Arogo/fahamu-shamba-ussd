@@ -8,7 +8,7 @@ import { handleUSSD } from './ussd-service.js';
 /**
  * Handle incoming Africa's Talking USSD requests
  */
-export function handleAfricaTalkingUSSD(req, res) {
+export async function handleAfricaTalkingUSSD(req, res) {
   try {
     // Extract Africa's Talking USSD parameters
     const { 
@@ -29,7 +29,7 @@ export function handleAfricaTalkingUSSD(req, res) {
     }
 
     // Use existing USSD service
-    const result = handleUSSD(sessionId, phoneNumber, text || '', serviceCode || '');
+    const result = await handleUSSD(sessionId, phoneNumber, text || '', serviceCode || '');
 
     // Format response for Africa's Talking
     const africaTalkingResponse = {

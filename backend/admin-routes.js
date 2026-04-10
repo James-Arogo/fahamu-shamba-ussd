@@ -34,6 +34,7 @@ import * as adminDB from './admin-database.js';
 import { sendOTPEmail, sendSecurityAlertEmail } from './email-service.js';
 
 const router = express.Router();
+const MFA_TOKEN_REGEX = /^[0-9]{8}$/;
 
 // Session storage (in production, use Redis or database)
 const sessionStore = new Map();
@@ -140,6 +141,13 @@ router.post('/admin/verify-otp', sanitizeInput, async (req, res) => {
       return res.status(400).json({
         success: false,
         message: 'Email and OTP required'
+      });
+    }
+
+    if (!MFA_TOKEN_REGEX.test(String(otp).trim())) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid OTP format'
       });
     }
 

@@ -139,6 +139,11 @@
             color: #2e7d32;
             border: 1px solid #c8e6c9;
         }
+
+        .message.inline-feedback {
+            margin-top: 12px;
+            margin-bottom: 0;
+        }
         
         .required {
             color: #e53935;
@@ -148,6 +153,65 @@
             font-size: 12px;
             color: #666;
             margin-top: 5px;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                align-items: flex-start;
+                padding: calc(12px + env(safe-area-inset-top, 0px)) 12px calc(12px + env(safe-area-inset-bottom, 0px));
+                background-attachment: scroll;
+            }
+
+            .container {
+                margin-top: 8px;
+                padding: 22px 16px;
+                border-radius: 16px;
+                max-width: 100%;
+                max-height: none;
+                box-shadow: 0 14px 28px rgba(0,0,0,0.25);
+            }
+
+            .logo {
+                margin-bottom: 18px;
+            }
+
+            .logo img {
+                width: 64px;
+                height: 64px;
+            }
+
+            .logo h1 {
+                font-size: 1.5rem;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+
+            .form-group {
+                margin-bottom: 14px;
+            }
+
+            .form-group input,
+            .form-group select,
+            .btn {
+                min-height: 46px;
+            }
+
+            .links {
+                margin-top: 14px;
+            }
+        }
+
+        @media (max-width: 420px) {
+            .container {
+                padding: 18px 12px;
+            }
+
+            .info-text {
+                font-size: 11px;
+            }
         }
     </style>
 </head>
@@ -241,6 +305,7 @@
             <button type="submit" class="btn" id="registerBtn">
                 Create Account
             </button>
+            <div id="messageInline" class="message inline-feedback"></div>
         </form>
         
         <div class="links">
@@ -253,15 +318,26 @@
         const registerForm = document.getElementById('registerForm');
         const registerBtn = document.getElementById('registerBtn');
         const messageDiv = document.getElementById('message');
+        const messageInlineDiv = document.getElementById('messageInline');
 
         function showMessage(message, type) {
-            messageDiv.textContent = message;
-            messageDiv.className = `message ${type}`;
-            messageDiv.style.display = 'block';
+            const targets = [messageDiv, messageInlineDiv].filter(Boolean);
+            targets.forEach((target) => {
+                const keepInlineClass = target.classList.contains('inline-feedback');
+                target.textContent = message;
+                target.className = `message ${type}${keepInlineClass ? ' inline-feedback' : ''}`;
+                target.style.display = 'block';
+            });
+
+            if (messageInlineDiv) {
+                messageInlineDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
             
             // Hide message after 5 seconds
             setTimeout(() => {
-                messageDiv.style.display = 'none';
+                targets.forEach((target) => {
+                    target.style.display = 'none';
+                });
             }, 5000);
         }
 

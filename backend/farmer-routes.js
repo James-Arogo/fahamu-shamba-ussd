@@ -5,9 +5,12 @@
 
 import express from 'express';
 import * as farmerDB from './farmer-module.js';
-import { sanitizeInput, getClientIP } from './admin-middleware.js';
+import { sanitizeInput, authenticateAdmin, requireRole } from './admin-middleware.js';
 
 const router = express.Router();
+
+// Protect farmer data and mutation endpoints behind admin authorization.
+router.use(authenticateAdmin, requireRole('admin'));
 
 /**
  * POST /api/farmers/register
@@ -92,8 +95,7 @@ router.post('/farmers/register', sanitizeInput, async (req, res) => {
     console.error('Farmer registration error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to register farmer',
-      error: error.message
+      message: 'Failed to register farmer'
     });
   }
 });
@@ -128,8 +130,7 @@ router.get('/farmers/:farmerId', async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Failed to get farmer',
-      error: error.message
+      message: 'Failed to get farmer'
     });
   }
 });
@@ -164,8 +165,7 @@ router.get('/farmers/phone/:phoneNumber', async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Failed to get farmer',
-      error: error.message
+      message: 'Failed to get farmer'
     });
   }
 });
@@ -230,8 +230,7 @@ router.put('/farmers/:farmerId', sanitizeInput, async (req, res) => {
     console.error('Farmer update error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to update farmer profile',
-      error: error.message
+      message: 'Failed to update farmer profile'
     });
   }
 });
@@ -261,8 +260,7 @@ router.get('/farmers', async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Failed to get farmers',
-      error: error.message
+      message: 'Failed to get farmers'
     });
   }
 });
@@ -285,8 +283,7 @@ router.get('/farmers/subcounty/:subCounty', async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Failed to get farmers',
-      error: error.message
+      message: 'Failed to get farmers'
     });
   }
 });
@@ -309,8 +306,7 @@ router.get('/farmers/soiltype/:soilType', async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Failed to get farmers',
-      error: error.message
+      message: 'Failed to get farmers'
     });
   }
 });
@@ -340,8 +336,7 @@ router.get('/farmers/search', async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Failed to search farmers',
-      error: error.message
+      message: 'Failed to search farmers'
     });
   }
 });
@@ -361,8 +356,7 @@ router.get('/farmers/statistics', async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Failed to get statistics',
-      error: error.message
+      message: 'Failed to get statistics'
     });
   }
 });
@@ -400,8 +394,7 @@ router.delete('/farmers/:farmerId', async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Failed to delete farmer',
-      error: error.message
+      message: 'Failed to delete farmer'
     });
   }
 });

@@ -8,17 +8,21 @@ import { handleUSSD } from './ussd-service.js';
 /**
  * Handle incoming Twilio USSD requests
  */
-export function handleTwilioUSSD(req, res) {
+export async function handleTwilioUSSD(req, res) {
   try {
     // Extract Twilio USSD parameters
-    const { 
+    const {
       From: fromNumber, 
       To: toNumber, 
-      Body: bodyText 
+      Body: bodyText,
+      SessionId: twilioSessionId,
+      sessionId: altSessionId,
+      SmsSid,
+      MessageSid
     } = req.body;
 
     // Map Twilio parameters to USSD service format
-    const sessionId = `twilio_${fromNumber}_${Date.now()}`;
+    const sessionId = twilioSessionId || altSessionId || SmsSid || MessageSid || `twilio_${fromNumber}_${toNumber || '*123#'}`;
     const serviceCode = toNumber || '*123#';
     const phoneNumber = fromNumber;
     const text = bodyText || '';
@@ -26,7 +30,7 @@ export function handleTwilioUSSD(req, res) {
     console.log(`[Twilio USSD] Request: sessionId=${sessionId}, phone=${phoneNumber}, text=${text}, serviceCode=${serviceCode}`);
 
     // Use existing USSD service
-    const result = handleUSSD(sessionId, phoneNumber, text, serviceCode);
+    const result = await handleUSSD(sessionId, phoneNumber, text, serviceCode);
 
     // Format response for Twilio
     const twimlResponse = `<?xml version="1.0" encoding="UTF-8"?>

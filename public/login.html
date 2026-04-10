@@ -130,22 +130,52 @@
             border: 1px solid #c8e6c9;
         }
         
-        .demo-info {
-            background: #f5f5f5;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            font-size: 12px;
+        @media (max-width: 768px) {
+            body {
+                align-items: flex-start;
+                padding: calc(12px + env(safe-area-inset-top, 0px)) 12px calc(12px + env(safe-area-inset-bottom, 0px));
+                background-attachment: scroll;
+            }
+
+            .container {
+                margin-top: 8px;
+                padding: 22px 18px;
+                border-radius: 16px;
+                max-width: 100%;
+                box-shadow: 0 14px 28px rgba(0,0,0,0.25);
+            }
+
+            .logo {
+                margin-bottom: 18px;
+            }
+
+            .logo img {
+                width: 64px;
+                height: 64px;
+            }
+
+            .logo h1 {
+                font-size: 1.5rem;
+            }
+
+            .form-group {
+                margin-bottom: 14px;
+            }
+
+            .form-group input,
+            .btn {
+                min-height: 46px;
+            }
+
+            .links {
+                margin-top: 14px;
+            }
         }
-        
-        .demo-info h4 {
-            color: #2E7D32;
-            margin-bottom: 8px;
-        }
-        
-        .demo-info p {
-            margin: 4px 0;
-            color: #666;
+
+        @media (max-width: 420px) {
+            .container {
+                padding: 18px 14px;
+            }
         }
     </style>
 </head>
@@ -155,12 +185,6 @@
             <img src="/fahamu-logo.png" alt="Fahamu Shamba" onerror="this.style.display='none'">
             <h1>Fahamu Shamba</h1>
             <p>Smart Farming Solutions</p>
-        </div>
-        
-        <div class="demo-info">
-            <h4>Demo Credentials</h4>
-            <p><strong>Username:</strong> Jemo</p>
-            <p><strong>Password:</strong> Jemo@721</p>
         </div>
         
         <div id="message" class="message"></div>
@@ -232,6 +256,7 @@
                 for (const attempt of payloads) {
                     const response = await fetch(attempt.url, {
                         method: 'POST',
+                        credentials: 'include',
                         headers: {
                             'Content-Type': 'application/json'
                         },
@@ -258,11 +283,13 @@
                 if (loginOk && data) {
                     showMessage('Login successful! Redirecting...', 'success');
 
-                    // Keep both key formats for compatibility across old/new pages.
+                    // Prefer session-scoped storage; keep legacy localStorage key for compatibility.
+                    sessionStorage.setItem('token', data.token);
+                    sessionStorage.setItem('user', JSON.stringify(data.user || {}));
                     localStorage.setItem('token', data.token);
                     localStorage.setItem('user', JSON.stringify(data.user || {}));
-                    localStorage.setItem('fahamu_token', data.token);
-                    localStorage.setItem('fahamu_user', JSON.stringify(data.user || {}));
+                    localStorage.removeItem('fahamu_token');
+                    localStorage.removeItem('fahamu_user');
 
                     // Redirect to dashboard page (works for both static and routed deployments).
                     setTimeout(() => {

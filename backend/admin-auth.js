@@ -6,33 +6,37 @@ const ADMIN_SECRET = process.env.ADMIN_JWT_SECRET || 'dev-only-admin-jwt-secret'
 const REFRESH_SECRET = process.env.ADMIN_REFRESH_SECRET || 'dev-only-admin-refresh-secret';
 const PASSWORD_SALT = process.env.PASSWORD_SALT || 'dev-only-password-salt';
 
-if (isProduction) {
-  if (!process.env.ADMIN_JWT_SECRET) {
-    throw new Error('ADMIN_JWT_SECRET must be set in production');
-  }
+function assertAdminSecretsConfigured() {
+  if (!isProduction) return;
 
-  if (!process.env.ADMIN_REFRESH_SECRET) {
-    throw new Error('ADMIN_REFRESH_SECRET must be set in production');
-  }
+  const missing = [];
+  if (!process.env.ADMIN_JWT_SECRET) missing.push('ADMIN_JWT_SECRET');
+  if (!process.env.ADMIN_REFRESH_SECRET) missing.push('ADMIN_REFRESH_SECRET');
+  if (!process.env.PASSWORD_SALT) missing.push('PASSWORD_SALT');
 
-  if (!process.env.PASSWORD_SALT) {
-    throw new Error('PASSWORD_SALT must be set in production');
+  if (missing.length) {
+    throw new Error(`${missing.join(', ')} must be set in production`);
   }
 }
 const TOKEN_EXPIRY = '15m'; // Short-lived access token
 const REFRESH_EXPIRY = '7d'; // Longer-lived refresh token
+const SCRYPT_KEYLEN = 64;
+const SCRYPT_N = 16384;
+const SCRYPT_R = 8;
+const SCRYPT_P = 1;
 
 /**
  * Generate a secure random token for MFA
  */
 export function generateMFAToken() {
-  return crypto.randomBytes(3).toString('hex'); // 6-digit code
+  return crypto.randomInt(0, 100000000).toString().padStart(8, '0');
 }
 
 /**
  * Generate JWT access token
  */
 export function generateAccessToken(adminId, email, role = 'admin') {
+  assertAdminSecretsConfigured();
   return jwt.sign(
     { 
       adminId, 
@@ -49,6 +53,7 @@ export function generateAccessToken(adminId, email, role = 'admin') {
  * Generate JWT refresh token
  */
 export function generateRefreshToken(adminId, email) {
+  assertAdminSecretsConfigured();
   return jwt.sign(
     { 
       adminId, 
@@ -65,6 +70,7 @@ export function generateRefreshToken(adminId, email) {
  */
 export function verifyAccessToken(token) {
   try {
+    assertAdminSecretsConfigured();
     const decoded = jwt.verify(token, ADMIN_SECRET);
     if (decoded.type !== 'access') {
       throw new Error('Invalid token type');
@@ -80,6 +86,7 @@ export function verifyAccessToken(token) {
  */
 export function verifyRefreshToken(token) {
   try {
+    assertAdminSecretsConfigured();
     const decoded = jwt.verify(token, REFRESH_SECRET);
     if (decoded.type !== 'refresh') {
       throw new Error('Invalid token type');
@@ -94,14 +101,20 @@ export function verifyRefreshToken(token) {
  * Hash password using SHA-256
  */
 export function hashPassword(password) {
-  const derivedKey = crypto.scryptSync(password, PASSWORD_SALT, 64).toString('hex');
-  return `scrypt$${derivedKey}`;
+  assertAdminSecretsConfigured();
+  const perUserSalt = crypto.randomBytes(16).toString('hex');
+  const fullSalt = `${PASSWORD_SALT}:${perUserSalt}`;
+  const derivedKey = crypto
+    .scryptSync(password, fullSalt, SCRYPT_KEYLEN, { N: SCRYPT_N, r: SCRYPT_R, p: SCRYPT_P })
+    .toString('hex');
+  return `scrypt$${SCRYPT_N}$${SCRYPT_R}$${SCRYPT_P}$${perUserSalt}$${derivedKey}`;
 }
 
 /**
  * Verify password
  */
 export function verifyPassword(password, hash) {
+  assertAdminSecretsConfigured();
   if (!hash) {
     return false;
   }
@@ -120,12 +133,38 @@ export function verifyPassword(password, hash) {
     }
   }
 
-  const [, storedDerivedKey] = hash.split('$');
-  if (!storedDerivedKey) {
+  const parts = hash.split('$');
+  if (parts.length < 2) {
     return false;
   }
 
-  const suppliedKey = crypto.scryptSync(password, PASSWORD_SALT, 64).toString('hex');
+  // Backward-compatible support for old scrypt format: scrypt$<derivedKey>.
+  if (parts.length === 2) {
+    const storedDerivedKey = parts[1];
+    const suppliedKey = crypto.scryptSync(password, PASSWORD_SALT, SCRYPT_KEYLEN).toString('hex');
+    try {
+      return crypto.timingSafeEqual(Buffer.from(storedDerivedKey), Buffer.from(suppliedKey));
+    } catch {
+      return false;
+    }
+  }
+
+  // Preferred format: scrypt$N$r$p$perUserSalt$derivedKey.
+  const [, nRaw, rRaw, pRaw, perUserSalt, storedDerivedKey] = parts;
+  if (!nRaw || !rRaw || !pRaw || !perUserSalt || !storedDerivedKey) {
+    return false;
+  }
+
+  const n = Number(nRaw);
+  const r = Number(rRaw);
+  const p = Number(pRaw);
+  if (!Number.isFinite(n) || !Number.isFinite(r) || !Number.isFinite(p)) {
+    return false;
+  }
+
+  const suppliedKey = crypto
+    .scryptSync(password, `${PASSWORD_SALT}:${perUserSalt}`, SCRYPT_KEYLEN, { N: n, r, p })
+    .toString('hex');
 
   try {
     return crypto.timingSafeEqual(Buffer.from(storedDerivedKey), Buffer.from(suppliedKey));

@@ -5,9 +5,12 @@
 
 import express from 'express';
 import * as farmerProfileDB from './farmer-profile-dashboard.js';
-import { sanitizeInput, getClientIP } from './admin-middleware.js';
+import { sanitizeInput, authenticateAdmin, requireRole } from './admin-middleware.js';
 
 const router = express.Router();
+
+// Protect farmer profile endpoints behind admin authorization.
+router.use(authenticateAdmin, requireRole('admin'));
 
 /**
  * POST /api/farmer-profile/register
@@ -95,8 +98,7 @@ router.post('/farmer-profile/register', sanitizeInput, async (req, res) => {
 
     res.status(500).json({
       success: false,
-      message: 'Failed to register farmer profile',
-      error: error.message
+      message: 'Failed to register farmer profile'
     });
   }
 });
@@ -131,8 +133,7 @@ router.get('/farmer-profile/:farmerId', async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Failed to get farmer profile',
-      error: error.message
+      message: 'Failed to get farmer profile'
     });
   }
 });
@@ -167,8 +168,7 @@ router.get('/farmer-profile/phone/:phoneNumber', async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Failed to get farmer profile',
-      error: error.message
+      message: 'Failed to get farmer profile'
     });
   }
 });
@@ -242,7 +242,7 @@ router.put('/farmer-profile/:farmerId', sanitizeInput, async (req, res) => {
       req.dbAsync,
       farmerId,
       updateData,
-      req.user?.email || 'system'
+      req.admin?.email || 'system'
     );
 
     // Get updated profile
@@ -271,8 +271,7 @@ router.put('/farmer-profile/:farmerId', sanitizeInput, async (req, res) => {
     
     res.status(500).json({
       success: false,
-      message: 'Failed to update farmer profile',
-      error: error.message
+      message: 'Failed to update farmer profile'
     });
   }
 });
@@ -304,8 +303,7 @@ router.get('/farmer-profile/:farmerId/edit-limit', async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Failed to check edit limit',
-      error: error.message
+      message: 'Failed to check edit limit'
     });
   }
 });
@@ -335,8 +333,7 @@ router.get('/farmer-profile', async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Failed to get farmer profiles',
-      error: error.message
+      message: 'Failed to get farmer profiles'
     });
   }
 });
@@ -366,8 +363,7 @@ router.get('/farmer-profile/search/:searchTerm', async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Failed to search farmer profiles',
-      error: error.message
+      message: 'Failed to search farmer profiles'
     });
   }
 });
@@ -398,7 +394,7 @@ router.post('/farmer-profile/:farmerId/verify', sanitizeInput, async (req, res) 
     const result = await farmerProfileDB.verifyFarmerProfile(
       req.dbAsync,
       farmerId,
-      req.user?.email || 'system'
+      req.admin?.email || 'system'
     );
 
     res.json({
@@ -412,8 +408,7 @@ router.post('/farmer-profile/:farmerId/verify', sanitizeInput, async (req, res) 
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Failed to verify farmer profile',
-      error: error.message
+      message: 'Failed to verify farmer profile'
     });
   }
 });
@@ -446,7 +441,7 @@ router.post('/farmer-profile/:farmerId/deactivate', sanitizeInput, async (req, r
       req.dbAsync,
       farmerId,
       reason,
-      req.user?.email || 'system'
+      req.admin?.email || 'system'
     );
 
     res.json({
@@ -460,8 +455,7 @@ router.post('/farmer-profile/:farmerId/deactivate', sanitizeInput, async (req, r
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Failed to deactivate farmer profile',
-      error: error.message
+      message: 'Failed to deactivate farmer profile'
     });
   }
 });
@@ -492,7 +486,7 @@ router.post('/farmer-profile/:farmerId/reactivate', sanitizeInput, async (req, r
     const result = await farmerProfileDB.reactivateFarmerProfile(
       req.dbAsync,
       farmerId,
-      req.user?.email || 'system'
+      req.admin?.email || 'system'
     );
 
     res.json({
@@ -506,8 +500,7 @@ router.post('/farmer-profile/:farmerId/reactivate', sanitizeInput, async (req, r
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Failed to reactivate farmer profile',
-      error: error.message
+      message: 'Failed to reactivate farmer profile'
     });
   }
 });
@@ -527,8 +520,7 @@ router.get('/farmer-profile/statistics', async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Failed to get farmer statistics',
-      error: error.message
+      message: 'Failed to get farmer statistics'
     });
   }
 });
@@ -553,8 +545,7 @@ router.get('/farmer-profile/export', async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Failed to export farmer data',
-      error: error.message
+      message: 'Failed to export farmer data'
     });
   }
 });

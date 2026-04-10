@@ -1,0 +1,23 @@
+crop,market,county,sub_county,retail_price,wholesale_price,signal,average_retail,observed_at,source
+Beans,Bondo Market,Siaya,Bondo,80,80,fair,82.8,2026-03-25 20:56:54,local_seed
+Beans,Gem Market,Siaya,Gem,82,82,fair,82.8,2026-03-25 20:56:54,local_seed
+Beans,Rarieda Market,Siaya,Rarieda,84,84,fair,82.8,2026-03-25 20:56:55,local_seed
+Beans,Siaya Town Market,Siaya,Alego Usonga,85,85,fair,82.8,2026-03-25 20:56:53,local_seed
+Beans,Ugenya Market,Siaya,Ugenya,83,83,fair,82.8,2026-03-25 20:56:55,local_seed
+Cassava,Bondo Market,Siaya,Bondo,35,35,fair,36.5,2026-03-25 20:56:53,local_seed
+Cassava,Ugenya Market,Siaya,Ugenya,38,38,fair,36.5,2026-03-25 20:56:55,local_seed
+Cowpeas,Siaya Town Market,Siaya,Alego Usonga,70,70,fair,69,2026-03-25 20:56:53,local_seed
+Cowpeas,Ugunja Market,Siaya,Ugunja,68,68,fair,69,2026-03-25 20:56:54,local_seed
+Groundnuts,Ugunja Market,Siaya,Ugunja,110,110,fair,110,2026-03-25 20:56:54,local_seed
+Kales,Gem Market,Siaya,Gem,50,50,fair,50,2026-03-25 20:56:54,local_seed
+Maize,Bondo Market,Siaya,Bondo,60,60,fair,64.17,2026-03-25 20:56:54,local_seed
+Maize,Gem Market,Siaya,Gem,68,68,fair,64.17,2026-03-25 20:56:54,local_seed
+Maize,Rarieda Market,Siaya,Rarieda,66,66,fair,64.17,2026-03-25 20:56:54,local_seed
+Maize,Siaya Town Market,Siaya,Alego Usonga,65,65,fair,64.17,2026-03-25 20:56:53,local_seed
+Maize,Ugenya Market,Siaya,Ugenya,64,64,fair,64.17,2026-03-25 20:56:55,local_seed
+Maize,Ugunja Market,Siaya,Ugunja,62,62,fair,64.17,2026-03-25 20:56:54,local_seed
+Rice,Yala Market,Siaya,Ugunja,125,125,fair,125,2026-03-25 20:56:54,local_seed
+Sorghum,Bondo Market,Siaya,Bondo,95,95,fair,93.5,2026-03-25 20:56:53,local_seed
+Sorghum,Rarieda Market,Siaya,Rarieda,92,92,fair,93.5,2026-03-25 20:56:55,local_seed
+Tomatoes,Siaya Town Market,Siaya,Alego Usonga,75,75,fair,75,2026-03-25 20:56:53,local_seed
+Vegetables,Yala Market,Siaya,Ugunja,45,45,fair,45,2026-03-25 20:56:54,local_seed

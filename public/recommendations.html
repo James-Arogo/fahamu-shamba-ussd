@@ -174,12 +174,13 @@
     </style>
     <link rel="stylesheet" href="/css/sidebar.css">
     <link rel="stylesheet" href="/css/navbar.css">
-    <script src="/language-utils.js"></script>
-    <script src="/js/sidebar.js" defer></script>
-    <script src="/js/navbar.js" defer></script>
-    <script src="/js/siaya-boundaries.js" defer></script>
-    <script src="/js/recommendations-map-integration.js" defer></script>
-    <link rel="stylesheet" href="/css/mobile-responsiveness-fixes.css">
+    <script src="/language-utils.js?v=20260409-mobile-fix"></script>
+    <script src="/js/sidebar.js?v=20260409-mobile-fix" defer></script>
+    <script src="/js/navbar.js?v=20260409-mobile-fix" defer></script>
+    <script src="/js/siaya-soil-map-data.js?v=20260409-mobile-fix" defer></script>
+    <script src="/js/siaya-boundaries.js?v=20260409-mobile-fix" defer></script>
+    <script src="/js/recommendations-map-integration.js?v=20260409-mobile-fix" defer></script>
+    <link rel="stylesheet" href="/css/mobile-responsiveness-fixes.css?v=20260409-mobile-fix">
 </head>
 <body>
     <div id="sidebar-container"></div>
@@ -248,6 +249,13 @@
                                     <option value="">Select a ward from the map...</option>
                                 </select>
                             </div>
+                            <div class="form-group">
+                                <label>📡 GPS Mapping</label>
+                                <button type="button" class="btn btn-secondary" id="gpsLocateRecommendationBtn">
+                                    <i class="fas fa-location-crosshairs"></i> Use My Location
+                                </button>
+                                <div class="form-note" id="gpsPermissionHint">Allow location access when prompted to auto-map your nearest ward.</div>
+                            </div>
                         </div>
                         <div class="map-selection-wrap">
                             <svg class="map-selection-stage" viewBox="0 0 820 620" aria-label="Siaya recommendation location map">
@@ -280,12 +288,12 @@
                             <label>📍 Sub-County</label>
                             <select id="location" required>
                                 <option value="">Select sub-county...</option>
-                                <option value="alego">Alego Usonga</option>
-                                <option value="bondo">Bondo</option>
-                                <option value="gem">Gem</option>
-                                <option value="rarieda">Rarieda</option>
-                                <option value="ugenya">Ugenya</option>
-                                <option value="ugunja">Ugunja</option>
+                                <option value="Alego Usonga">Alego Usonga</option>
+                                <option value="Bondo">Bondo</option>
+                                <option value="Gem">Gem</option>
+                                <option value="Rarieda">Rarieda</option>
+                                <option value="Ugenya">Ugenya</option>
+                                <option value="Ugunja">Ugunja</option>
                             </select>
                         </div>
                         <div class="form-group manual-selection-group">
@@ -464,7 +472,31 @@
         }
 
         function normalizeRecommendationLocation(location) {
-            return { rarieda: 'bondo', ugenya: 'ugunja' }[location] || location;
+            const normalized = String(location || '').trim().toLowerCase();
+            const map = {
+                alego: 'Alego Usonga',
+                'alego usonga': 'Alego Usonga',
+                bondo: 'Bondo',
+                gem: 'Gem',
+                rarieda: 'Rarieda',
+                ugenya: 'Ugenya',
+                ugunja: 'Ugunja'
+            };
+            return map[normalized] || location;
+        }
+
+        const LOCAL_SUBCOUNTY_SOIL_FALLBACK = {
+            'Alego Usonga': 'loam',
+            'Bondo': 'loam',
+            'Gem': 'loam',
+            'Rarieda': 'loam',
+            'Ugenya': 'loam',
+            'Ugunja': 'clay'
+        };
+
+        function resolveLocalSoilTypeFallback(location) {
+            const canonical = normalizeRecommendationLocation(location);
+            return LOCAL_SUBCOUNTY_SOIL_FALLBACK[canonical] || '';
         }
 
         async function fetchGeologicalSoilData(location) {
@@ -479,7 +511,8 @@
         }
 
         async function autoUpdateSoilFromLocation() {
-            const location = document.getElementById('location').value;
+            const rawLocation = document.getElementById('location').value;
+            const location = normalizeRecommendationLocation(rawLocation);
             const soilTypeInput = document.getElementById('soilType');
             const soilHelper = document.getElementById('soilHelper');
             const soilInsightText = document.getElementById('soilInsightText');
@@ -494,12 +527,23 @@
 
             try {
                 const soilData = await fetchGeologicalSoilData(location);
-                soilTypeInput.value = soilData.recommendedSoilType || '';
-                soilHelper.textContent = `Detected ${capitalize(soilData.recommendedSoilType)} soil from ${capitalize(soilData.lookupSubCounty || soilData.subCounty)} geological profile.`;
-                soilInsightText.textContent = `${capitalize(location)} is currently mapped to ${capitalize(soilData.recommendedSoilType)} as the strongest local soil profile. ${soilData.advisory}`;
+                const soilTypeValue = String(soilData.recommendedSoilType || '').trim().toLowerCase();
+                soilTypeInput.value = soilTypeValue;
+                soilHelper.textContent = `Detected ${capitalize(soilTypeValue)} soil from ${capitalize(soilData.lookupSubCounty || soilData.subCounty)} geological profile.`;
+                soilInsightText.textContent = `${capitalize(location)} is currently mapped to ${capitalize(soilTypeValue)} as the strongest local soil profile. ${soilData.advisory}`;
                 soilSourceBadge.style.display = 'inline-flex';
                 updateBudgetEstimate();
             } catch (error) {
+                const fallbackSoilType = resolveLocalSoilTypeFallback(location);
+                if (fallbackSoilType) {
+                    soilTypeInput.value = fallbackSoilType;
+                    soilSourceBadge.style.display = 'inline-flex';
+                    soilHelper.textContent = `Auto-filled ${capitalize(fallbackSoilType)} soil from local Siaya soil profile fallback for ${capitalize(location)}.`;
+                    soilInsightText.textContent = `${capitalize(location)} has no direct soil API row yet, so we used the county soil profile fallback.`;
+                    updateBudgetEstimate();
+                    return;
+                }
+
                 soilSourceBadge.style.display = 'none';
                 soilHelper.textContent = 'We could not fetch soil data automatically. Please choose the soil type manually.';
                 soilInsightText.textContent = 'Automatic soil detection is unavailable for this location right now.';
@@ -578,9 +622,9 @@
 
         function loadDemoData() {
             const demos = [
-                { location: 'bondo', season: 'long_rains', farmSize: 2.5, waterSource: 'Rainfall' },
-                { location: 'ugunja', season: 'short_rains', farmSize: 1.8, waterSource: 'Well' },
-                { location: 'alego', season: 'short_rains', farmSize: 2, waterSource: 'Rainfall' }
+                { location: 'Bondo', season: 'long_rains', farmSize: 2.5, waterSource: 'Rainfall' },
+                { location: 'Ugunja', season: 'short_rains', farmSize: 1.8, waterSource: 'Well' },
+                { location: 'Alego Usonga', season: 'short_rains', farmSize: 2, waterSource: 'Rainfall' }
             ];
             const demo = demos[Math.floor(Math.random() * demos.length)];
             document.getElementById('location').value = demo.location;

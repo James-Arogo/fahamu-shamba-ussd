@@ -5,7 +5,7 @@ import recommendationEngine from './recommendation-engine.js';
  * USSD Service for Fahamu Shamba
  * Allows farmers to access crop recommendations via USSD on feature phones
  * 
- * GLOBAL USSD CODE: *123# (ONLY access method)
+ * GLOBAL USSD CODES: *123#, *384*123#, *384*64965# (configurable via ALLOWED_USSD_CODES)
  * 
  * USSD Flow:
  * 1. User dials *123# (only valid code)
@@ -24,8 +24,38 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const USSD_SESSIONS = new Map(); // In-memory session storage
+const SESSION_CLEANUP_TIMERS = new Map();
 const SESSION_TIMEOUT = 5 * 60 * 1000; // 5 minutes
-const VALID_USSD_CODE = '*123#'; // ONE AND ONLY VALID CODE
+const DEFAULT_USSD_CODES = ['*123#', '*384*123#', '*384*64965#'];
+const VALID_USSD_CODES = (() => {
+  const fromEnv = (process.env.ALLOWED_USSD_CODES || '')
+    .split(',')
+    .map((code) => code.trim())
+    .filter(Boolean);
+  const codes = fromEnv.length ? fromEnv : DEFAULT_USSD_CODES;
+  return [...new Set(codes.map((code) => code.toUpperCase()))];
+})();
+const SQLITE_FALLBACK_DB_PATH = path.join(__dirname, 'fahamu_shamba.db');
+
+let externalSessionStore = null;
+let externalDataPersistence = null;
+
+export function configureUSSDStorage({
+  sessionStore = null,
+  dataPersistence = null
+} = {}) {
+  externalSessionStore = sessionStore;
+  externalDataPersistence = dataPersistence;
+}
+
+function withSQLiteFallbackDatabase(executor) {
+  const localDb = new Database(SQLITE_FALLBACK_DB_PATH);
+  try {
+    return executor(localDb);
+  } finally {
+    localDb.close();
+  }
+}
 
 // Load translations from JSON file
 let translationsData = {};
@@ -137,10 +167,51 @@ function getRecommendation(location, soilType, season, farmSize = '1-2', budget 
   };
 }
 
+function scheduleInMemorySessionExpiry(sessionId) {
+  const existingTimer = SESSION_CLEANUP_TIMERS.get(sessionId);
+  if (existingTimer) {
+    clearTimeout(existingTimer);
+  }
+
+  const timer = setTimeout(() => {
+    USSD_SESSIONS.delete(sessionId);
+    SESSION_CLEANUP_TIMERS.delete(sessionId);
+  }, SESSION_TIMEOUT);
+
+  SESSION_CLEANUP_TIMERS.set(sessionId, timer);
+}
+
+async function saveSession(session) {
+  session.updatedAt = Date.now();
+  session.expiresAt = Date.now() + SESSION_TIMEOUT;
+
+  if (externalSessionStore && typeof externalSessionStore.saveSession === 'function') {
+    await externalSessionStore.saveSession(session.sessionId, session, SESSION_TIMEOUT);
+    return;
+  }
+
+  USSD_SESSIONS.set(session.sessionId, session);
+  scheduleInMemorySessionExpiry(session.sessionId);
+}
+
+async function removeSession(sessionId) {
+  if (externalSessionStore && typeof externalSessionStore.deleteSession === 'function') {
+    await externalSessionStore.deleteSession(sessionId);
+    return;
+  }
+
+  USSD_SESSIONS.delete(sessionId);
+  const timer = SESSION_CLEANUP_TIMERS.get(sessionId);
+  if (timer) {
+    clearTimeout(timer);
+    SESSION_CLEANUP_TIMERS.delete(sessionId);
+  }
+}
+
 /**
  * Initialize USSD session
  */
-function initializeSession(sessionId, phoneNumber) {
+async function initializeSession(sessionId, phoneNumber) {
   const session = {
     sessionId,
     phoneNumber,
@@ -155,26 +226,34 @@ function initializeSession(sessionId, phoneNumber) {
       budget: null,
     },
     createdAt: Date.now(),
+    updatedAt: Date.now(),
+    expiresAt: Date.now() + SESSION_TIMEOUT
   };
 
-  USSD_SESSIONS.set(sessionId, session);
-
-  // Auto-cleanup after timeout
-  setTimeout(() => {
-    USSD_SESSIONS.delete(sessionId);
-  }, SESSION_TIMEOUT);
-
+  await saveSession(session);
   return session;
 }
 
 /**
  * Get or create session
  */
-function getSession(sessionId) {
-  if (USSD_SESSIONS.has(sessionId)) {
-    return USSD_SESSIONS.get(sessionId);
+async function getSession(sessionId) {
+  if (externalSessionStore && typeof externalSessionStore.getSession === 'function') {
+    const persistedSession = await externalSessionStore.getSession(sessionId);
+    if (!persistedSession) return null;
+    if (persistedSession.expiresAt && persistedSession.expiresAt < Date.now()) {
+      await removeSession(sessionId);
+      return null;
+    }
+    return persistedSession;
   }
-  return null;
+
+  const session = USSD_SESSIONS.get(sessionId) || null;
+  if (session?.expiresAt && session.expiresAt < Date.now()) {
+    await removeSession(sessionId);
+    return null;
+  }
+  return session;
 }
 
 /**
@@ -186,28 +265,27 @@ function t(key, language = 'english') {
 
 /**
  * Main USSD handler - STRICT VALIDATION
- * Only accepts *123# as valid USSD code
+ * Accepts provisioned USSD codes only.
  */
-export function handleUSSD(sessionId, phoneNumber, text, serviceCode) {
-  // CRITICAL: Validate USSD code - MUST be *123# ONLY
+export async function handleUSSD(sessionId, phoneNumber, text, serviceCode) {
+  // CRITICAL: Validate USSD code against allow-list
   const normalizedCode = (serviceCode || '').trim().toUpperCase();
 
-  // Strict enforcement: only the fixed global code is accepted.
-  if (normalizedCode !== VALID_USSD_CODE) {
+  if (!VALID_USSD_CODES.includes(normalizedCode)) {
     // Reject any other USSD code - security measure
     console.log(`[USSD] REJECTED: Invalid service code "${serviceCode}" from phone ${phoneNumber}`);
     return {
       sessionId,
-      response: 'Invalid USSD code. Please dial *123# to access Fahamu Shamba.',
+      response: `Invalid USSD code. Please dial one of: ${VALID_USSD_CODES.join(', ')} to access Fahamu Shamba.`,
       endSession: true,
     };
   }
   
-  console.log(`[USSD] ACCEPTED: Valid service code ${VALID_USSD_CODE} from phone ${phoneNumber}`);
+  console.log(`[USSD] ACCEPTED: Valid service code ${normalizedCode} from phone ${phoneNumber}`);
 
   // Initialize new session if first interaction (empty text = initial dial)
   if (!text || text === '') {
-    const session = initializeSession(sessionId, phoneNumber);
+    const session = await initializeSession(sessionId, phoneNumber);
     console.log(`[USSD] New session created: ${sessionId} for phone: ${phoneNumber}`);
     return {
       sessionId,
@@ -216,12 +294,12 @@ export function handleUSSD(sessionId, phoneNumber, text, serviceCode) {
     };
   }
 
-  let session = getSession(sessionId);
+  let session = await getSession(sessionId);
 
   // If session expired, create new one
   if (!session) {
     console.log(`[USSD] Session expired, creating new one: ${sessionId}`);
-    session = initializeSession(sessionId, phoneNumber);
+    session = await initializeSession(sessionId, phoneNumber);
     return {
       sessionId,
       response: getText('LANGUAGE_SELECT', session.language),
@@ -272,7 +350,7 @@ export function handleUSSD(sessionId, phoneNumber, text, serviceCode) {
       break;
 
     case SESSION_STATES.GET_ADVICE_BUDGET:
-      response = handleBudgetSelect(session, input);
+      response = await handleBudgetSelect(session, input);
       // Budget is the last input before recommendation; end immediately after response.
       endSession = true;
       break;
@@ -287,7 +365,7 @@ export function handleUSSD(sessionId, phoneNumber, text, serviceCode) {
       break;
 
     case SESSION_STATES.REGISTER_NAME:
-      response = handleRegisterName(session, input);
+      response = await handleRegisterName(session, input);
       endSession = true;
       break;
 
@@ -306,9 +384,10 @@ export function handleUSSD(sessionId, phoneNumber, text, serviceCode) {
       session.state = SESSION_STATES.MAIN_MENU;
   }
 
-  // Update session
-  if (session) {
-    USSD_SESSIONS.set(sessionId, session);
+  if (endSession) {
+    await removeSession(sessionId);
+  } else if (session) {
+    await saveSession(session);
   }
 
   return {
@@ -463,7 +542,7 @@ function handleSizeSelect(session, input) {
 /**
  * Handle budget selection
  */
-function handleBudgetSelect(session, input) {
+async function handleBudgetSelect(session, input) {
   const choice = input.trim();
   const budgets = ['<2000', '2000-5000', '5000-10000', '10000+'];
 
@@ -475,13 +554,13 @@ function handleBudgetSelect(session, input) {
   session.data.budget = budgets[parseInt(choice) - 1];
   session.state = SESSION_STATES.GET_ADVICE_RESULT;
   console.log(`[USSD] Budget selected: ${session.data.budget}, generating recommendation`);
-  return displayRecommendation(session);
+  return await displayRecommendation(session);
 }
 
 /**
  * Display recommendation - NOW USES REAL ML ENGINE WITH ALL PARAMS
  */
-function displayRecommendation(session) {
+async function displayRecommendation(session) {
   const { location, soilType, season, farmSize, budget } = session.data;
 
   if (!location || !soilType || !season) {
@@ -507,15 +586,17 @@ ${getText('PRICE_LABEL', session.language)}${getMarketPrice(recommendation.crop)
 
   response += `\n\n${getText('THANK_YOU', session.language)}`;
 
-  // Save to database
+  // Save to database (provider-backed store in production, SQLite fallback locally)
   try {
-    const db = new Database('./fahamu_shamba.db');
-    const stmt = db.prepare(`
-      INSERT INTO predictions (phone_number, sub_county, soil_type, season, predicted_crop, confidence, reason)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `);
-    stmt.run(session.phoneNumber, location, soilType, season, recommendation.crop, recommendation.score, recommendation.reason);
-    db.close();
+    await persistPrediction({
+      phoneNumber: session.phoneNumber,
+      location,
+      soilType,
+      season,
+      crop: recommendation.crop,
+      confidence: recommendation.score,
+      reason: recommendation.reason
+    });
   } catch (error) {
     console.error('Error saving prediction:', error);
   }
@@ -569,6 +650,44 @@ function getMarketPrice(crop) {
   return prices[crop] || 'Check at local market';
 }
 
+async function persistPrediction(payload) {
+  if (externalDataPersistence && typeof externalDataPersistence.savePrediction === 'function') {
+    await externalDataPersistence.savePrediction(payload);
+    return;
+  }
+
+  withSQLiteFallbackDatabase((localDb) => {
+    const stmt = localDb.prepare(`
+      INSERT INTO predictions (phone_number, sub_county, soil_type, season, predicted_crop, confidence, reason)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
+    stmt.run(
+      payload.phoneNumber,
+      payload.location,
+      payload.soilType,
+      payload.season,
+      payload.crop,
+      payload.confidence,
+      payload.reason
+    );
+  });
+}
+
+async function persistRegisteredUser(payload) {
+  if (externalDataPersistence && typeof externalDataPersistence.saveUser === 'function') {
+    await externalDataPersistence.saveUser(payload);
+    return;
+  }
+
+  withSQLiteFallbackDatabase((localDb) => {
+    const stmt = localDb.prepare(`
+      INSERT OR IGNORE INTO users (phone, name, password_hash, created_at, updated_at)
+      VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    `);
+    stmt.run(payload.phoneNumber, payload.name, '');
+  });
+}
+
 /**
  * Handle phone registration
  */
@@ -587,7 +706,7 @@ function handleRegisterPhone(session, input) {
 /**
  * Handle name registration
  */
-function handleRegisterName(session, input) {
+async function handleRegisterName(session, input) {
   const name = input.trim();
 
   if (name.length < 3) {
@@ -596,17 +715,13 @@ function handleRegisterName(session, input) {
 
   session.data.name = name;
 
-  // Save to database
+  // Save to database (provider-backed store in production, SQLite fallback locally)
   try {
-    const db = new Database('./fahamu_shamba.db');
-    const stmt = db.prepare(`
-      INSERT OR IGNORE INTO users (phone, name, password_hash, created_at, updated_at)
-      VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-    `);
-    // Persist the phone entered during registration flow (not the transport/session phone).
     const registeredPhone = session.data.phone || session.phoneNumber;
-    stmt.run(registeredPhone, name, ''); // Empty password hash for USSD users
-    db.close();
+    await persistRegisteredUser({
+      phoneNumber: registeredPhone,
+      name
+    });
   } catch (error) {
     console.error('Error registering user:', error);
   }

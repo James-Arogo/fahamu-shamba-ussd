@@ -5,7 +5,6 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import recommendationEngine from './recommendation-engine.js';
-import demoData from './demo-data.js';
 import adminRoutes from './admin-routes.js';
 import pool from './database-postgres.js';
 import farmerRoutes from './farmer-routes.js';
@@ -17,9 +16,16 @@ import { securityHeaders, sanitizeInput, logAPICall } from './admin-middleware.j
 import { initializeEmailService } from './email-service.js';
 import { initAuthRoutes } from './auth-routes.js';
 import { initializeAuthTables } from './init-auth-tables.js';
-import { handleUSSD } from './ussd-service.js';
+import { handleUSSD, configureUSSDStorage } from './ussd-service.js';
 import { handleTwilioUSSD, TWILIO_USSD_WEBHOOK } from './ussd-twilio-handler.js';
 import { handleAfricaTalkingUSSD, AFRICASTALKING_USSD_WEBHOOK } from './ussd-africastalking-handler.js';
+import {
+  handleTwilioVoiceInbound,
+  handleTwilioVoiceMenu,
+  TWILIO_VOICE_INBOUND_WEBHOOK,
+  TWILIO_VOICE_MENU_WEBHOOK
+} from './voice-twilio-handler.js';
+import { verifyTwilioWebhook, verifyAfricaTalkingWebhook } from './webhook-security.js';
 import communityRoutes from './community-routes.js';
 import feedbackRoutes from './feedback-routes.js';
 import communityService from './community-service-async.js';
@@ -38,13 +44,81 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 const IS_VERCEL = process.env.VERCEL === '1' || process.env.VERCEL === 'true';
-const USE_POSTGRES = process.env.DATABASE_URL && process.env.DATABASE_URL.startsWith('postgres');
+const normalizePostgresUrl = (value) => {
+  const raw = (value || '').trim().replace(/^['"]|['"]$/g, '');
+  if (!raw) return '';
 
-// Enhanced CORS configuration
+  try {
+    const parsed = new URL(raw);
+    if (parsed.protocol === 'postgres:' || parsed.protocol === 'postgresql:') {
+      return raw;
+    }
+    return '';
+  } catch {
+    if (!/^postgres(ql)?:\/\//i.test(raw)) {
+      return '';
+    }
+
+    const schemeEnd = raw.indexOf('://') + 3;
+    const atIndex = raw.lastIndexOf('@');
+    if (atIndex === -1 || atIndex <= schemeEnd) return '';
+
+    const slashAfterHost = raw.indexOf('/', atIndex);
+    if (slashAfterHost === -1) return '';
+
+    const credentials = raw.slice(schemeEnd, atIndex);
+    const hostPort = raw.slice(atIndex + 1, slashAfterHost);
+    const pathAndQuery = raw.slice(slashAfterHost);
+    const firstColon = credentials.indexOf(':');
+    if (firstColon === -1) return '';
+
+    const username = credentials.slice(0, firstColon);
+    const password = credentials.slice(firstColon + 1);
+    if (!username || !password || !hostPort) return '';
+
+    const repaired = `${raw.slice(0, schemeEnd)}${username}:${encodeURIComponent(password)}@${hostPort}${pathAndQuery}`;
+    try {
+      const parsedRepaired = new URL(repaired);
+      if (parsedRepaired.protocol === 'postgres:' || parsedRepaired.protocol === 'postgresql:') {
+        return repaired;
+      }
+      return '';
+    } catch {
+      return '';
+    }
+  }
+};
+
+const DATABASE_URL = normalizePostgresUrl(process.env.DATABASE_URL);
+if (DATABASE_URL && DATABASE_URL !== process.env.DATABASE_URL) {
+  process.env.DATABASE_URL = DATABASE_URL;
+}
+const USE_POSTGRES = Boolean(DATABASE_URL);
+
+const isProduction = process.env.NODE_ENV === 'production';
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
+  .split(',')
+  .map(origin => origin.trim())
+  .filter(Boolean);
+
+// Enhanced CORS configuration with production deny-by-default behavior.
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? process.env.ALLOWED_ORIGINS?.split(',') || true 
-    : true,
+  origin: (origin, callback) => {
+    // Non-browser clients and same-origin requests may not send Origin.
+    if (!origin) {
+      return callback(null, true);
+    }
+
+    if (!isProduction) {
+      return callback(null, true);
+    }
+
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    return callback(new Error('Origin not allowed by CORS policy'));
+  },
   credentials: true
 }));
 
@@ -97,8 +171,19 @@ app.use(securityHeaders);
 // Add sanitization middleware
 app.use(sanitizeInput);
 
-// Serve static files
-app.use(express.static(PUBLIC_DIR));
+// Serve static files with explicit cache policy so mobile browsers pick up fresh JS quickly.
+app.use(express.static(PUBLIC_DIR, {
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.html')) {
+      res.setHeader('Cache-Control', 'no-store, max-age=0');
+      return;
+    }
+
+    if (filePath.endsWith('.js') || filePath.endsWith('.css')) {
+      res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+    }
+  }
+}));
 
 // Initialize email service
 console.log('📧 Initializing email service...');
@@ -178,8 +263,262 @@ const dbAsync = USE_POSTGRES ? {
   }
 };
 
+async function ensurePostgresAuthSchema() {
+  if (!USE_POSTGRES) return;
+
+  const runSchemaQuery = async (sql, label) => {
+    try {
+      await pool.query(sql);
+    } catch (error) {
+      console.warn(`⚠️ Postgres schema check skipped for ${label}: ${error.message}`);
+    }
+  };
+
+  await runSchemaQuery(`
+    CREATE TABLE IF NOT EXISTS users (
+      id SERIAL PRIMARY KEY,
+      phone VARCHAR(20) UNIQUE NOT NULL,
+      username VARCHAR(50) UNIQUE,
+      password_hash VARCHAR(255),
+      name VARCHAR(100),
+      email VARCHAR(100),
+      profile_photo TEXT,
+      preferred_language VARCHAR(20) DEFAULT 'english',
+      failed_login_attempts INTEGER DEFAULT 0,
+      lockout_until TIMESTAMP,
+      last_login TIMESTAMP,
+      password_changed_at TIMESTAMP,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      is_active BOOLEAN DEFAULT TRUE
+    )
+  `, 'users table');
+
+  // Backward compatibility with older schemas from early migrations.
+  await runSchemaQuery(`ALTER TABLE users ADD COLUMN IF NOT EXISTS username VARCHAR(50)`, 'users.username');
+  await runSchemaQuery(`ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)`, 'users.password_hash');
+  await runSchemaQuery(`ALTER TABLE users ADD COLUMN IF NOT EXISTS name VARCHAR(100)`, 'users.name');
+  await runSchemaQuery(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email VARCHAR(100)`, 'users.email');
+  await runSchemaQuery(`ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_photo TEXT`, 'users.profile_photo');
+  await runSchemaQuery(`ALTER TABLE users ADD COLUMN IF NOT EXISTS preferred_language VARCHAR(20) DEFAULT 'english'`, 'users.preferred_language');
+  await runSchemaQuery(`ALTER TABLE users ADD COLUMN IF NOT EXISTS failed_login_attempts INTEGER DEFAULT 0`, 'users.failed_login_attempts');
+  await runSchemaQuery(`ALTER TABLE users ADD COLUMN IF NOT EXISTS lockout_until TIMESTAMP`, 'users.lockout_until');
+  await runSchemaQuery(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login TIMESTAMP`, 'users.last_login');
+  await runSchemaQuery(`ALTER TABLE users ADD COLUMN IF NOT EXISTS password_changed_at TIMESTAMP`, 'users.password_changed_at');
+  await runSchemaQuery(`ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`, 'users.created_at');
+  await runSchemaQuery(`ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`, 'users.updated_at');
+  await runSchemaQuery(`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE`, 'users.is_active');
+
+  await runSchemaQuery(`
+    CREATE TABLE IF NOT EXISTS farms (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+      location VARCHAR(100),
+      ward VARCHAR(100),
+      farm_size VARCHAR(20),
+      farm_size_unit VARCHAR(20) DEFAULT 'acres',
+      soil_type VARCHAR(50),
+      water_source VARCHAR(50),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `, 'farms table');
+  await runSchemaQuery(`ALTER TABLE farms ADD COLUMN IF NOT EXISTS location VARCHAR(100)`, 'farms.location');
+  await runSchemaQuery(`ALTER TABLE farms ADD COLUMN IF NOT EXISTS ward VARCHAR(100)`, 'farms.ward');
+  await runSchemaQuery(`ALTER TABLE farms ADD COLUMN IF NOT EXISTS farm_size VARCHAR(20)`, 'farms.farm_size');
+  await runSchemaQuery(`ALTER TABLE farms ADD COLUMN IF NOT EXISTS farm_size_unit VARCHAR(20) DEFAULT 'acres'`, 'farms.farm_size_unit');
+  await runSchemaQuery(`ALTER TABLE farms ADD COLUMN IF NOT EXISTS soil_type VARCHAR(50)`, 'farms.soil_type');
+  await runSchemaQuery(`ALTER TABLE farms ADD COLUMN IF NOT EXISTS water_source VARCHAR(50)`, 'farms.water_source');
+  await runSchemaQuery(`ALTER TABLE farms ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`, 'farms.created_at');
+  await runSchemaQuery(`ALTER TABLE farms ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`, 'farms.updated_at');
+  await runSchemaQuery(`CREATE INDEX IF NOT EXISTS idx_farms_user_id ON farms(user_id)`, 'idx_farms_user_id');
+
+  console.log('✅ PostgreSQL auth schema compatibility check complete');
+}
+
+async function ensureUssdStorageSchema() {
+  if (USE_POSTGRES) {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS ussd_sessions (
+        session_id TEXT PRIMARY KEY,
+        phone_number VARCHAR(25) NOT NULL,
+        language VARCHAR(20) DEFAULT 'english',
+        state VARCHAR(80) NOT NULL,
+        data_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+        created_at BIGINT NOT NULL,
+        updated_at BIGINT NOT NULL,
+        expires_at BIGINT NOT NULL
+      )
+    `);
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_ussd_sessions_expires_at ON ussd_sessions(expires_at)');
+    return;
+  }
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS ussd_sessions (
+      session_id TEXT PRIMARY KEY,
+      phone_number TEXT NOT NULL,
+      language TEXT DEFAULT 'english',
+      state TEXT NOT NULL,
+      data_json TEXT NOT NULL DEFAULT '{}',
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      expires_at INTEGER NOT NULL
+    )
+  `);
+  db.exec('CREATE INDEX IF NOT EXISTS idx_ussd_sessions_expires_at ON ussd_sessions(expires_at)');
+}
+
+function configureUSSDPersistenceLayer() {
+  configureUSSDStorage({
+    sessionStore: {
+      getSession: async (sessionId) => {
+        if (!sessionId) return null;
+
+        if (USE_POSTGRES) {
+          const result = await pool.query(
+            `SELECT session_id, phone_number, language, state, data_json, created_at, updated_at, expires_at
+             FROM ussd_sessions
+             WHERE session_id = $1`,
+            [sessionId]
+          );
+          const row = result.rows[0];
+          if (!row) return null;
+          return {
+            sessionId: row.session_id,
+            phoneNumber: row.phone_number,
+            language: row.language || 'english',
+            state: row.state,
+            data: row.data_json || {},
+            createdAt: Number(row.created_at),
+            updatedAt: Number(row.updated_at),
+            expiresAt: Number(row.expires_at)
+          };
+        }
+
+        const row = await dbAsync.get(
+          `SELECT session_id, phone_number, language, state, data_json, created_at, updated_at, expires_at
+           FROM ussd_sessions
+           WHERE session_id = ?`,
+          [sessionId]
+        );
+        if (!row) return null;
+        return {
+          sessionId: row.session_id,
+          phoneNumber: row.phone_number,
+          language: row.language || 'english',
+          state: row.state,
+          data: row.data_json ? JSON.parse(row.data_json) : {},
+          createdAt: Number(row.created_at),
+          updatedAt: Number(row.updated_at),
+          expiresAt: Number(row.expires_at)
+        };
+      },
+      saveSession: async (sessionId, session) => {
+        if (!sessionId || !session) return;
+
+        if (USE_POSTGRES) {
+          await pool.query(
+            `INSERT INTO ussd_sessions (
+              session_id, phone_number, language, state, data_json, created_at, updated_at, expires_at
+            ) VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7, $8)
+            ON CONFLICT (session_id) DO UPDATE SET
+              phone_number = EXCLUDED.phone_number,
+              language = EXCLUDED.language,
+              state = EXCLUDED.state,
+              data_json = EXCLUDED.data_json,
+              updated_at = EXCLUDED.updated_at,
+              expires_at = EXCLUDED.expires_at`,
+            [
+              sessionId,
+              session.phoneNumber || '',
+              session.language || 'english',
+              session.state || 'language_select',
+              JSON.stringify(session.data || {}),
+              Number(session.createdAt || Date.now()),
+              Number(session.updatedAt || Date.now()),
+              Number(session.expiresAt || (Date.now() + 5 * 60 * 1000))
+            ]
+          );
+          return;
+        }
+
+        await dbAsync.run(
+          `INSERT OR REPLACE INTO ussd_sessions (
+            session_id, phone_number, language, state, data_json, created_at, updated_at, expires_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            sessionId,
+            session.phoneNumber || '',
+            session.language || 'english',
+            session.state || 'language_select',
+            JSON.stringify(session.data || {}),
+            Number(session.createdAt || Date.now()),
+            Number(session.updatedAt || Date.now()),
+            Number(session.expiresAt || (Date.now() + 5 * 60 * 1000))
+          ]
+        );
+      },
+      deleteSession: async (sessionId) => {
+        if (!sessionId) return;
+        if (USE_POSTGRES) {
+          await pool.query('DELETE FROM ussd_sessions WHERE session_id = $1', [sessionId]);
+          return;
+        }
+        await dbAsync.run('DELETE FROM ussd_sessions WHERE session_id = ?', [sessionId]);
+      }
+    },
+    dataPersistence: {
+      savePrediction: async (payload) => {
+        const {
+          phoneNumber = '',
+          location = '',
+          soilType = '',
+          season = '',
+          crop = '',
+          confidence = 0,
+          reason = ''
+        } = payload || {};
+
+        await dbAsync.run(
+          `INSERT INTO predictions (phone_number, sub_county, soil_type, season, predicted_crop, confidence, reason)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [phoneNumber, location, soilType, season, crop, confidence, reason]
+        );
+      },
+      saveUser: async (payload) => {
+        const phone = normalizePhoneNumber(payload?.phoneNumber);
+        const name = String(payload?.name || '').trim();
+        if (!phone || !name) return;
+
+        if (USE_POSTGRES) {
+          await pool.query(
+            `INSERT INTO users (phone, name, password_hash, created_at, updated_at)
+             VALUES ($1, $2, $3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+             ON CONFLICT (phone) DO UPDATE SET
+               name = EXCLUDED.name,
+               updated_at = CURRENT_TIMESTAMP`,
+            [phone, name, '']
+          );
+          return;
+        }
+
+        await dbAsync.run(
+          `INSERT OR REPLACE INTO users (phone, name, password_hash, created_at, updated_at)
+           VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+          [phone, name, '']
+        );
+      }
+    }
+  });
+}
+
 // Now initialize database (after dbAsync is defined)
 initializeDatabase();
+
+if (USE_POSTGRES) {
+  await ensurePostgresAuthSchema();
+}
 
 // Initialize authentication tables
 if (!USE_POSTGRES) {
@@ -233,6 +572,16 @@ if (!USE_POSTGRES) {
     console.error('⚠️ Error initializing weather tables:', error.message);
   }
 }
+
+console.log('📱 Initializing USSD session storage...');
+try {
+  await ensureUssdStorageSchema();
+  configureUSSDPersistenceLayer();
+  console.log('✅ USSD storage ready (persistent sessions + shared writes)');
+} catch (error) {
+  console.error('⚠️ USSD storage setup failed. Falling back to in-memory sessions:', error.message);
+}
+
 console.log('🚀 Registering authentication routes...');
 const authRoutes = initAuthRoutes(db, dbAsync);
 app.use('/api/auth', authRoutes);
@@ -743,6 +1092,67 @@ app.get('/api/weather/current/:subcounty', async (req, res) => {
       data: getMockWeatherData(req.params.subcounty),
       last_updated: new Date().toISOString(),
       note: 'Using fallback data due to API unavailability'
+    });
+  }
+});
+
+// Ward-level current weather by coordinates (real-time from Open-Meteo).
+app.get('/api/weather/current-by-coords', async (req, res) => {
+  try {
+    const lat = Number.parseFloat(req.query.lat);
+    const lon = Number.parseFloat(req.query.lon);
+    const ward = String(req.query.ward || '').trim();
+    const subcounty = String(req.query.subcounty || '').trim();
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid coordinates. Provide numeric lat and lon query params.'
+      });
+    }
+
+    const response = await fetch(
+      `${WEATHER_BASE_URL}/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,precipitation,rain,showers,weather_code,wind_speed_10m,wind_direction_10m&timezone=Africa/Nairobi`
+    );
+
+    if (!response.ok) {
+      throw new Error(`Weather API responded with status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    if (!data.current) {
+      throw new Error('Weather data not available from API');
+    }
+
+    const weatherData = {
+      location: ward || (subcounty || 'Selected region'),
+      subcounty: subcounty || null,
+      latitude: lat,
+      longitude: lon,
+      temperature: Math.round(data.current.temperature_2m),
+      humidity: data.current.relative_humidity_2m,
+      precipitation: data.current.precipitation,
+      rain: data.current.rain,
+      showers: data.current.showers,
+      weather_code: data.current.weather_code,
+      wind_speed: data.current.wind_speed_10m,
+      wind_direction: data.current.wind_direction_10m,
+      description: getWeatherDescription(data.current.weather_code),
+      icon: getWeatherIcon(data.current.weather_code),
+      timestamp: new Date(data.current.time),
+      alerts: checkWeatherAlerts(data.current)
+    };
+
+    res.json({
+      success: true,
+      data: weatherData,
+      last_updated: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Weather coords API error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Unable to fetch weather by coordinates'
     });
   }
 });
@@ -1852,7 +2262,7 @@ app.post('/api/predict', validatePredictionInput, async (req, res) => {
 });
 
 // USSD endpoint - Handles feature phone users
-app.post('/api/ussd', (req, res) => {
+app.post('/api/ussd', async (req, res) => {
   try {
     const { sessionId, serviceCode, phoneNumber, text } = req.body;
 
@@ -1863,7 +2273,7 @@ app.post('/api/ussd', (req, res) => {
     }
 
     // Handle USSD request
-    const result = handleUSSD(sessionId, phoneNumber, text || '', serviceCode || '');
+    const result = await handleUSSD(sessionId, phoneNumber, text || '', serviceCode || '');
 
     // Format response for USSD gateway
     const ussdResponse = result.endSession 
@@ -1882,10 +2292,32 @@ app.post('/api/ussd', (req, res) => {
 });
 
 // Twilio USSD webhook endpoint
-app.post(TWILIO_USSD_WEBHOOK, handleTwilioUSSD);
+app.post(TWILIO_USSD_WEBHOOK, verifyTwilioWebhook, handleTwilioUSSD);
+app.get(TWILIO_USSD_WEBHOOK, (req, res) => {
+  res.status(200).json({
+    success: true,
+    endpoint: TWILIO_USSD_WEBHOOK,
+    status: 'USSD webhook is live',
+    message: 'This endpoint expects POST requests from Twilio USSD/SMS gateway.',
+    expected_content_type: 'application/x-www-form-urlencoded'
+  });
+});
 
 // Africa's Talking USSD webhook endpoint
-app.post(AFRICASTALKING_USSD_WEBHOOK, handleAfricaTalkingUSSD);
+app.post(AFRICASTALKING_USSD_WEBHOOK, verifyAfricaTalkingWebhook, handleAfricaTalkingUSSD);
+app.get(AFRICASTALKING_USSD_WEBHOOK, (req, res) => {
+  res.status(200).json({
+    success: true,
+    endpoint: AFRICASTALKING_USSD_WEBHOOK,
+    status: 'USSD webhook is live',
+    message: "This endpoint expects POST requests from Africa's Talking USSD gateway.",
+    expected_content_type: 'application/json or application/x-www-form-urlencoded'
+  });
+});
+
+// Twilio Voice webhook endpoints
+app.post(TWILIO_VOICE_INBOUND_WEBHOOK, verifyTwilioWebhook, handleTwilioVoiceInbound);
+app.post(TWILIO_VOICE_MENU_WEBHOOK, verifyTwilioWebhook, handleTwilioVoiceMenu);
 
 // Save user feedback about recommendations - DEPRECATED, use /api/feedback from feedback-routes.js
 // This endpoint is kept for backward compatibility but delegates to the new service
@@ -2289,47 +2721,19 @@ app.post('/api/soil-assessment', (req, res) => {
 // Geological soil profile by sub-county
 app.get('/api/geological-soil/:subCounty', (req, res) => {
   try {
-    const requestedSubCounty = (req.params.subCounty || '').toLowerCase();
-    const locationAliases = {
-      rarieda: 'bondo',
-      ugenya: 'ugunja'
-    };
-    const lookupSubCounty = locationAliases[requestedSubCounty] || requestedSubCounty;
-    const soilProfiles = demoData.soilData[lookupSubCounty];
+    const requestedSubCounty = req.params.subCounty || '';
+    const soilProfile = recommendationEngine.getGeologicalSoilProfile(requestedSubCounty);
 
-    if (!soilProfiles) {
+    if (!soilProfile) {
       return res.status(404).json({
         success: false,
         message: 'Geological soil data not found for this location'
       });
     }
 
-    const scoreSoil = (profile) => {
-      const pHScore = 7 - Math.abs(6.5 - profile.pH);
-      return (pHScore * 10) + (profile.nitrogen * 20) + profile.phosphorus + (profile.potassium / 10) + (profile.organicMatter * 15);
-    };
-
-    const entries = Object.entries(soilProfiles).map(([soilType, profile]) => ({
-      soilType,
-      ...profile,
-      qualityScore: Math.round(scoreSoil(profile) * 10) / 10
-    })).sort((a, b) => b.qualityScore - a.qualityScore);
-
-    const dominantSoil = entries[0];
-
     res.json({
       success: true,
-      data: {
-        subCounty: requestedSubCounty,
-        lookupSubCounty,
-        source: 'Geological Soil Data API',
-        dominantSoilType: dominantSoil.soilType,
-        recommendedSoilType: dominantSoil.soilType,
-        soilProfiles: entries,
-        advisory: dominantSoil.organicMatter < 2.5
-          ? 'Organic matter is relatively low. Add compost or manure for better yields.'
-          : 'Soil profile is favorable for productive cropping with balanced inputs.'
-      }
+      data: soilProfile
     });
   } catch (error) {
     console.error('Geological soil data error:', error);
@@ -2344,10 +2748,12 @@ app.get('/api/geological-soil/:subCounty', (req, res) => {
 // Get market prices
 app.get('/api/market-prices', (req, res) => {
   try {
+    const prices = recommendationEngine.getMarketPricesFeed();
     res.json({
       success: true,
+      prices,
       data: {
-        prices: demoData.marketPrices,
+        prices,
         timestamp: new Date().toISOString(),
         currency: 'KSh',
         unit: 'per kg'
@@ -2368,15 +2774,14 @@ app.get('/api/weather-data', (req, res) => {
     const { subCounty, season } = req.query;
 
     if (!subCounty) {
-      // Return all weather data
       return res.json({
         success: true,
-        data: demoData.weatherData,
+        data: recommendationEngine.getAllWeatherData(),
         timestamp: new Date().toISOString()
       });
     }
 
-    const weatherData = demoData.weatherData[subCounty.toLowerCase()]?.[season?.toLowerCase() || 'long_rains'];
+    const weatherData = recommendationEngine.getWeatherSummary(subCounty, season || 'long_rains');
 
     if (!weatherData) {
       return res.status(404).json({
@@ -2452,8 +2857,8 @@ app.post('/api/register-farmer', async (req, res) => {
 app.get('/api/sample-farmers', (req, res) => {
   res.json({
     success: true,
-    data: demoData.sampleFarmers,
-    message: 'Sample farmer data for MVP testing'
+    data: [],
+    message: 'Sample farmer data has been retired as the system moves to real datasets.'
   });
 });
 

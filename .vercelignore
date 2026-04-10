@@ -6,3 +6,25 @@ node_modules
 backend/logs
 backend/*.log
 backend/*.db
+.env*
+.agents
+.claude
+.cursor
+.vscode
+android-studio
+api
+aws
+awscliv2
+awscliv2 (2)
+awscliv2.zip
+docs
+frontend
+photos
+Project Proposal*
+PROPORSAL2.docx
+test-*.js
+test-*.html
+debug-trends.html
+sidebar-test.html
+code.py
+skills-lock.json
