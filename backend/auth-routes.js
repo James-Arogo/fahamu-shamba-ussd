@@ -31,20 +31,39 @@ export function initAuthRoutes(db, dbAsync = null) {
   const safeAllUsersWithPhoto = async () => {
     try {
       const users = await dbHelper.all(
-        'SELECT id, phone, username, password_hash, name, preferred_language, profile_photo FROM users',
+        'SELECT id, phone, username, email, password_hash, name, preferred_language, profile_photo FROM users',
         []
       );
-      return users.map(user => ({ ...user, profile_photo: user.profile_photo || null }));
+      return users.map(user => ({ ...user, email: user.email || null, profile_photo: user.profile_photo || null }));
     } catch (error) {
+      if (isMissingColumnError(error, 'email')) {
+        try {
+          const users = await dbHelper.all(
+            'SELECT id, phone, username, password_hash, name, preferred_language, profile_photo FROM users',
+            []
+          );
+          return users.map(user => ({ ...user, email: null, profile_photo: user.profile_photo || null }));
+        } catch (innerError) {
+          if (!isMissingColumnError(innerError, 'profile_photo')) {
+            throw innerError;
+          }
+          const users = await dbHelper.all(
+            'SELECT id, phone, username, password_hash, name, preferred_language FROM users',
+            []
+          );
+          return users.map(user => ({ ...user, email: null, profile_photo: null }));
+        }
+      }
+
       if (!error.message?.includes('no such column: profile_photo')) {
         throw error;
       }
 
       const users = await dbHelper.all(
-        'SELECT id, phone, username, password_hash, name, preferred_language FROM users',
+        'SELECT id, phone, username, email, password_hash, name, preferred_language FROM users',
         []
       );
-      return users.map(user => ({ ...user, profile_photo: null }));
+      return users.map(user => ({ ...user, email: user.email || null, profile_photo: null }));
     }
   };
   
@@ -196,7 +215,7 @@ export function initAuthRoutes(db, dbAsync = null) {
   // POST /api/auth/register - Step 1: Phone + Password
   router.post('/register', async (req, res) => {
     try {
-      const { phone, username, password } = req.body;
+      const { phone, username, password, email } = req.body;
 
       // Validate input
       if (!phone || !username || !password) {
@@ -216,7 +235,7 @@ export function initAuthRoutes(db, dbAsync = null) {
       if (!isStrongPassword(password)) {
         return res.status(400).json({
           status: 'error',
-          message: 'Password must be at least 6 characters'
+          message: 'Password must be at least 10 characters with uppercase, lowercase, number, and symbol'
         });
       }
 
@@ -237,19 +256,41 @@ export function initAuthRoutes(db, dbAsync = null) {
 
       // Normalize username to lowercase
       const normalizedUsername = username.trim().toLowerCase();
+      const normalizedEmail = email ? String(email).trim().toLowerCase() : null;
 
       // Check if phone or username already exists
-      const existingUser = await dbHelper.get(
-        'SELECT id, phone, username FROM users WHERE phone = ? OR username = ?',
-        [normalizedPhone, normalizedUsername]
-      );
+      let existingUser;
+      if (normalizedEmail) {
+        try {
+          existingUser = await dbHelper.get(
+            'SELECT id, phone, username, email FROM users WHERE phone = ? OR username = ? OR LOWER(email) = ?',
+            [normalizedPhone, normalizedUsername, normalizedEmail]
+          );
+        } catch (lookupError) {
+          if (!isMissingColumnError(lookupError, 'email')) {
+            throw lookupError;
+          }
+          existingUser = await dbHelper.get(
+            'SELECT id, phone, username FROM users WHERE phone = ? OR username = ?',
+            [normalizedPhone, normalizedUsername]
+          );
+        }
+      } else {
+        existingUser = await dbHelper.get(
+          'SELECT id, phone, username FROM users WHERE phone = ? OR username = ?',
+          [normalizedPhone, normalizedUsername]
+        );
+      }
 
       if (existingUser) {
+        const existingEmail = (existingUser.email || '').toString().toLowerCase();
         return res.status(400).json({
           status: 'error',
           message: existingUser.phone === normalizedPhone
             ? 'Phone number already registered'
-            : 'Username already taken'
+            : existingEmail && normalizedEmail && existingEmail === normalizedEmail
+              ? 'Email already registered'
+              : 'Username already taken'
         });
       }
 
@@ -260,19 +301,33 @@ export function initAuthRoutes(db, dbAsync = null) {
       let result;
       try {
         result = await dbHelper.run(
-          'INSERT INTO users (phone, username, password_hash, password_changed_at, created_at, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)',
-          [normalizedPhone, normalizedUsername, passwordHash]
+          'INSERT INTO users (phone, username, email, password_hash, password_changed_at, created_at, updated_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)',
+          [normalizedPhone, normalizedUsername, normalizedEmail, passwordHash]
         );
       } catch (insertError) {
-        // Backward compatibility for older PostgreSQL schemas missing password_changed_at.
-        if (!isMissingColumnError(insertError, 'password_changed_at')) {
+        if (isMissingColumnError(insertError, 'password_changed_at')) {
+          try {
+            result = await dbHelper.run(
+              'INSERT INTO users (phone, username, email, password_hash, created_at, updated_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)',
+              [normalizedPhone, normalizedUsername, normalizedEmail, passwordHash]
+            );
+          } catch (secondError) {
+            if (!isMissingColumnError(secondError, 'email')) {
+              throw secondError;
+            }
+            result = await dbHelper.run(
+              'INSERT INTO users (phone, username, password_hash, created_at, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)',
+              [normalizedPhone, normalizedUsername, passwordHash]
+            );
+          }
+        } else if (isMissingColumnError(insertError, 'email')) {
+          result = await dbHelper.run(
+            'INSERT INTO users (phone, username, password_hash, created_at, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)',
+            [normalizedPhone, normalizedUsername, passwordHash]
+          );
+        } else {
           throw insertError;
         }
-
-        result = await dbHelper.run(
-          'INSERT INTO users (phone, username, password_hash, created_at, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)',
-          [normalizedPhone, normalizedUsername, passwordHash]
-        );
       }
 
       res.status(201).json({
@@ -292,7 +347,7 @@ export function initAuthRoutes(db, dbAsync = null) {
   // POST /api/auth/register-profile - Step 2: Profile Details
   router.post('/register-profile', async (req, res) => {
     try {
-      const { userId, name, location, ward, farm_size, farm_size_unit = 'acres', preferred_language = 'english' } = req.body;
+      const { userId, name, email, location, ward, farm_size, farm_size_unit = 'acres', preferred_language = 'english' } = req.body;
 
       // Validate input
       if (!userId || !name || !location) {
@@ -318,11 +373,21 @@ export function initAuthRoutes(db, dbAsync = null) {
         [userId, location, ward || null, farm_size || null, farm_size_unit]
       );
 
-      // Update user name and language preference
-      await dbHelper.run(
-        'UPDATE users SET name = ?, preferred_language = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-        [name, preferred_language, userId]
-      );
+      // Update user name/language and optionally email.
+      try {
+        await dbHelper.run(
+          'UPDATE users SET name = ?, email = COALESCE(?, email), preferred_language = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+          [name, email || null, preferred_language, userId]
+        );
+      } catch (updateError) {
+        if (!isMissingColumnError(updateError, 'email')) {
+          throw updateError;
+        }
+        await dbHelper.run(
+          'UPDATE users SET name = ?, preferred_language = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+          [name, preferred_language, userId]
+        );
+      }
 
       // Fetch updated user
       const updatedUser = await dbHelper.get('SELECT id, phone, username, name FROM users WHERE id = ?', [userId]);
@@ -369,14 +434,14 @@ export function initAuthRoutes(db, dbAsync = null) {
   // POST /api/auth/login
   router.post('/login', async (req, res) => {
     try {
-      const { username, password } = req.body;
-      const usernameIdentifier = username ? username.trim().toLowerCase() : '';
+      const { username, email, password } = req.body;
+      const usernameIdentifier = (username || email || '').trim().toLowerCase();
 
       // Validate input
       if (!usernameIdentifier) {
         return res.status(400).json({
           status: 'error',
-          message: 'Username is required'
+          message: 'Username or email is required'
         });
       }
 
@@ -389,12 +454,24 @@ export function initAuthRoutes(db, dbAsync = null) {
 
       console.log(`Login attempt with username: ${usernameIdentifier}`);
 
-      // Find user by username only (matching create account page)
-      let user = await safeGetUserColumns(
-        'SELECT id, phone, username, password_hash, name, preferred_language, profile_photo FROM users WHERE username = ?',
-        'SELECT id, phone, username, password_hash, name, preferred_language FROM users WHERE username = ?',
-        [usernameIdentifier]
-      );
+      // Find user by username or email.
+      let user;
+      try {
+        user = await safeGetUserColumns(
+          'SELECT id, phone, username, email, password_hash, name, preferred_language, profile_photo FROM users WHERE username = ? OR LOWER(COALESCE(email, \'\')) = ?',
+          'SELECT id, phone, username, email, password_hash, name, preferred_language FROM users WHERE username = ? OR LOWER(COALESCE(email, \'\')) = ?',
+          [usernameIdentifier, usernameIdentifier]
+        );
+      } catch (lookupError) {
+        if (!isMissingColumnError(lookupError, 'email')) {
+          throw lookupError;
+        }
+        user = await safeGetUserColumns(
+          'SELECT id, phone, username, password_hash, name, preferred_language, profile_photo FROM users WHERE username = ?',
+          'SELECT id, phone, username, password_hash, name, preferred_language FROM users WHERE username = ?',
+          [usernameIdentifier]
+        );
+      }
        
       // If not found, try case-insensitive search as fallback
       if (!user) {

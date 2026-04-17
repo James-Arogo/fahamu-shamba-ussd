@@ -428,6 +428,7 @@
                     body: JSON.stringify({
                         phone: phoneNumber,
                         username: normalizedUsername,
+                        email,
                         password
                     })
                 });
@@ -449,6 +450,7 @@
                         body: JSON.stringify({
                             userId: authRegisterData.userId,
                             name: displayName,
+                            email,
                             location: subCounty,
                             ward: subCounty,
                             farm_size: farmSize || null,
