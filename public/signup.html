@@ -419,16 +419,45 @@
                 let registrationMessage = 'Registration failed';
                 let userPayload = null;
 
-                const parseSafeJson = async (response) => {
-                    try {
-                        return await response.json();
-                    } catch (_) {
-                        return {};
+                const requestJson = async (url, options, retries = 1) => {
+                    let attempt = 0;
+                    let lastResult = null;
+
+                    while (attempt <= retries) {
+                        const response = await fetch(url, options);
+                        const raw = await response.text();
+                        let data = {};
+                        try {
+                            data = raw ? JSON.parse(raw) : {};
+                        } catch (_) {
+                            data = {};
+                        }
+
+                        lastResult = {
+                            ok: response.ok,
+                            status: response.status,
+                            data,
+                            raw
+                        };
+
+                        // Retry transient gateway/runtime failures once.
+                        if (
+                            !response.ok &&
+                            attempt < retries &&
+                            [502, 503, 504].includes(response.status)
+                        ) {
+                            attempt += 1;
+                            continue;
+                        }
+
+                        return lastResult;
                     }
+
+                    return lastResult;
                 };
 
                 // Step 1: Auth account creation
-                const authRegisterResponse = await fetch('/api/auth/register', {
+                const authRegister = await requestJson('/api/auth/register', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -440,12 +469,11 @@
                         password
                     })
                 });
-
-                const authRegisterData = await parseSafeJson(authRegisterResponse);
+                const authRegisterData = authRegister.data;
 
                 // Fallback is only for legacy deployments where /api/auth/register is missing.
-                if (authRegisterResponse.status === 404) {
-                    const fallbackResponse = await fetch('/api/farmers/register', {
+                if (authRegister.status === 404) {
+                    const fallback = await requestJson('/api/farmers/register', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
@@ -465,26 +493,36 @@
                             password
                         })
                     });
-
-                    const fallbackData = await parseSafeJson(fallbackResponse);
-                    if (fallbackResponse.ok && fallbackData.success) {
+                    const fallbackData = fallback.data;
+                    if (fallback.ok && fallbackData.success) {
                         registrationSuccess = true;
                         registrationMessage = 'Registration successful! Redirecting to login...';
                         userPayload = fallbackData.farmer || fallbackData.user || { username: normalizedUsername, name: displayName, phone: phoneNumber };
                     } else {
-                        registrationMessage = fallbackData.message || fallbackData.error || 'Registration failed. Please try again.';
+                        registrationMessage = fallbackData.message
+                            || fallbackData.error
+                            || `Registration failed (HTTP ${fallback.status}).`;
                     }
-                } else if (!(authRegisterResponse.ok && authRegisterData.status === 'success' && authRegisterData.userId)) {
-                    registrationMessage = authRegisterData.message || authRegisterData.error || 'Registration failed. Please check your details and try again.';
+                } else if (!(authRegister.ok && authRegisterData.status === 'success' && authRegisterData.userId)) {
+                    registrationMessage = authRegisterData.message
+                        || authRegisterData.error
+                        || `Registration failed (HTTP ${authRegister.status}). Please try again.`;
                 } else {
+                    const userId = Number(authRegisterData.userId);
+                    if (!Number.isFinite(userId) || userId <= 0) {
+                        registrationMessage = 'Registration failed: invalid user record returned by server.';
+                        showMessage(registrationMessage, 'error');
+                        return;
+                    }
+
                     // Step 2: Profile completion
-                    const profileResponse = await fetch('/api/auth/register-profile', {
+                    const profile = await requestJson('/api/auth/register-profile', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
                         },
                         body: JSON.stringify({
-                            userId: authRegisterData.userId,
+                            userId,
                             name: displayName,
                             email,
                             location: subCounty,
@@ -494,14 +532,16 @@
                         })
                     });
 
-                    const profileData = await parseSafeJson(profileResponse);
+                    const profileData = profile.data;
 
-                    if (profileResponse.ok && profileData.status === 'success') {
+                    if (profile.ok && profileData.status === 'success') {
                         registrationSuccess = true;
                         registrationMessage = 'Registration successful! Redirecting to login...';
                         userPayload = profileData.user || { username: normalizedUsername, name: displayName, phone: phoneNumber };
                     } else {
-                        registrationMessage = profileData.message || profileData.error || 'Profile setup failed. Please try again.';
+                        registrationMessage = profileData.message
+                            || profileData.error
+                            || `Profile setup failed (HTTP ${profile.status}). Please try again.`;
                     }
                 }
 
