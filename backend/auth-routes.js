@@ -212,6 +212,39 @@ export function initAuthRoutes(db, dbAsync = null) {
     );
   };
 
+  const isUniqueViolation = (error) => {
+    const message = (error?.message || '').toLowerCase();
+    return error?.code === '23505' || message.includes('unique constraint failed') || message.includes('duplicate key value');
+  };
+
+  const normalizeFarmSizeValue = (farmSizeInput) => {
+    if (farmSizeInput === null || farmSizeInput === undefined || farmSizeInput === '') {
+      return null;
+    }
+
+    if (typeof farmSizeInput === 'number') {
+      return Number.isFinite(farmSizeInput) ? farmSizeInput : null;
+    }
+
+    const raw = String(farmSizeInput).trim();
+    if (!raw) return null;
+
+    if (raw.includes('-')) {
+      const [minRaw, maxRaw] = raw.split('-').map(part => Number.parseFloat(part.trim()));
+      if (Number.isFinite(minRaw) && Number.isFinite(maxRaw)) {
+        return (minRaw + maxRaw) / 2;
+      }
+    }
+
+    if (raw.endsWith('+')) {
+      const minRaw = Number.parseFloat(raw.slice(0, -1).trim());
+      if (Number.isFinite(minRaw)) return minRaw;
+    }
+
+    const parsed = Number.parseFloat(raw);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+
   // POST /api/auth/register - Step 1: Phone + Password
   router.post('/register', async (req, res) => {
     try {
@@ -337,6 +370,12 @@ export function initAuthRoutes(db, dbAsync = null) {
       });
     } catch (error) {
       console.error('Registration Step 1 error:', error);
+      if (isUniqueViolation(error)) {
+        return res.status(400).json({
+          status: 'error',
+          message: 'Phone, username, or email already exists'
+        });
+      }
       res.status(500).json({
         status: 'error',
         message: 'Registration failed. Please try again.'
@@ -367,11 +406,24 @@ export function initAuthRoutes(db, dbAsync = null) {
         });
       }
 
-      // Create farm profile
-      const farmResult = await dbHelper.run(
-        'INSERT INTO farms (user_id, location, ward, farm_size, farm_size_unit, created_at, updated_at) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)',
-        [userId, location, ward || null, farm_size || null, farm_size_unit]
-      );
+      const normalizedFarmSize = normalizeFarmSizeValue(farm_size);
+
+      // Create farm profile (idempotent: update if profile already exists)
+      try {
+        await dbHelper.run(
+          'INSERT INTO farms (user_id, location, ward, farm_size, farm_size_unit, created_at, updated_at) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)',
+          [userId, location, ward || null, normalizedFarmSize, farm_size_unit]
+        );
+      } catch (farmInsertError) {
+        if (!isUniqueViolation(farmInsertError)) {
+          throw farmInsertError;
+        }
+
+        await dbHelper.run(
+          'UPDATE farms SET location = ?, ward = ?, farm_size = ?, farm_size_unit = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?',
+          [location, ward || null, normalizedFarmSize, farm_size_unit, userId]
+        );
+      }
 
       // Update user name/language and optionally email.
       try {
@@ -400,7 +452,7 @@ export function initAuthRoutes(db, dbAsync = null) {
         name: name,
         location: location,
         ward: ward || null,
-        farm_size: farm_size || null,
+        farm_size: normalizedFarmSize,
         preferred_language: preferred_language
       });
 
@@ -417,7 +469,7 @@ export function initAuthRoutes(db, dbAsync = null) {
           name: updatedUser.name,
           location,
           ward: ward || null,
-          farm_size: farm_size || null,
+          farm_size: normalizedFarmSize,
           farm_size_unit: farm_size_unit || 'acres',
           preferred_language: preferred_language
         }
