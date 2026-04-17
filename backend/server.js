@@ -89,7 +89,12 @@ const normalizePostgresUrl = (value) => {
   }
 };
 
-const DATABASE_URL = normalizePostgresUrl(process.env.DATABASE_URL);
+const DATABASE_URL = normalizePostgresUrl(process.env.DATABASE_URL) || 
+  (process.env.james_DATABASE_URL ? normalizePostgresUrl(process.env.james_DATABASE_URL) : '') ||
+  (process.env.POSTGRES_URL ? normalizePostgresUrl(process.env.POSTGRES_URL) : '') ||
+  (process.env.PGHOST && process.env.PGUSER && process.env.PGPASSWORD && process.env.PGDATABASE 
+    ? `postgresql://${process.env.PGUSER}:${process.env.PGPASSWORD}@${process.env.PGHOST}/${process.env.PGDATABASE}?sslmode=require`
+    : '');
 if (DATABASE_URL && DATABASE_URL !== process.env.DATABASE_URL) {
   process.env.DATABASE_URL = DATABASE_URL;
 }
@@ -1087,11 +1092,10 @@ app.get('/api/weather/current/:subcounty', async (req, res) => {
 
   } catch (error) {
     console.error('Weather API error:', error);
-    res.json({
-      success: true,
-      data: getMockWeatherData(req.params.subcounty),
-      last_updated: new Date().toISOString(),
-      note: 'Using fallback data due to API unavailability'
+    res.status(503).json({
+      success: false,
+      error: 'Live weather data is currently unavailable',
+      last_updated: new Date().toISOString()
     });
   }
 });
@@ -1214,29 +1218,9 @@ app.get('/api/weather/live/:subcounty', async (req, res) => {
         uv_index: 1
       });
     } catch (error) {
-      return res.json({
-        success: true,
-        source: 'mock-fallback',
-        location: subcounty,
-        current: {
-          temp: 26,
-          feels_like: 27,
-          humidity: 74,
-          wind_speed: 7.2,
-          wind_deg: 45,
-          description: 'Overcast',
-          icon: '☁️',
-          precipitation: 0.5,
-          rain_1h: 0.2
-        },
-        hourly: [],
-        daily: getMockForecastData(subcounty),
-        air: { aqi: 1, label: 'Excellent' },
-        sun: {
-          sunrise: Date.now(),
-          sunset: Date.now() + (12 * 60 * 60 * 1000)
-        },
-        uv_index: 1
+      return res.status(503).json({
+        success: false,
+        error: 'Live weather data is currently unavailable'
       });
     }
   }
@@ -1375,11 +1359,10 @@ app.get('/api/weather/forecast/:subcounty', async (req, res) => {
 
   } catch (error) {
     console.error('Forecast API error:', error);
-    res.json({
-      success: true,
-      data: getMockForecastData(req.params.subcounty),
-      last_updated: new Date().toISOString(),
-      note: 'Using fallback data due to API unavailability'
+    res.status(503).json({
+      success: false,
+      error: 'Forecast data is currently unavailable',
+      last_updated: new Date().toISOString()
     });
   }
 });
@@ -1433,11 +1416,10 @@ app.get('/api/weather/summary/:subcounty', async (req, res) => {
 
   } catch (error) {
     console.error('Weather summary error:', error);
-    res.json({
-      success: true,
-      data: getMockWeatherSummary(req.params.subcounty),
-      last_updated: new Date().toISOString(),
-      note: 'Using fallback data due to API unavailability'
+    res.status(503).json({
+      success: false,
+      error: 'Weather summary is currently unavailable',
+      last_updated: new Date().toISOString()
     });
   }
 });
@@ -1461,7 +1443,7 @@ async function fetchAgrometData(lat, lon) {
 
 function processOpenMeteoForecast(dailyData, location) {
   if (!dailyData.time || !dailyData.temperature_2m_min || !dailyData.temperature_2m_max) {
-    return getMockForecastData(location);
+    return [];
   }
   
   return dailyData.time.map((date, index) => ({
@@ -1567,85 +1549,6 @@ function checkWeatherAlerts(current) {
   }
   
   return alerts;
-}
-
-// Mock data for fallback
-function getMockWeatherData(subcounty) {
-  const baseTemp = 25 + Math.random() * 5;
-  return {
-    location: subcounty.charAt(0).toUpperCase() + subcounty.slice(1),
-    temperature: Math.round(baseTemp),
-    humidity: 60 + Math.floor(Math.random() * 20),
-    precipitation: Math.random() * 5,
-    rain: Math.random() * 2,
-    weather_code: Math.random() > 0.7 ? 63 : 1,
-    wind_speed: 2 + Math.random() * 5,
-    description: Math.random() > 0.7 ? 'Moderate rain' : 'Mainly clear',
-    icon: Math.random() > 0.7 ? '🌧️' : '🌤️',
-    timestamp: new Date(),
-    alerts: []
-  };
-}
-
-function getMockForecastData(subcounty) {
-  const forecast = [];
-  const baseDate = new Date();
-  
-  for (let i = 0; i < 7; i++) {
-    const date = new Date(baseDate);
-    date.setDate(baseDate.getDate() + i);
-    
-    forecast.push({
-      date: date,
-      temperature: {
-        min: 18 + Math.floor(Math.random() * 5),
-        max: 28 + Math.floor(Math.random() * 5)
-      },
-      description: i % 3 === 0 ? 'Moderate rain' : 'Partly cloudy',
-      icon: i % 3 === 0 ? '🌧️' : '⛅',
-      precipitation: i % 3 === 0 ? 5 + Math.random() * 10 : Math.random() * 2,
-      rain_probability: i % 3 === 0 ? 70 : 20
-    });
-  }
-  
-  return forecast;
-}
-
-function getMockWeatherSummary(subcounty) {
-  return {
-    current: {
-      temperature: 27,
-      description: 'Partly cloudy',
-      icon: '⛅',
-      humidity: 65,
-      wind_speed: 3.2,
-      precipitation: 0.5
-    },
-    forecast: [
-      {
-        date: new Date(Date.now() + 86400000),
-        temperature: { min: 19, max: 29 },
-        description: 'Partly cloudy',
-        icon: '⛅',
-        rain_probability: 20
-      },
-      {
-        date: new Date(Date.now() + 172800000),
-        temperature: { min: 20, max: 28 },
-        description: 'Moderate rain',
-        icon: '🌧️',
-        rain_probability: 70
-      },
-      {
-        date: new Date(Date.now() + 259200000),
-        temperature: { min: 18, max: 27 },
-        description: 'Mainly clear',
-        icon: '🌤️',
-        rain_probability: 10
-      }
-    ],
-    alerts: []
-  };
 }
 
 // ==================== CROP PREDICTION RULES ====================
