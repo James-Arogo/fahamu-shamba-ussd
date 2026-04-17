@@ -9,8 +9,9 @@ import { sanitizeInput, authenticateAdmin, requireRole } from './admin-middlewar
 
 const router = express.Router();
 
-// Protect farmer profile endpoints behind admin authorization.
-router.use(authenticateAdmin, requireRole('admin'));
+// Protect only farmer-profile management endpoints behind admin authorization.
+// Do not gate unrelated /api routes that are handled in other routers.
+router.use('/farmer-profile', authenticateAdmin, requireRole('admin'));
 
 /**
  * POST /api/farmer-profile/register

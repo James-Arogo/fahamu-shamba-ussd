@@ -2260,7 +2260,12 @@ app.post('/api/feedback/deprecated', async (req, res) => {
 // Get prediction history
 app.get('/api/predictions', async (req, res) => {
   try {
-    const { phoneNumber, limit = 10 } = req.query;
+    const { phoneNumber } = req.query;
+    const parsedLimit = Number.parseInt(req.query.limit, 10);
+    const safeLimit = Number.isFinite(parsedLimit) && parsedLimit > 0
+      ? Math.min(parsedLimit, 100)
+      : 10;
+
     let query = `SELECT * FROM predictions`;
     const params = [];
     if (phoneNumber) {
@@ -2268,11 +2273,17 @@ app.get('/api/predictions', async (req, res) => {
       params.push(phoneNumber);
     }
     query += ` ORDER BY created_at DESC LIMIT ?`;
-    params.push(parseInt(limit));
+    params.push(safeLimit);
 
     const rows = await dbAsync.all ? await dbAsync.all(query, params) : await dbAsync.run(query, params); // all method may exist
     res.json({ success: true, predictions: rows });
   } catch (err) {
+    const message = (err?.message || '').toLowerCase();
+    const missingPredictionsTable = err?.code === '42P01' || message.includes('no such table: predictions');
+    if (missingPredictionsTable) {
+      console.warn('Predictions table missing. Returning empty prediction history.');
+      return res.json({ success: true, predictions: [] });
+    }
     console.error('Error fetching predictions:', err);
     res.status(500).json({ success: false, error: 'Failed to fetch predictions' });
   }
