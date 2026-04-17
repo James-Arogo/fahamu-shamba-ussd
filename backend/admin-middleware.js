@@ -196,8 +196,8 @@ export function securityHeaders(req, res, next) {
   // Enable XSS protection
   res.setHeader('X-XSS-Protection', '1; mode=block');
 
-  // Content Security Policy - Allow trusted CDNs for styles and fonts and base64 images
-  res.setHeader('Content-Security-Policy', "default-src 'self'; img-src 'self' data:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com https://ka-f.fontawesome.com; connect-src 'self' https://openweathermap.org https://api.openweathermap.org");
+  // Content Security Policy - Allow trusted CDNs plus the hosted chatbot iframe.
+  res.setHeader('Content-Security-Policy', "default-src 'self'; img-src 'self' data: https:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com https://ka-f.fontawesome.com; connect-src 'self' https://openweathermap.org https://api.openweathermap.org; frame-src 'self' https://shamba-assistant.onrender.com");
 
   // Referrer Policy
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');

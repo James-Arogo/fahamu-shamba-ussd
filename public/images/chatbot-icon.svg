@@ -1,0 +1,20 @@
+<svg width="96" height="96" viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bubbleGradient" x1="16" y1="12" x2="82" y2="84" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2F8F4E"/>
+      <stop offset="1" stop-color="#195C35"/>
+    </linearGradient>
+    <linearGradient id="leafGradient" x1="53" y1="10" x2="76" y2="35" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#A7E36A"/>
+      <stop offset="1" stop-color="#55A630"/>
+    </linearGradient>
+  </defs>
+  <circle cx="48" cy="48" r="46" fill="#F4F0E1"/>
+  <path d="M48 16C65.6731 16 80 28.9837 80 45C80 61.0163 65.6731 74 48 74H37.1918L25.3115 82.2473C23.4973 83.5069 21 82.2252 21 80.0173V70.3874C13.7493 65.1041 9 55.6847 9 45C9 28.9837 23.3269 16 41 16H48Z" fill="url(#bubbleGradient)"/>
+  <path d="M52.125 11.75C63.7365 12.8533 72.1467 21.2635 73.25 32.875C61.6385 31.7717 53.2283 23.3615 52.125 11.75Z" fill="url(#leafGradient)"/>
+  <path d="M56.5 16.5C60.1667 18.3333 65.1667 23.3333 67 27" stroke="#1F4D20" stroke-width="2.5" stroke-linecap="round"/>
+  <circle cx="35.5" cy="45.5" r="5.5" fill="#FDFBF4"/>
+  <circle cx="48.5" cy="45.5" r="5.5" fill="#FDFBF4"/>
+  <circle cx="61.5" cy="45.5" r="5.5" fill="#FDFBF4"/>
+  <path d="M34 60C37.3333 63 41.3333 64.5 46 64.5C50.6667 64.5 54.6667 63 58 60" stroke="#FDFBF4" stroke-width="4" stroke-linecap="round"/>
+</svg>
