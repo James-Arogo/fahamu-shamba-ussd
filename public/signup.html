@@ -419,6 +419,14 @@
                 let registrationMessage = 'Registration failed';
                 let userPayload = null;
 
+                const parseSafeJson = async (response) => {
+                    try {
+                        return await response.json();
+                    } catch (_) {
+                        return {};
+                    }
+                };
+
                 // Step 1: Auth account creation
                 const authRegisterResponse = await fetch('/api/auth/register', {
                     method: 'POST',
@@ -433,47 +441,10 @@
                     })
                 });
 
-                let authRegisterData = {};
-                try {
-                    authRegisterData = await authRegisterResponse.json();
-                } catch (_) {
-                    authRegisterData = {};
-                }
+                const authRegisterData = await parseSafeJson(authRegisterResponse);
 
-                if (authRegisterResponse.ok && authRegisterData.status === 'success' && authRegisterData.userId) {
-                    // Step 2: Profile completion
-                    const profileResponse = await fetch('/api/auth/register-profile', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            userId: authRegisterData.userId,
-                            name: displayName,
-                            email,
-                            location: subCounty,
-                            ward: subCounty,
-                            farm_size: farmSize || null,
-                            preferred_language: 'english'
-                        })
-                    });
-
-                    let profileData = {};
-                    try {
-                        profileData = await profileResponse.json();
-                    } catch (_) {
-                        profileData = {};
-                    }
-
-                    if (profileResponse.ok && profileData.status === 'success') {
-                        registrationSuccess = true;
-                        registrationMessage = 'Registration successful! Redirecting to login...';
-                        userPayload = profileData.user || { username: normalizedUsername, name: displayName, phone: phoneNumber };
-                    } else {
-                        registrationMessage = profileData.message || 'Profile setup failed';
-                    }
-                } else {
-                    // Fallback for legacy/serverless deployments
+                // Fallback is only for legacy deployments where /api/auth/register is missing.
+                if (authRegisterResponse.status === 404) {
                     const fallbackResponse = await fetch('/api/farmers/register', {
                         method: 'POST',
                         headers: {
@@ -495,19 +466,42 @@
                         })
                     });
 
-                    let fallbackData = {};
-                    try {
-                        fallbackData = await fallbackResponse.json();
-                    } catch (_) {
-                        fallbackData = {};
-                    }
-
+                    const fallbackData = await parseSafeJson(fallbackResponse);
                     if (fallbackResponse.ok && fallbackData.success) {
                         registrationSuccess = true;
                         registrationMessage = 'Registration successful! Redirecting to login...';
                         userPayload = fallbackData.farmer || fallbackData.user || { username: normalizedUsername, name: displayName, phone: phoneNumber };
                     } else {
-                        registrationMessage = authRegisterData.message || fallbackData.message || registrationMessage;
+                        registrationMessage = fallbackData.message || fallbackData.error || 'Registration failed. Please try again.';
+                    }
+                } else if (!(authRegisterResponse.ok && authRegisterData.status === 'success' && authRegisterData.userId)) {
+                    registrationMessage = authRegisterData.message || authRegisterData.error || 'Registration failed. Please check your details and try again.';
+                } else {
+                    // Step 2: Profile completion
+                    const profileResponse = await fetch('/api/auth/register-profile', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            userId: authRegisterData.userId,
+                            name: displayName,
+                            email,
+                            location: subCounty,
+                            ward: subCounty,
+                            farm_size: farmSize || null,
+                            preferred_language: 'english'
+                        })
+                    });
+
+                    const profileData = await parseSafeJson(profileResponse);
+
+                    if (profileResponse.ok && profileData.status === 'success') {
+                        registrationSuccess = true;
+                        registrationMessage = 'Registration successful! Redirecting to login...';
+                        userPayload = profileData.user || { username: normalizedUsername, name: displayName, phone: phoneNumber };
+                    } else {
+                        registrationMessage = profileData.message || profileData.error || 'Profile setup failed. Please try again.';
                     }
                 }
 
