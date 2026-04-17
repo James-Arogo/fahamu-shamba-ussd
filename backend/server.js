@@ -118,6 +118,20 @@ app.use(cors({
       return callback(null, true);
     }
 
+    // Allow Vercel-hosted browser origins used by this deployment.
+    // Browser fetch() sends Origin, and this app serves both UI and API from Vercel domains.
+    try {
+      const originHost = new URL(origin).hostname.toLowerCase();
+      if (
+        originHost === 'fahamu-shamba-vert.vercel.app' ||
+        originHost.endsWith('.vercel.app')
+      ) {
+        return callback(null, true);
+      }
+    } catch (_) {
+      // Ignore URL parsing issues and continue to explicit allow-list checks.
+    }
+
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
