@@ -60,7 +60,7 @@ router.get('/api/market/prices', async (req, res) => {
       success: true,
       prices: Array.from(grouped.values()),
       timestamp: snapshot.observedAt || snapshot.fetchedAt,
-      message: snapshot.isFallback ? 'Showing fallback local prices' : 'Live market prices loaded successfully',
+      message: snapshot.prices.length ? 'Live market prices loaded successfully' : 'No live market prices are currently available',
       meta: {
         provider: snapshot.provider,
         sourceUrl: snapshot.sourceUrl,
@@ -82,47 +82,11 @@ router.get('/api/market/prices', async (req, res) => {
 
 // Get market trends for Chart.js with all 6 valid Siaya sub-counties
 router.get('/api/market-trends', (req, res) => {
-  try {
-    const { crop } = req.query;
-    
-    if (!crop) {
-      return res.status(400).json({
-        success: false,
-        error: 'Crop parameter is required'
-      });
-    }
-
-    // Generate demo trends for 8 weeks
-    const weeks = [];
-    const basePrice = crop === 'Maize' ? 55 : crop === 'Beans' ? 90 : 70;
-    
-    for (let i = 8; i >= 0; i--) {
-      const date = new Date();
-      date.setDate(date.getDate() - (i * 7));
-      const weekStart = date.toISOString().split('T')[0];
-      
-      // All 6 valid Siaya County sub-counties
-      const subcounties = ['alego', 'bondo', 'gem', 'rarieda', 'ugenya', 'ugunja'];
-      const trends = subcounties.map(sc => ({
-        subcounty: sc,
-        week_start: weekStart,
-        price: basePrice + Math.floor(Math.random() * 10) - 5
-      }));
-      weeks.push(...trends);
-    }
-
-    res.json({
-      success: true,
-      trends: weeks
-    });
-    
-  } catch (error) {
-    console.error('Error fetching market trends:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch market trends'
-    });
-  }
+  res.json({
+    success: true,
+    trends: [],
+    message: 'No trend history is available until live market history has been collected.'
+  });
 });
 
 export default router;

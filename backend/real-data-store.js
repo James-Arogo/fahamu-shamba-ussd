@@ -192,7 +192,8 @@ function buildMarketRows(rawRows) {
       recorded_at: String(row.observed_at || '').trim() || new Date().toISOString(),
       source: String(row.source || '').trim()
     }))
-    .filter((row) => row.crop && row.market);
+    .filter((row) => row.crop && row.market)
+    .filter((row) => !['local_seed', 'built_in_seed', 'dummy', 'demo'].includes(row.source.toLowerCase()));
 }
 
 function readJsonIfExists(filePath, fallback = null) {

@@ -55,3 +55,4 @@
 {"timestamp":"2026-03-25T19:39:42.498Z","eventType":"invalid_token_attempt","severity":"warning","details":{"endpoint":"/farmer-profiles","ipAddress":"::1"},"hash":"mn6g6lgiphrre6xuiv"}
 {"timestamp":"2026-03-25T19:39:42.504Z","eventType":"invalid_token_attempt","severity":"warning","details":{"endpoint":"/system-alerts","ipAddress":"::1"},"hash":"mn6g6lgon685myml3e"}
 {"timestamp":"2026-03-25T19:39:42.512Z","eventType":"invalid_token_attempt","severity":"warning","details":{"endpoint":"/audit-logs","ipAddress":"::1"},"hash":"mn6g6lgwmijabl4zpkg"}
+{"timestamp":"2026-04-17T12:31:00.298Z","eventType":"unauthorized_access_attempt","severity":"warning","details":{"endpoint":"/recommendations","method":"GET","ipAddress":"::ffff:127.0.0.1"},"hash":"mo2vzvf10l1pkj75fdp"}

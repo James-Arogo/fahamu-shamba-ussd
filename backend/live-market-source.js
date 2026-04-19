@@ -1,5 +1,4 @@
 import fetch from 'node-fetch';
-import marketService from './market-service.js';
 
 const DEFAULT_LIVE_SOURCE_URL = 'https://portal.mkulimabora.org/market-prices/admin/k2/api.php';
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
@@ -115,60 +114,17 @@ function classifyPriceSignal(retailPrice, averageRetail) {
   return 'fair';
 }
 
-function buildFallbackSnapshot() {
-  try {
-    marketService.initializeMarketDatabase();
-    const fallback = marketService.getCurrentPrices();
-    const prices = (fallback.prices || []).map(row => ({
-      crop: row.crop,
-      market: row.market,
-      county: row.county || 'Siaya',
-      subCounty: inferSubCounty(row.market),
-      wholesalePrice: row.price || null,
-      retailPrice: row.price || null,
-      unit: row.unit || 'Kg',
-      volume: null,
-      observedAt: row.recorded_at || fallback.timestamp,
-      source: 'local_seed'
-    }));
-
-    return enrichSnapshot(prices, {
-      provider: 'local_seed',
-      sourceUrl: null,
-      fetchedAt: new Date().toISOString(),
-      notes: 'Showing locally seeded market prices because the external feed is unavailable.'
-    });
-  } catch (error) {
-    console.warn('Local market fallback failed, using built-in fallback rows:', error.message);
-    const hardcodedRows = [
-      ['Maize', 'Siaya Town Market', 65, 'Alego Usonga'],
-      ['Beans', 'Siaya Town Market', 85, 'Alego Usonga'],
-      ['Rice', 'Yala Market', 125, 'Ugunja'],
-      ['Sorghum', 'Bondo Market', 95, 'Bondo'],
-      ['Groundnuts', 'Ugunja Market', 110, 'Ugunja'],
-      ['Cassava', 'Ugenya Market', 38, 'Ugenya'],
-      ['Tomatoes', 'Rarieda Market', 76, 'Rarieda'],
-      ['Kales', 'Gem Market', 50, 'Gem']
-    ].map(([crop, market, price, subCounty]) => ({
-      crop,
-      market,
-      county: 'Siaya',
-      subCounty,
-      wholesalePrice: price,
-      retailPrice: price,
-      unit: 'Kg',
-      volume: null,
-      observedAt: new Date().toISOString(),
-      source: 'built_in_seed'
-    }));
-
-    return enrichSnapshot(hardcodedRows, {
-      provider: 'local_seed',
-      sourceUrl: null,
-      fetchedAt: new Date().toISOString(),
-      notes: 'Showing built-in fallback prices because both the external feed and local market database were unavailable.'
-    });
-  }
+function buildUnavailableSnapshot(reason) {
+  return {
+    success: true,
+    provider: 'unavailable',
+    sourceUrl: null,
+    fetchedAt: new Date().toISOString(),
+    observedAt: null,
+    isFallback: false,
+    notes: reason || 'No live market data is currently available.',
+    prices: []
+  };
 }
 
 function enrichSnapshot(rows, meta) {
@@ -207,7 +163,7 @@ function enrichSnapshot(rows, meta) {
     sourceUrl: meta.sourceUrl,
     fetchedAt: meta.fetchedAt,
     observedAt: freshestObservedAt,
-    isFallback: meta.provider === 'local_seed',
+    isFallback: meta.provider !== 'mkulima_bora' && enriched.length > 0,
     notes: meta.notes,
     prices: enriched
   };
@@ -284,8 +240,8 @@ export async function getLiveSiayaMarketSnapshot(options = {}) {
     cachedAt = Date.now();
     return cachedSnapshot;
   } catch (error) {
-    console.warn('Live market source failed, using fallback:', error.message);
-    cachedSnapshot = buildFallbackSnapshot();
+    console.warn('Live market source failed; returning empty market snapshot:', error.message);
+    cachedSnapshot = buildUnavailableSnapshot('No live market prices are currently available from the external source.');
     cachedAt = Date.now();
     return cachedSnapshot;
   }

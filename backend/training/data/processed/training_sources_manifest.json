@@ -33,7 +33,7 @@
     "subcounties_centroids_csv": "/home/james-arogo/Desktop/Project01/fahamu-shamba/backend/training/data/raw/siaya_subcounties_centroids.csv",
     "weather_csv": "/home/james-arogo/Desktop/Project01/fahamu-shamba/backend/training/data/raw/weather_open_meteo_daily.csv",
     "soil_csv": "/home/james-arogo/Desktop/Project01/fahamu-shamba/backend/training/data/raw/kalro_siaya_soil_normalized.csv",
-    "market_csv": "/home/james-arogo/Desktop/Project01/fahamu-shamba/backend/training/data/raw/market_siaya_snapshot.csv",
+    "market_csv": null,
     "ward_soil_reference_csv": "/home/james-arogo/Desktop/Project01/fahamu-shamba/backend/training/data/processed/siaya_location_soil_reference.csv",
     "training_dataset_csv": "/home/james-arogo/Desktop/Project01/fahamu-shamba/backend/training/data/processed/training_dataset_real.csv",
     "model_json": "/home/james-arogo/Desktop/Project01/fahamu-shamba/backend/training/models/crop_naive_bayes_model.json"
