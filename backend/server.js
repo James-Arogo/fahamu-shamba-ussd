@@ -1089,7 +1089,8 @@ function buildStoredWeatherFallback(subcounty) {
   const now = new Date();
   const baseTemp = Number(summary.avgTemperature || 24);
   const baseHumidity = Number(summary.avgHumidity || 72);
-  const rainDaily = Number(summary.totalRainfall || 0);
+  const records = Math.max(1, Number(summary.recordCount || 1));
+  const rainDaily = Math.max(0, Number(summary.totalRainfall || 0) / records);
   const rainChance = rainDaily > 12 ? 0.75 : rainDaily > 6 ? 0.55 : rainDaily > 2 ? 0.35 : 0.15;
   const condition = rainChance >= 0.7 ? 'Rain likely' : rainChance >= 0.45 ? 'Partly cloudy' : 'Clear intervals';
 
