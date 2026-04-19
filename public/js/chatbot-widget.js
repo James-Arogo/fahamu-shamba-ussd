@@ -6,6 +6,28 @@
 
     var CHATBOT_URL = 'https://shamba-assistant.onrender.com/';
 
+    function shouldRenderWidget() {
+        var path = String(window.location.pathname || '').toLowerCase();
+        if (path.includes('/login') || path.includes('/signup') || path.includes('/farmer-registration')) {
+            return false;
+        }
+
+        var token = localStorage.getItem('token');
+        var userRaw = localStorage.getItem('user');
+        if (!token || !userRaw) {
+            return false;
+        }
+
+        try {
+            var user = JSON.parse(userRaw);
+            if (!user || (typeof user !== 'object')) return false;
+        } catch (_) {
+            return false;
+        }
+
+        return true;
+    }
+
     function injectStylesheet() {
         if (document.querySelector('link[data-chatbot-widget-style="true"]')) {
             return;
@@ -43,7 +65,6 @@
             '  </div>',
             '  <div class="chatbot-panel-body">',
             '    <iframe class="chatbot-iframe" src="' + CHATBOT_URL + '" title="Shamba Assistant chatbot" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allow="clipboard-read; clipboard-write"></iframe>',
-            '    <div class="chatbot-fallback">If the embedded assistant does not load here, <a href="' + CHATBOT_URL + '" target="_blank" rel="noopener noreferrer">open the chatbot in a new tab</a>.</div>',
             '  </div>',
             '</section>',
             '<button type="button" class="chatbot-launcher" aria-label="Open Shamba Assistant" aria-expanded="false">',
@@ -93,6 +114,11 @@
     }
 
     function init() {
+        if (!shouldRenderWidget()) {
+            var existing = document.querySelector('.chatbot-widget');
+            if (existing) existing.remove();
+            return;
+        }
         injectStylesheet();
         createWidget();
     }

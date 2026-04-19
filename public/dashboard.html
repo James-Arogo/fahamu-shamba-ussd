@@ -234,6 +234,64 @@
             padding: 0 -24px;
             margin: 0 -24px;
             padding: 24px;
+            position: relative;
+            border-radius: 18px;
+            overflow: hidden;
+            box-shadow: 0 18px 40px rgba(8, 20, 35, 0.35);
+        }
+
+        .weather-head {
+            position: relative;
+            z-index: 2;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .weather-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .weather-live-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 12px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.35);
+            background: rgba(255, 255, 255, 0.18);
+            color: #fff;
+            font-size: 0.82rem;
+            font-weight: 700;
+            letter-spacing: 0.2px;
+        }
+
+        .weather-live-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #2cf168;
+            box-shadow: 0 0 10px rgba(44, 241, 104, 0.7);
+        }
+
+        .weather-refresh-btn {
+            border: 1px solid rgba(255, 255, 255, 0.35);
+            background: rgba(255, 255, 255, 0.2);
+            color: #fff;
+            border-radius: 10px;
+            padding: 10px 12px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .weather-refresh-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
         }
 
         /* WEATHER BACKGROUNDS */
@@ -1528,18 +1586,24 @@
 
             <!-- WEATHER SECTION - Google Weather Style -->
             <section class="weather-dashboard default-bg">
-                <!-- LOCATION SELECTOR -->
-                <div style="position: relative; z-index: 2; margin-bottom: 8px;">
-                    <select id="weatherLocation" class="weather-location" onchange="loadWeatherDashboard(this.value)"
-                        style="background: rgba(255,255,255,0.9); color: #333; padding: 10px 12px; border-radius: 8px; border: 1px solid #ddd; font-weight: 600; cursor: pointer; width: 100%; max-width: 200px;">
-                        <option value="siaya">Siaya</option>
-                        <option value="bondo">Bondo</option>
-                        <option value="ugunja">Ugunja</option>
-                        <option value="ugenya">Ugenya</option>
-                        <option value="gem">Gem</option>
-                        <option value="alego">Alego</option>
-                        <option value="rarieda">Rarieda</option>
-                    </select>
+                <div class="weather-head">
+                    <div class="weather-controls">
+                        <select id="weatherLocation" class="weather-location" onchange="loadWeatherDashboard(this.value)"
+                            style="background: rgba(255,255,255,0.9); color: #333; padding: 10px 12px; border-radius: 8px; border: 1px solid #ddd; font-weight: 600; cursor: pointer; width: 100%; max-width: 200px;">
+                            <option value="siaya">Siaya</option>
+                            <option value="bondo">Bondo</option>
+                            <option value="ugunja">Ugunja</option>
+                            <option value="ugenya">Ugenya</option>
+                            <option value="gem">Gem</option>
+                            <option value="alego">Alego</option>
+                            <option value="rarieda">Rarieda</option>
+                        </select>
+                        <button type="button" class="weather-refresh-btn" onclick="refreshWeatherNow()">Refresh</button>
+                    </div>
+                    <div class="weather-live-pill" id="weatherLiveStatus">
+                        <span class="weather-live-dot"></span>
+                        <span>Live updates active</span>
+                    </div>
                 </div>
 
                 <!-- 1. HERO WEATHER CARD -->
@@ -1811,6 +1875,7 @@
             agromet: null,
             location: 'siaya'
         };
+        let weatherRefreshTimer = null;
 
         // Market trend data simulation
         let marketTrendData = [12000, 12200, 11800, 12500, 12300, 12700, 12500];
@@ -1954,20 +2019,17 @@
 
         function updateWeatherCard() {
             // Update weather icon based on current weather
-            const weatherIcon = document.querySelector('.weather-icon-display');
+            const weatherIconElement = document.querySelector('.weather-icon-display');
             const currentTemp = document.querySelector('.weather-stats .stat-value');
 
-            if (weatherIcon) {
-                // Simulate weather changes
-                const weatherTypes = ['☀️', '⛅', '☁️', '🌧️', '⛈️', '🌫️'];
-                const randomWeather = weatherTypes[Math.floor(Math.random() * weatherTypes.length)];
-                weatherIcon.textContent = randomWeather;
+            if (weatherIconElement) {
+                const currentDescription = weatherState.current?.description || '';
+                weatherIconElement.textContent = weatherIcon(currentDescription);
             }
 
             if (currentTemp) {
-                const currentTempValue = parseInt(currentTemp.textContent.replace('°C', ''));
-                const newTemp = currentTempValue + (Math.random() - 0.5) * 4;
-                currentTemp.textContent = `${newTemp.toFixed(1)}°C`;
+                const liveTemp = weatherState.current?.temp;
+                currentTemp.textContent = Number.isFinite(liveTemp) ? `${liveTemp.toFixed(1)}°C` : '--';
             }
 
             // Update mini forecast
@@ -2035,10 +2097,28 @@
             return '☀️';
         }
 
+        function normalizeSubcounty(rawValue) {
+            const key = String(rawValue || '').trim().toLowerCase();
+            const aliases = {
+                'siaya': 'siaya',
+                'siaya county': 'siaya',
+                'bondo': 'bondo',
+                'ugunja': 'ugunja',
+                'ugenya': 'ugenya',
+                'yala': 'ugenya',
+                'gem': 'gem',
+                'alego': 'alego',
+                'alego usonga': 'alego',
+                'rarieda': 'rarieda'
+            };
+            return aliases[key] || 'siaya';
+        }
+
         function switchSubcounty(subcounty) {
+            const normalized = normalizeSubcounty(subcounty);
             const locationSelect = document.getElementById('weatherLocation');
-            if (locationSelect) locationSelect.value = subcounty;
-            loadWeatherDashboard(subcounty);
+            if (locationSelect) locationSelect.value = normalized;
+            loadWeatherDashboard(normalized);
         }
 
         function setActiveCityChip(subcounty) {
@@ -2404,8 +2484,11 @@
         }
 
         async function loadWeatherDashboard(subcounty = 'siaya') {
+            const normalizedSubcounty = normalizeSubcounty(subcounty);
             try {
-                const response = await fetch(`/api/weather/live/${encodeURIComponent(subcounty)}`);
+                const response = await fetch(`/api/weather/live/${encodeURIComponent(normalizedSubcounty)}?_t=${Date.now()}`, {
+                    cache: 'no-store'
+                });
                 const data = await response.json();
                 if (!data.success) throw new Error(data.error || 'Live weather failed');
 
@@ -2417,8 +2500,10 @@
                 weatherState.sun = data.sun || null;
                 weatherState.uv = data.uv_index;
                 weatherState.agromet = c.agromet || null;
-                weatherState.location = subcounty;
-                setActiveCityChip(subcounty);
+                weatherState.location = normalizedSubcounty;
+                setActiveCityChip(normalizedSubcounty);
+                const locationSelect = document.getElementById('weatherLocation');
+                if (locationSelect) locationSelect.value = normalizedSubcounty;
 
                 // Update hero weather card (Google Weather Style)
                 document.getElementById('heroWeatherTemp').textContent = `${c.temp ?? '--'}°C`;
@@ -2436,44 +2521,52 @@
                 setWeatherBackground(c.description);
 
                 // Update chip temperature
-                updateChipTemperature(subcounty, c.temp ?? '--');
+                updateChipTemperature(normalizedSubcounty, c.temp ?? '--');
 
                 document.getElementById('weatherNote').textContent = '';
+                const status = document.getElementById('weatherLiveStatus');
+                if (status) {
+                    status.innerHTML = '<span class="weather-live-dot"></span><span>Live updates active</span>';
+                }
             } catch (err) {
-                document.getElementById('weatherNote').textContent = 'Using offline-ready weather fallback.';
-                weatherState.current = { temp: 25, humidity: 80, wind_speed: 7.2, wind_deg: 45, description: 'Overcast' };
-                weatherState.hourly = [
-                    { dt_txt: new Date().toISOString(), temp: 25, pop: 0.4, precipitation: 0.3, description: 'Overcast' },
-                    { dt_txt: new Date(Date.now() + 10800000).toISOString(), temp: 24, pop: 0.67, precipitation: 0.5, description: 'Drizzling' }
-                ];
-                weatherState.daily = [
-                    { date: new Date().toISOString(), temperature: { max: 25, min: 14 }, description: 'Overcast', rain_probability: 35 },
-                    { date: new Date(Date.now() + 86400000).toISOString(), temperature: { max: 25, min: 15 }, description: 'Drizzling', rain_probability: 67 },
-                    { date: new Date(Date.now() + 172800000).toISOString(), temperature: { max: 26, min: 15 }, description: 'Raining', rain_probability: 100 }
-                ];
-                weatherState.air = { aqi: 1, label: 'Excellent' };
-                weatherState.sun = { sunrise: Date.now(), sunset: Date.now() + 12 * 60 * 60 * 1000 };
-                weatherState.uv = 1;
-                weatherState.location = subcounty;
-                setActiveCityChip(subcounty);
+                document.getElementById('weatherNote').textContent = 'Live weather data is currently unavailable.';
+                weatherState.current = {};
+                weatherState.hourly = [];
+                weatherState.daily = [];
+                weatherState.air = null;
+                weatherState.sun = null;
+                weatherState.uv = null;
+                weatherState.location = normalizedSubcounty;
+                weatherState.agromet = null;
+                setActiveCityChip(normalizedSubcounty);
 
-                // Update hero weather card with fallback data
-                document.getElementById('heroWeatherTemp').textContent = `${weatherState.current.temp}°C`;
-                document.getElementById('heroWeatherDesc').textContent = weatherState.current.description;
-                document.getElementById('heroHighLow').textContent = 'High: 26° | Low: 14°';
-                document.getElementById('heroFarmerTip').textContent = 'Using offline fallback data...';
+                document.getElementById('heroWeatherTemp').textContent = '--';
+                document.getElementById('heroWeatherDesc').textContent = 'Weather unavailable';
+                document.getElementById('heroHighLow').textContent = 'High: -- | Low: --';
+                document.getElementById('heroFarmerTip').textContent = 'Check back later for live weather updates.';
                 document.getElementById('heroWeatherUpdated').textContent = new Date().toLocaleTimeString();
 
-                // Render forecasts from fallback data
                 renderHourlyStrip(weatherState.hourly);
                 renderDailyForecast(weatherState.daily);
                 updateDetailsCards(weatherState.current, weatherState.daily);
-
-                // Set background based on weather
-                setWeatherBackground(weatherState.current.description);
-
-                updateChipTemperature(subcounty, weatherState.current.temp);
+                setWeatherBackground('');
+                updateChipTemperature(normalizedSubcounty, '--');
+                const status = document.getElementById('weatherLiveStatus');
+                if (status) {
+                    status.innerHTML = '<span class="weather-live-dot" style="background:#f39c12;box-shadow:0 0 10px rgba(243,156,18,.6)"></span><span>Retrying live updates...</span>';
+                }
             }
+        }
+
+        function startWeatherAutoRefresh() {
+            if (weatherRefreshTimer) clearInterval(weatherRefreshTimer);
+            weatherRefreshTimer = setInterval(() => {
+                loadWeatherDashboard(weatherState.location || 'siaya');
+            }, 120000);
+        }
+
+        function refreshWeatherNow() {
+            loadWeatherDashboard(weatherState.location || 'siaya');
         }
 
         window.addEventListener('DOMContentLoaded', async () => {
@@ -2499,7 +2592,14 @@
             }
 
             loadUserData();
-            loadWeatherDashboard((user.location || 'siaya').toLowerCase());
+            loadWeatherDashboard(normalizeSubcounty(user.location || 'siaya'));
+            startWeatherAutoRefresh();
+        });
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                loadWeatherDashboard(weatherState.location || 'siaya');
+            }
         });
     </script>
 </body>
