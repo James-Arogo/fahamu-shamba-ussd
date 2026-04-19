@@ -5,13 +5,18 @@ import nodemailer from 'nodemailer';
  */
 
 let transporter = null;
+let resolvedFromAddress = '';
 
 /**
  * Initialize email transporter
  */
 export function initializeEmailService() {
-  const emailUser = process.env.EMAIL_USER;
-  const emailPassword = process.env.EMAIL_PASSWORD;
+  const emailUser = (process.env.EMAIL_USER || process.env.SMTP_USER || '').trim();
+  const emailPassword = (process.env.EMAIL_PASSWORD || process.env.SMTP_PASSWORD || process.env.GMAIL_APP_PASSWORD || '').trim();
+  const emailHost = (process.env.SMTP_HOST || '').trim();
+  const emailPort = Number(process.env.SMTP_PORT || 0) || 587;
+  const emailSecure = String(process.env.SMTP_SECURE || '').toLowerCase() === 'true' || emailPort === 465;
+  resolvedFromAddress = (process.env.EMAIL_FROM || emailUser || '').trim();
   const hasEmailConfig =
     !!emailUser &&
     !!emailPassword &&
@@ -25,14 +30,26 @@ export function initializeEmailService() {
     return;
   }
 
-  // Gmail configuration
-  transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: emailUser,
-      pass: emailPassword
-    }
-  });
+  if (emailHost) {
+    transporter = nodemailer.createTransport({
+      host: emailHost,
+      port: emailPort,
+      secure: emailSecure,
+      auth: {
+        user: emailUser,
+        pass: emailPassword
+      }
+    });
+  } else {
+    // Gmail configuration
+    transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: emailUser,
+        pass: emailPassword
+      }
+    });
+  }
 
   // Verify connection
   transporter.verify((error, success) => {
@@ -52,6 +69,13 @@ export function initializeEmailService() {
 export async function sendOTPEmail(email, otp) {
   if (!transporter) {
     console.log(`\n🔐 OTP Code for ${email}: ${otp}\n`);
+    if (process.env.NODE_ENV === 'production') {
+      return {
+        success: false,
+        method: 'none',
+        message: 'Email service is not configured in production'
+      };
+    }
     return {
       success: true,
       method: 'console',
@@ -61,7 +85,7 @@ export async function sendOTPEmail(email, otp) {
 
   try {
     const mailOptions = {
-      from: process.env.EMAIL_USER,
+      from: resolvedFromAddress || process.env.EMAIL_USER || process.env.SMTP_USER,
       to: email,
       subject: '🌱 Fahamu Shamba - Admin Login OTP',
       html: `
@@ -149,7 +173,7 @@ export async function sendSecurityAlertEmail(email, alertTitle, alertDetails) {
 
   try {
     const mailOptions = {
-      from: process.env.EMAIL_USER,
+      from: resolvedFromAddress || process.env.EMAIL_USER || process.env.SMTP_USER,
       to: email,
       subject: `🚨 Fahamu Shamba - ${alertTitle}`,
       html: `
@@ -197,7 +221,7 @@ export async function sendWelcomeEmail(email, adminName) {
 
   try {
     const mailOptions = {
-      from: process.env.EMAIL_USER,
+      from: resolvedFromAddress || process.env.EMAIL_USER || process.env.SMTP_USER,
       to: email,
       subject: '🌱 Welcome to Fahamu Shamba Admin Dashboard',
       html: `

@@ -108,6 +108,15 @@ router.post('/admin/login', sanitizeInput, async (req, res) => {
     // Send OTP via email
     const emailResult = await sendOTPEmail(email, otp);
 
+    if (!emailResult.success) {
+      logSecurityEvent('otp_delivery_failed', { email, ipAddress, reason: emailResult.message || emailResult.error }, 'critical');
+      return res.status(503).json({
+        success: false,
+        message: 'Unable to deliver OTP to admin email. Please contact system support.',
+        emailSent: false
+      });
+    }
+
     logLoginAttempt(email, true, ipAddress, req.headers['user-agent'], 'OTP sent');
     logAuditEvent(admin.id, email, 'otp_sent', { emailSent: emailResult.success }, 'success', ipAddress);
     

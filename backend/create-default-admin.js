@@ -9,27 +9,45 @@
 import Database from 'better-sqlite3';
 import { hashPassword } from './admin-auth.js';
 import * as adminDB from './admin-database.js';
+import pool from './database-postgres.js';
 
-let db;
+const usePostgres = Boolean(process.env.DATABASE_URL);
+let db = null;
 
-try {
-  db = new Database('./fahamu_shamba.db');
-} catch (error) {
-  console.error('❌ Error opening database:', error.message);
-  process.exit(1);
-}
-
-const dbAsync = {
-  run: async (sql, params = []) => {
-    const stmt = db.prepare(sql);
-    const result = stmt.run(...params);
-    return { lastID: result.lastInsertRowid, changes: result.changes };
-  },
-  get: async (sql, params = []) => {
-    const stmt = db.prepare(sql);
-    return stmt.get(...params);
-  }
-};
+const dbAsync = usePostgres
+  ? {
+      run: async (sql, params = []) => {
+        let idx = 0;
+        const pgSQL = sql.replace(/\?/g, () => `$${++idx}`);
+        const result = await pool.query(pgSQL, params);
+        return { lastID: result.rows?.[0]?.id || null, changes: result.rowCount };
+      },
+      get: async (sql, params = []) => {
+        let idx = 0;
+        const pgSQL = sql.replace(/\?/g, () => `$${++idx}`);
+        const result = await pool.query(pgSQL, params);
+        return result.rows[0] || null;
+      }
+    }
+  : (() => {
+      try {
+        db = new Database('./fahamu_shamba.db');
+      } catch (error) {
+        console.error('❌ Error opening SQLite database:', error.message);
+        process.exit(1);
+      }
+      return {
+        run: async (sql, params = []) => {
+          const stmt = db.prepare(sql);
+          const result = stmt.run(...params);
+          return { lastID: result.lastInsertRowid, changes: result.changes };
+        },
+        get: async (sql, params = []) => {
+          const stmt = db.prepare(sql);
+          return stmt.get(...params);
+        }
+      };
+    })();
 
 async function main() {
   console.log('\n');
@@ -38,8 +56,31 @@ async function main() {
   console.log('╚════════════════════════════════════════════════════════╝\n');
 
   try {
-    // Initialize database if needed
-    adminDB.initializeAdminDatabase(db, dbAsync);
+    if (usePostgres) {
+      console.log('ℹ️ Using PostgreSQL admin setup mode');
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS admin_users (
+          id SERIAL PRIMARY KEY,
+          email TEXT UNIQUE NOT NULL,
+          password_hash TEXT NOT NULL,
+          first_name TEXT,
+          last_name TEXT,
+          role TEXT DEFAULT 'admin' CHECK(role IN ('admin', 'super_admin', 'moderator')),
+          mfa_enabled BOOLEAN DEFAULT FALSE,
+          mfa_secret TEXT,
+          status TEXT DEFAULT 'active' CHECK(status IN ('active', 'inactive', 'locked')),
+          last_login TIMESTAMP,
+          login_count INTEGER DEFAULT 0,
+          failed_login_attempts INTEGER DEFAULT 0,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          created_by TEXT
+        )
+      `);
+    } else {
+      // Initialize database if needed
+      adminDB.initializeAdminDatabase(db, dbAsync);
+    }
 
     const email = 'cjoarogo@gmail.com';
     const password = 'Jemo@721';
@@ -55,32 +96,55 @@ async function main() {
       console.log('⚠️  Admin account already exists');
       console.log('⏳ Resetting admin credentials to the requested defaults...\n');
 
-      await dbAsync.run(
-        `UPDATE admin_users
-         SET password_hash = ?,
-             first_name = ?,
-             last_name = ?,
-             role = ?,
-             status = 'active',
-             failed_login_attempts = 0,
-             updated_at = CURRENT_TIMESTAMP
-         WHERE email = ?`,
-        [passwordHash, 'System', 'Administrator', 'super_admin', email]
-      );
+      if (usePostgres) {
+        await pool.query(
+          `UPDATE admin_users
+           SET password_hash = $1,
+               first_name = $2,
+               last_name = $3,
+               role = $4,
+               status = 'active',
+               failed_login_attempts = 0,
+               updated_at = CURRENT_TIMESTAMP
+           WHERE email = $5`,
+          [passwordHash, 'System', 'Administrator', 'super_admin', email]
+        );
+      } else {
+        await dbAsync.run(
+          `UPDATE admin_users
+           SET password_hash = ?,
+               first_name = ?,
+               last_name = ?,
+               role = ?,
+               status = 'active',
+               failed_login_attempts = 0,
+               updated_at = CURRENT_TIMESTAMP
+           WHERE email = ?`,
+          [passwordHash, 'System', 'Administrator', 'super_admin', email]
+        );
+      }
 
       console.log('✅ Existing admin account updated successfully!\n');
     } else {
       console.log('⏳ Creating default admin account...\n');
 
-      await adminDB.createAdminUser(
-        dbAsync,
-        email,
-        passwordHash,
-        'System',
-        'Administrator',
-        'super_admin',
-        'setup-script'
-      );
+      if (usePostgres) {
+        await pool.query(
+          `INSERT INTO admin_users (email, password_hash, first_name, last_name, role, created_by, status)
+           VALUES ($1, $2, $3, $4, $5, $6, 'active')`,
+          [email, passwordHash, 'System', 'Administrator', 'super_admin', 'setup-script']
+        );
+      } else {
+        await adminDB.createAdminUser(
+          dbAsync,
+          email,
+          passwordHash,
+          'System',
+          'Administrator',
+          'super_admin',
+          'setup-script'
+        );
+      }
 
       console.log('✅ Admin account created successfully!\n');
     }
@@ -113,7 +177,8 @@ async function main() {
     console.error('❌ Error:', error.message);
     process.exit(1);
   } finally {
-    db.close();
+    if (db) db.close();
+    if (usePostgres) await pool.end();
   }
 }
 

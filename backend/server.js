@@ -14,6 +14,7 @@ import * as farmerDB from './farmer-module.js';
 import * as farmerProfileDB from './farmer-profile-dashboard.js';
 import { securityHeaders, sanitizeInput, logAPICall } from './admin-middleware.js';
 import { initializeEmailService } from './email-service.js';
+import { hashPassword } from './admin-auth.js';
 import { initAuthRoutes } from './auth-routes.js';
 import { initializeAuthTables } from './init-auth-tables.js';
 import { handleUSSD, configureUSSDStorage } from './ussd-service.js';
@@ -30,8 +31,6 @@ import communityRoutes from './community-routes.js';
 import feedbackRoutes from './feedback-routes.js';
 import communityService from './community-service-async.js';
 import feedbackService from './feedback-service-async.js';
-import marketRoutes from './market-routes.js';
-import marketPricesApi from './market-prices-api.js';
 import weatherRoutes from './weather-routes.js';
 import { initializeWeatherTablesSQLite, initializeWeatherTablesPostgreSQL } from './weather-database-migration.js';
 
@@ -156,9 +155,10 @@ app.get('/farmer-profile', (req, res) => sendPublicPage(res, 'farmer-profile.htm
 app.get('/feedback', (req, res) => sendPublicPage(res, 'feedback.html'));
 app.get('/community', (req, res) => sendPublicPage(res, 'community.html'));
 app.get('/community-market', (req, res) => sendPublicPage(res, 'community-market.html'));
-app.get('/market', (req, res) => sendPublicPage(res, 'market.html'));
-app.get('/market-trends', (req, res) => sendPublicPage(res, 'market-trends.html'));
-app.get('/market-trends.html', (req, res) => sendPublicPage(res, 'market-trends.html'));
+app.get('/market', (req, res) => res.redirect(302, '/dashboard'));
+app.get('/market.html', (req, res) => res.redirect(302, '/dashboard'));
+app.get('/market-trends', (req, res) => res.redirect(302, '/dashboard'));
+app.get('/market-trends.html', (req, res) => res.redirect(302, '/dashboard'));
 app.get('/service-market', (req, res) => sendPublicPage(res, 'service-market.html'));
 app.get('/service-market.html', (req, res) => sendPublicPage(res, 'service-market.html'));
 app.get('/recommendations', (req, res) => sendPublicPage(res, 'recommendations.html'));
@@ -355,6 +355,120 @@ async function ensurePostgresAuthSchema() {
   console.log('✅ PostgreSQL auth schema compatibility check complete');
 }
 
+async function ensurePostgresAdminSchema() {
+  if (!USE_POSTGRES) return;
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS admin_users (
+      id SERIAL PRIMARY KEY,
+      email TEXT UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL,
+      first_name TEXT,
+      last_name TEXT,
+      role TEXT DEFAULT 'admin' CHECK(role IN ('admin', 'super_admin', 'moderator')),
+      mfa_enabled BOOLEAN DEFAULT FALSE,
+      mfa_secret TEXT,
+      status TEXT DEFAULT 'active' CHECK(status IN ('active', 'inactive', 'locked')),
+      last_login TIMESTAMP,
+      login_count INTEGER DEFAULT 0,
+      failed_login_attempts INTEGER DEFAULT 0,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      created_by TEXT
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS mfa_tokens (
+      id SERIAL PRIMARY KEY,
+      admin_id INTEGER NOT NULL REFERENCES admin_users(id) ON DELETE CASCADE,
+      token TEXT NOT NULL,
+      used BOOLEAN DEFAULT FALSE,
+      expires_at TIMESTAMP NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(admin_id, token)
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS admin_sessions (
+      id SERIAL PRIMARY KEY,
+      admin_id INTEGER NOT NULL REFERENCES admin_users(id) ON DELETE CASCADE,
+      session_id TEXT UNIQUE NOT NULL,
+      csrf_token TEXT NOT NULL,
+      ip_address TEXT,
+      user_agent TEXT,
+      last_activity TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      expires_at TIMESTAMP NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_admin_users_email ON admin_users(email)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_admin_sessions_admin ON admin_sessions(admin_id)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_mfa_tokens_admin ON mfa_tokens(admin_id)`);
+
+  console.log('✅ PostgreSQL admin schema compatibility check complete');
+}
+
+async function ensureDefaultAdminAccount() {
+  const adminEmail = (process.env.ADMIN_DEFAULT_EMAIL || 'cjoarogo@gmail.com').trim().toLowerCase();
+  const adminPassword = process.env.ADMIN_DEFAULT_PASSWORD || 'Jemo@721';
+
+  if (!adminEmail || !adminPassword) {
+    console.warn('⚠️ Skipping default admin setup: ADMIN_DEFAULT_EMAIL or ADMIN_DEFAULT_PASSWORD missing');
+    return;
+  }
+
+  let passwordHash;
+  try {
+    passwordHash = hashPassword(adminPassword);
+  } catch (error) {
+    console.warn(`⚠️ Default admin hashing skipped: ${error.message}`);
+    return;
+  }
+
+  if (USE_POSTGRES) {
+    await pool.query(
+      `INSERT INTO admin_users (email, password_hash, first_name, last_name, role, status, created_by)
+       VALUES ($1, $2, $3, $4, $5, 'active', $6)
+       ON CONFLICT (email) DO UPDATE SET
+         password_hash = EXCLUDED.password_hash,
+         first_name = EXCLUDED.first_name,
+         last_name = EXCLUDED.last_name,
+         role = EXCLUDED.role,
+         status = 'active',
+         failed_login_attempts = 0,
+         updated_at = CURRENT_TIMESTAMP`,
+      [adminEmail, passwordHash, 'System', 'Administrator', 'super_admin', 'server-bootstrap']
+    );
+    console.log(`✅ Default admin account ready in PostgreSQL: ${adminEmail}`);
+    return;
+  }
+
+  try {
+    const existing = await dbAsync.get('SELECT id FROM admin_users WHERE email = ?', [adminEmail]);
+    if (existing) {
+      await dbAsync.run(
+        `UPDATE admin_users
+         SET password_hash = ?, first_name = ?, last_name = ?, role = ?, status = 'active',
+             failed_login_attempts = 0, updated_at = CURRENT_TIMESTAMP
+         WHERE email = ?`,
+        [passwordHash, 'System', 'Administrator', 'super_admin', adminEmail]
+      );
+    } else {
+      await dbAsync.run(
+        `INSERT INTO admin_users (email, password_hash, first_name, last_name, role, status, created_by)
+         VALUES (?, ?, ?, ?, ?, 'active', ?)`,
+        [adminEmail, passwordHash, 'System', 'Administrator', 'super_admin', 'server-bootstrap']
+      );
+    }
+    console.log(`✅ Default admin account ready in SQLite: ${adminEmail}`);
+  } catch (error) {
+    console.warn(`⚠️ Default admin setup skipped for SQLite: ${error.message}`);
+  }
+}
+
 async function ensureUssdStorageSchema() {
   if (USE_POSTGRES) {
     await pool.query(`
@@ -537,6 +651,7 @@ initializeDatabase();
 
 if (USE_POSTGRES) {
   await ensurePostgresAuthSchema();
+  await ensurePostgresAdminSchema();
 }
 
 // Initialize authentication tables
@@ -550,6 +665,13 @@ if (!USE_POSTGRES) {
   }
 } else {
   console.log('✅ Using PostgreSQL - auth tables already migrated');
+}
+
+// Ensure default admin can always log in
+try {
+  await ensureDefaultAdminAccount();
+} catch (error) {
+  console.error('⚠️ Error ensuring default admin account:', error.message);
 }
 
 // Initialize community and feedback databases with the main db connection
@@ -3115,12 +3237,6 @@ app.use('/api', (req, res, next) => {
 
 // Register feedback routes
 app.use('/api', feedbackRoutes);
-
-// Register market routes
-app.use('/api', marketRoutes);
-
-// Register market prices API (frontend-compatible)
-app.use('/', marketPricesApi);
 
 // Register weather routes (with dbAsync middleware)
 console.log('🌦️ Registering weather routes...');
