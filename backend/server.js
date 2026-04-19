@@ -1055,6 +1055,102 @@ const subCountyCoordinates = {
   'rarieda': { lat: -0.3300, lon: 34.4920 }
 };
 
+const seasonForDate = (date = new Date()) => {
+  const month = date.getMonth() + 1;
+  if (month >= 3 && month <= 5) return 'long_rains';
+  if (month >= 10 && month <= 12) return 'short_rains';
+  return 'dry';
+};
+
+function buildStoredWeatherFallback(subcounty) {
+  const aliases = {
+    yala: 'ugenya',
+    'alego usonga': 'alego',
+    'siaya county': 'siaya'
+  };
+  const normalized = aliases[String(subcounty || '').toLowerCase()] || String(subcounty || '').toLowerCase();
+  const currentSeason = seasonForDate();
+
+  const exactSummary =
+    recommendationEngine.getWeatherSummary(normalized, currentSeason) ||
+    recommendationEngine.getWeatherSummary(normalized, 'long_rains') ||
+    recommendationEngine.getWeatherSummary(normalized, 'short_rains') ||
+    recommendationEngine.getWeatherSummary(normalized, 'dry');
+
+  let summary = exactSummary;
+  if (!summary) {
+    const allWeather = recommendationEngine.getAllWeatherData() || {};
+    const firstLocation = Object.keys(allWeather)[0];
+    const firstBySeason = firstLocation ? allWeather[firstLocation] : null;
+    summary = firstBySeason?.[currentSeason] || firstBySeason?.long_rains || firstBySeason?.short_rains || firstBySeason?.dry || null;
+  }
+  if (!summary) return null;
+
+  const now = new Date();
+  const baseTemp = Number(summary.avgTemperature || 24);
+  const baseHumidity = Number(summary.avgHumidity || 72);
+  const rainDaily = Number(summary.totalRainfall || 0);
+  const rainChance = rainDaily > 12 ? 0.75 : rainDaily > 6 ? 0.55 : rainDaily > 2 ? 0.35 : 0.15;
+  const condition = rainChance >= 0.7 ? 'Rain likely' : rainChance >= 0.45 ? 'Partly cloudy' : 'Clear intervals';
+
+  const hourly = Array.from({ length: 24 }).map((_, idx) => {
+    const ts = new Date(now.getTime() + idx * 60 * 60 * 1000);
+    const tempShift = idx < 6 ? -1 : idx < 14 ? 1 : 0;
+    return {
+      dt_txt: ts.toISOString(),
+      temp: Math.round(baseTemp + tempShift),
+      humidity: Math.round(baseHumidity),
+      pop: rainChance,
+      precipitation: Number((rainDaily / 24).toFixed(2)),
+      description: condition,
+      icon: rainChance >= 0.7 ? '🌧️' : '⛅'
+    };
+  });
+
+  const daily = Array.from({ length: 7 }).map((_, idx) => {
+    const d = new Date(now.getTime() + idx * 24 * 60 * 60 * 1000);
+    const max = Math.round(baseTemp + 2);
+    const min = Math.round(baseTemp - 3);
+    return {
+      date: d.toISOString().slice(0, 10),
+      temperature: { min, max },
+      description: condition,
+      icon: rainChance >= 0.7 ? '🌧️' : '⛅',
+      precipitation: Number(rainDaily.toFixed(1)),
+      rain_probability: Math.round(rainChance * 100)
+    };
+  });
+
+  return {
+    success: true,
+    source: 'trained-data-fallback',
+    location: normalized || 'siaya',
+    current: {
+      temp: Math.round(baseTemp),
+      feels_like: Math.round(baseTemp),
+      humidity: Math.round(baseHumidity),
+      wind_speed: 6.5,
+      wind_deg: 90,
+      description: condition,
+      icon: rainChance >= 0.7 ? '🌧️' : '☀️',
+      precipitation: Number((rainDaily / 24).toFixed(2)),
+      rain_1h: Number((rainDaily / 24).toFixed(2)),
+      agromet: {
+        soil_moisture: Number(summary.avgSoilMoisture || 0.32),
+        evapotranspiration: 2.1
+      }
+    },
+    hourly,
+    daily,
+    air: { aqi: 2, label: 'Good' },
+    sun: {
+      sunrise: new Date().setHours(6, 39, 0, 0),
+      sunset: new Date().setHours(18, 46, 0, 0)
+    },
+    uv_index: 1
+  };
+}
+
 // Current weather endpoint
 app.get('/api/weather/current/:subcounty', async (req, res) => {
   try {
@@ -1232,6 +1328,8 @@ app.get('/api/weather/live/:subcounty', async (req, res) => {
         uv_index: 1
       });
     } catch (error) {
+      const fallback = buildStoredWeatherFallback(subcounty);
+      if (fallback) return res.json(fallback);
       return res.status(503).json({
         success: false,
         error: 'Live weather data is currently unavailable'
@@ -1331,6 +1429,8 @@ app.get('/api/weather/live/:subcounty', async (req, res) => {
     });
   } catch (error) {
     console.error('OpenWeather live endpoint error:', error.message);
+    const fallback = buildStoredWeatherFallback(subcounty);
+    if (fallback) return res.json(fallback);
     res.status(500).json({ success: false, error: 'Failed to fetch live weather' });
   }
 });
