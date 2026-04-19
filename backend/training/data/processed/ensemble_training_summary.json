@@ -1,0 +1,14 @@
+{
+  "generated_at": "2026-04-19T17:48:48.927882+00:00",
+  "real_rows": 57540,
+  "dummy_farmer_rows": 500,
+  "total_training_rows": 58040,
+  "class_distribution": {
+    "Beans": 23694,
+    "Cassava": 15523,
+    "Maize": 9787,
+    "Rice": 8905,
+    "Millet": 109,
+    "Sorghum": 22
+  }
+}

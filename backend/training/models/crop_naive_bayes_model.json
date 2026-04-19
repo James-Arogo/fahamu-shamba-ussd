@@ -1,6 +1,6 @@
 {
-  "trained_at": "2026-04-03T20:26:05.317Z",
-  "algorithm": "categorical_naive_bayes",
+  "trained_at": "2026-04-19T17:49:57.996034+00:00",
+  "algorithm": "rf_xgb_ensemble_distilled_for_node",
   "features": [
     "sub_county",
     "season",
@@ -8,54 +8,325 @@
     "temperature_bucket",
     "rain_bucket",
     "humidity_bucket",
-    "market_signal"
+    "market_signal",
+    "farmer_profile"
   ],
   "classes": [
-    "Maize"
+    "Beans",
+    "Cassava",
+    "Maize",
+    "Millet",
+    "Rice",
+    "Sorghum"
   ],
   "priors": {
-    "Maize": 1
+    "Beans": 0.40810218488062566,
+    "Cassava": 0.2675624997560374,
+    "Maize": 0.16868577730141113,
+    "Millet": 0.0018857622872903931,
+    "Rice": 0.1533948369386143,
+    "Sorghum": 0.00036893883602107666
   },
   "class_counts": {
-    "Maize": 7672
+    "Beans": 23686.250509141628,
+    "Cassava": 15529.327288280634,
+    "Maize": 9790.522390021602,
+    "Millet": 109.44964176194655,
+    "Rice": 8903.036222655226,
+    "Sorghum": 21.413209770250397
   },
   "feature_counts": {
-    "Maize": {
+    "Beans": {
       "sub_county": {
-        "Alego Usonga": 7672
+        "Bondo": 4789.5475454166035,
+        "Rarieda": 5102.595204458273,
+        "Gem": 4597.652851022917,
+        "Ugenya": 4519.6550969807795,
+        "Alego Usonga": 22.750902614972507,
+        "Ugunja": 4654.048908649801
       },
       "season": {
-        "dry": 3808,
-        "long_rains": 1932,
-        "short_rains": 1932
+        "dry": 13121.301443445736,
+        "long_rains": 5121.13275613781,
+        "short_rains": 5443.816309559294
       },
       "soil_type": {
-        "loam": 7672
+        "loam": 23631.767885276506,
+        "sandy loam": 7.959244094007223,
+        "clay loam": 46.52337977115074
       },
       "temperature_bucket": {
-        "moderate": 7502,
-        "cool": 165,
-        "hot": 5
+        "moderate": 22715.233447421902,
+        "cool": 776.2327789516448,
+        "hot": 194.78428276815566
       },
       "rain_bucket": {
-        "none": 2030,
-        "moderate": 2506,
-        "heavy": 523,
-        "light": 2613
+        "none": 9848.959279217323,
+        "moderate": 4036.2495944954517,
+        "heavy": 0.7761008394219194,
+        "light": 9800.265534590677
       },
       "humidity_bucket": {
-        "humid": 7093,
-        "normal": 571,
-        "dry": 8
+        "humid": 19056.709197775865,
+        "normal": 4519.537207181211,
+        "dry": 110.0041041853003
       },
       "market_signal": {
-        "fair": 7672
+        "fair": 23632.827382185496,
+        "good": 28.611653643204207,
+        "low": 24.811473312955233
+      },
+      "farmer_profile": {
+        "Progressive": 9505.253382023533,
+        "Mixed": 14180.284076888966,
+        "Subsistence": 0.646550721252348,
+        "Commercial": 0.06649950894395178
+      }
+    },
+    "Cassava": {
+      "sub_county": {
+        "Bondo": 3062.8899041133404,
+        "Rarieda": 3214.401903287747,
+        "Gem": 3143.3169381130947,
+        "Ugenya": 3078.31453858076,
+        "Alego Usonga": 18.66842122217838,
+        "Ugunja": 3011.735582965524
+      },
+      "season": {
+        "dry": 8187.157383086473,
+        "long_rains": 3604.03164238925,
+        "short_rains": 3738.1382628071274
+      },
+      "soil_type": {
+        "loam": 15487.648616793462,
+        "sandy loam": 6.697404997300546,
+        "clay loam": 34.98126648988098
+      },
+      "temperature_bucket": {
+        "moderate": 14828.065700167312,
+        "cool": 588.8715938491754,
+        "hot": 112.38999426433942
+      },
+      "rain_bucket": {
+        "none": 5436.955364424724,
+        "moderate": 4469.0322883335775,
+        "heavy": 1.3229112741013738,
+        "light": 5622.016724250489
+      },
+      "humidity_bucket": {
+        "humid": 13089.69380014315,
+        "normal": 2389.664091255497,
+        "dry": 49.96939688258979
+      },
+      "market_signal": {
+        "fair": 15477.245115286172,
+        "good": 27.108141719374306,
+        "low": 24.974031275098564
+      },
+      "farmer_profile": {
+        "Progressive": 4465.444442477927,
+        "Mixed": 5173.392512701111,
+        "Subsistence": 2304.0580885456366,
+        "Commercial": 3586.432244558034
+      }
+    },
+    "Maize": {
+      "sub_county": {
+        "Bondo": 35.488600943003036,
+        "Rarieda": 29.740909472629493,
+        "Gem": 44.327768202001685,
+        "Ugenya": 48.40763340749795,
+        "Alego Usonga": 9591.6732294482,
+        "Ugunja": 40.884248548388626
+      },
+      "season": {
+        "dry": 4850.562490000186,
+        "long_rains": 2496.303719342466,
+        "short_rains": 2443.656180679549
+      },
+      "soil_type": {
+        "loam": 9786.387643176564,
+        "sandy loam": 1.0585701541619426,
+        "clay loam": 3.0761766908684414
+      },
+      "temperature_bucket": {
+        "moderate": 9534.898837928165,
+        "cool": 245.22902214855787,
+        "hot": 10.394529945044509
+      },
+      "rain_bucket": {
+        "none": 2766.9433978596226,
+        "moderate": 3093.1649479403595,
+        "heavy": 659.0795814290404,
+        "light": 3271.3344627931056
+      },
+      "humidity_bucket": {
+        "humid": 8890.972745369605,
+        "normal": 884.537192293111,
+        "dry": 15.012452359372777
+      },
+      "market_signal": {
+        "fair": 9787.67486231034,
+        "good": 0.5570920454758458,
+        "low": 2.2904356657853033
+      },
+      "farmer_profile": {
+        "Progressive": 2740.421212566756,
+        "Mixed": 5110.1948938876285,
+        "Subsistence": 913.3605055670912,
+        "Commercial": 1026.54577800074
+      }
+    },
+    "Millet": {
+      "sub_county": {
+        "Bondo": 18.576197802346964,
+        "Rarieda": 14.898818595317792,
+        "Gem": 21.650695281218933,
+        "Ugenya": 13.6434618126701,
+        "Alego Usonga": 22.5037195829814,
+        "Ugunja": 18.176748687411145
+      },
+      "season": {
+        "dry": 57.75286650956877,
+        "long_rains": 24.924325719765992,
+        "short_rains": 26.772449532611596
+      },
+      "soil_type": {
+        "loam": 3.143205678077438,
+        "sandy loam": 104.68858394614574,
+        "clay loam": 1.6178521377232065
+      },
+      "temperature_bucket": {
+        "moderate": 73.00051978112737,
+        "cool": 30.41551533224551,
+        "hot": 6.033606648573567
+      },
+      "rain_bucket": {
+        "none": 0.058417964418694186,
+        "moderate": 22.287402314505407,
+        "heavy": 0.0025823868133897573,
+        "light": 87.10123909620887
+      },
+      "humidity_bucket": {
+        "humid": 79.05042297970327,
+        "normal": 29.417459627167585,
+        "dry": 0.9817591550755999
+      },
+      "market_signal": {
+        "fair": 62.360094707141315,
+        "good": 20.5893598298492,
+        "low": 26.500187224955827
+      },
+      "farmer_profile": {
+        "Progressive": 22.73788156870271,
+        "Mixed": 80.99099721238247,
+        "Subsistence": 5.687512263814536,
+        "Commercial": 0.0332507170467346
+      }
+    },
+    "Rice": {
+      "sub_county": {
+        "Bondo": 1769.6568061655212,
+        "Rarieda": 1313.4095342375683,
+        "Gem": 1847.139141684498,
+        "Ugenya": 2005.588012400556,
+        "Alego Usonga": 22.618911082668287,
+        "Ugunja": 1944.6238170845468
+      },
+      "season": {
+        "dry": 2657.116498852223,
+        "long_rains": 3427.175457988198,
+        "short_rains": 2818.74426581497
+      },
+      "soil_type": {
+        "loam": 8843.90185999658,
+        "sandy loam": 36.34983468817753,
+        "clay loam": 22.784527970487524
+      },
+      "temperature_bucket": {
+        "moderate": 7519.087425159131,
+        "cool": 1381.874788036097,
+        "hot": 2.074009460186107
+      },
+      "rain_bucket": {
+        "none": 0.05721408116758266,
+        "moderate": 5481.855486657778,
+        "heavy": 3418.818219119856,
+        "light": 2.3053027966116817
+      },
+      "humidity_bucket": {
+        "humid": 8885.704212710909,
+        "normal": 17.328524773866604,
+        "dry": 0.0034851704532882187
+      },
+      "market_signal": {
+        "fair": 8868.355555210335,
+        "good": 20.804871184155072,
+        "low": 13.875796260744108
+      },
+      "farmer_profile": {
+        "Progressive": 20.269283558252006,
+        "Mixed": 6114.667277532024,
+        "Subsistence": 2052.1859476360696,
+        "Commercial": 715.9137139291428
+      }
+    },
+    "Sorghum": {
+      "sub_county": {
+        "Bondo": 3.8408223797112413,
+        "Rarieda": 4.953510864093442,
+        "Gem": 3.912487458637633,
+        "Ugenya": 1.3911344254470304,
+        "Alego Usonga": 3.784679423598224,
+        "Ugunja": 3.530575218762812
+      },
+      "season": {
+        "dry": 13.108954868999202,
+        "long_rains": 7.431911082952785,
+        "short_rains": 0.8723438182984048
+      },
+      "soil_type": {
+        "loam": 11.150052800246353,
+        "sandy loam": 4.246360744650428,
+        "clay loam": 6.016796225353603
+      },
+      "temperature_bucket": {
+        "moderate": 15.71337438901891,
+        "cool": 3.376262403544528,
+        "hot": 2.32357297768696
+      },
+      "rain_bucket": {
+        "none": 0.02609963102532494,
+        "moderate": 3.410062661160563,
+        "heavy": 0.0005513050158540977,
+        "light": 17.976496173048645
+      },
+      "humidity_bucket": {
+        "humid": 11.868984297275896,
+        "normal": 9.515425440869874,
+        "dry": 0.028800032104631917
+      },
+      "market_signal": {
+        "fair": 10.536253973222257,
+        "good": 6.328880450382009,
+        "low": 4.548075346646131
+      },
+      "farmer_profile": {
+        "Progressive": 4.873588977398665,
+        "Mixed": 16.4698459772942,
+        "Subsistence": 0.061332147883062134,
+        "Commercial": 0.008442667674462643
       }
     }
   },
   "feature_values": {
     "sub_county": [
-      "Alego Usonga"
+      "Bondo",
+      "Rarieda",
+      "Gem",
+      "Ugenya",
+      "Alego Usonga",
+      "Ugunja"
     ],
     "season": [
       "dry",
@@ -63,7 +334,9 @@
       "short_rains"
     ],
     "soil_type": [
-      "loam"
+      "loam",
+      "sandy loam",
+      "clay loam"
     ],
     "temperature_bucket": [
       "moderate",
@@ -82,12 +355,19 @@
       "dry"
     ],
     "market_signal": [
-      "fair"
+      "fair",
+      "good",
+      "low"
+    ],
+    "farmer_profile": [
+      "Progressive",
+      "Mixed",
+      "Subsistence",
+      "Commercial"
     ]
   },
   "metrics": {
-    "train_samples": 7672,
-    "eval_samples": 1918,
-    "accuracy": 1
+    "train_samples": 58040,
+    "accuracy": 0.9977601654031703
   }
 }

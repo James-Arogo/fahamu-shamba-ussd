@@ -168,6 +168,17 @@ function bucketHumidity(value) {
   return 'humid';
 }
 
+function deriveFarmerProfile(farmSize, budget, waterSource) {
+  const size = Number(farmSize);
+  const spend = Number(budget);
+  const source = String(waterSource || '').toLowerCase();
+
+  if (size >= 3 && spend >= 18000) return 'Commercial';
+  if (size < 1.2 && spend < 9000 && source.includes('rain')) return 'Subsistence';
+  if (spend >= 12000 && (source.includes('irrig') || source.includes('borehole'))) return 'Progressive';
+  return 'Mixed';
+}
+
 class RecommendationEngine {
   constructor() {
     this.cropInputs = farmInputsData.cropInputs;
@@ -362,7 +373,8 @@ class RecommendationEngine {
       temperature_bucket: bucketTemperature(Number(weather?.avgTemperature)),
       rain_bucket: bucketRain(Number(weather?.totalRainfall) / 90),
       humidity_bucket: bucketHumidity(Number(weather?.avgHumidity)),
-      market_signal: marketSignal || 'unknown'
+      market_signal: marketSignal || 'unknown',
+      farmer_profile: 'unknown'
     };
   }
 
@@ -471,6 +483,11 @@ class RecommendationEngine {
       farmerData.season,
       weather,
       marketPrice?.signal
+    );
+    modelFeatures.farmer_profile = deriveFarmerProfile(
+      farmerData.farmSize,
+      farmerData.budget,
+      farmerData.waterSource
     );
     const modelProbability = this.getModelProbability(cropName, modelFeatures);
     score += Math.round(modelProbability * 18);

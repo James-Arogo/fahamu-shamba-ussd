@@ -76,12 +76,38 @@ The pipeline writes:
 - `backend/training/data/raw/siaya_subcounties_centroids.csv`
 - `backend/training/data/raw/weather_open_meteo_daily.csv`
 - `backend/training/data/raw/kalro_siaya_soil_normalized.csv`
-- `backend/training/data/raw/market_siaya_snapshot.csv`
+- `backend/training/data/raw/market_siaya_snapshot.csv` when a live market snapshot is available
 - `backend/training/data/processed/siaya_location_soil_reference.csv`
 - `backend/training/data/processed/training_dataset_real.csv`
 - `backend/training/data/processed/training_sources_manifest.json`
 - `backend/training/models/crop_naive_bayes_model.json`
 
-## Current baseline model
+## Ensemble training (real data + farmer profiles)
 
-The current training step builds a simple categorical Naive Bayes baseline. It is intentionally lightweight so we can validate the real dataset flow before upgrading to stronger models such as XGBoost or LightGBM.
+An ensemble training script is now available at the project root:
+
+- `code.py`
+
+It trains:
+
+- `RandomForestClassifier`
+- `XGBClassifier`
+- weighted soft-voting ensemble (`0.3 * RF + 0.7 * XGB`)
+
+The script uses:
+
+- `backend/training/data/processed/training_dataset_real.csv` (real pipeline output)
+- plus `~500` generated farmer-profile records (`backend/training/data/processed/farmer_profiles_dummy.csv`)
+
+To run from the backend folder:
+
+```bash
+npm run training:model
+```
+
+Outputs include:
+
+- `backend/training/models/rf_model.joblib`
+- `backend/training/models/xgb_model.joblib`
+- `backend/training/models/le_*.joblib`
+- `backend/training/models/crop_naive_bayes_model.json` (distilled JSON consumed by the Node.js recommendation engine)
