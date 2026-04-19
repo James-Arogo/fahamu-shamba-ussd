@@ -117,10 +117,6 @@
             '/recommendations.html': 'nav-recommendations',
             '/soil-map': 'nav-soil-map',
             '/soil-map.html': 'nav-soil-map',
-            '/market': 'nav-market',
-            '/market.html': 'nav-market',
-            '/market-trends': 'nav-market',
-            '/market-trends.html': 'nav-market',
             '/community': 'nav-community',
             '/community.html': 'nav-community',
             '/feedback': 'nav-feedback',
@@ -372,7 +368,6 @@
     window.logout = logout;
     window.goToDashboard = () => window.location.href = '/dashboard.html';
     window.goToRecommendations = () => window.location.href = '/recommendations.html';
-    window.goToMarket = () => window.location.href = '/market.html';
     window.goToCommunity = () => window.location.href = '/community.html';
     window.goToFeedback = () => window.location.href = '/feedback.html';
     window.goToProfile = () => window.location.href = '/profile.html';

@@ -174,6 +174,29 @@ export function initAuthRoutes(db, dbAsync = null) {
     return tokenValue ? decodeURIComponent(tokenValue) : null;
   };
 
+  const ONLINE_WINDOW_MS = 2 * 60 * 1000;
+
+  const getAuthenticatedUserFromRequest = (req) => {
+    const token = extractToken(req);
+    if (!token) return null;
+    return req.verifyToken(token);
+  };
+
+  const touchUserPresence = async (userId) => {
+    if (!userId) return;
+    try {
+      await dbHelper.run(
+        'UPDATE users SET updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+        [userId]
+      );
+    } catch (error) {
+      // Presence updates are best-effort; older schemas may not have updated_at.
+      if (!isMissingColumnError(error, 'updated_at')) {
+        console.warn('Presence heartbeat update failed:', error.message);
+      }
+    }
+  };
+
   // Helper: Validate phone format
   const isValidPhone = (phone) => {
     // Accept multiple formats: +254XXXXXXXXX, 254XXXXXXXXX, 07XXXXXXXX, 7XXXXXXXX
@@ -674,6 +697,8 @@ export function initAuthRoutes(db, dbAsync = null) {
         });
       }
 
+      await touchUserPresence(decoded.userId);
+
       // Try to get user from database, but don't fail if database is empty on Vercel
       let user = null;
       let farm = null;
@@ -728,6 +753,106 @@ export function initAuthRoutes(db, dbAsync = null) {
       res.status(500).json({
         status: 'error',
         message: 'Failed to fetch user'
+      });
+    }
+  });
+
+  // POST /api/auth/heartbeat
+  router.post('/heartbeat', async (req, res) => {
+    try {
+      const decoded = getAuthenticatedUserFromRequest(req);
+      if (!decoded) {
+        return res.status(401).json({
+          status: 'error',
+          message: 'Invalid or expired token'
+        });
+      }
+
+      await touchUserPresence(decoded.userId);
+      return res.json({
+        status: 'success',
+        message: 'Presence updated',
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Heartbeat error:', error);
+      return res.status(500).json({
+        status: 'error',
+        message: 'Failed to update heartbeat'
+      });
+    }
+  });
+
+  // GET /api/auth/farmers-presence
+  router.get('/farmers-presence', async (req, res) => {
+    try {
+      const decoded = getAuthenticatedUserFromRequest(req);
+      if (!decoded) {
+        return res.status(401).json({
+          status: 'error',
+          message: 'Invalid or expired token'
+        });
+      }
+
+      await touchUserPresence(decoded.userId);
+
+      const limitParam = Number.parseInt(req.query.limit, 10);
+      const limit = Number.isFinite(limitParam) && limitParam > 0 ? Math.min(limitParam, 1000) : 500;
+
+      const farmers = await dbHelper.all(
+        `SELECT
+            u.id,
+            u.phone,
+            u.username,
+            u.name,
+            u.created_at,
+            u.last_login,
+            u.updated_at,
+            f.location,
+            f.ward
+         FROM users u
+         LEFT JOIN farms f ON f.user_id = u.id
+         ORDER BY COALESCE(u.updated_at, u.last_login, u.created_at) DESC
+         LIMIT ?`,
+        [limit]
+      );
+
+      const now = Date.now();
+      const presenceRows = (farmers || []).map((farmer) => {
+        const lastSeenRaw = farmer.updated_at || farmer.last_login || farmer.created_at || null;
+        const lastSeenTs = lastSeenRaw ? new Date(lastSeenRaw).getTime() : null;
+        const isOnline = Number.isFinite(lastSeenTs) && (now - lastSeenTs) <= ONLINE_WINDOW_MS;
+
+        return {
+          id: farmer.id,
+          phone: farmer.phone || '',
+          name: farmer.name || farmer.username || `Farmer ${farmer.id}`,
+          username: farmer.username || null,
+          subCounty: farmer.location || farmer.ward || null,
+          status: isOnline ? 'online' : 'offline',
+          isOnline,
+          lastSeenAt: lastSeenRaw ? new Date(lastSeenRaw).toISOString() : null
+        };
+      });
+
+      const onlineCount = presenceRows.filter((row) => row.isOnline).length;
+
+      return res.json({
+        status: 'success',
+        data: presenceRows,
+        counts: {
+          totalRegistered: presenceRows.length,
+          online: onlineCount,
+          offline: presenceRows.length - onlineCount
+        },
+        onlineThresholdMinutes: 2,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Farmers presence error:', error);
+      return res.status(500).json({
+        status: 'error',
+        message: 'Failed to load farmers presence'
       });
     }
   });

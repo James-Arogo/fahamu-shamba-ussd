@@ -276,6 +276,72 @@
             margin-right: 6px;
             box-shadow: 0 0 0 4px rgba(39,174,96,0.15);
         }
+
+        .presence-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+        .presence-chip {
+            border-radius: 10px;
+            padding: 12px;
+            border: 1px solid var(--border);
+            background: #fff;
+            text-align: center;
+        }
+        .presence-chip strong {
+            display: block;
+            font-size: 1.3rem;
+            color: var(--primary-dark);
+        }
+        .farmers-list {
+            max-height: 520px;
+            overflow-y: auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 12px;
+            padding-right: 6px;
+        }
+        .farmer-presence-card {
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 14px;
+            background: #fff;
+            box-shadow: var(--shadow-sm);
+        }
+        .farmer-presence-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        .farmer-presence-name {
+            font-weight: 700;
+            color: var(--primary-dark);
+        }
+        .status-pill {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            padding: 3px 8px;
+            border-radius: 999px;
+        }
+        .status-pill.online {
+            background: rgba(39,174,96,0.14);
+            color: #1e7d45;
+        }
+        .status-pill.offline {
+            background: rgba(127,140,141,0.16);
+            color: #566573;
+        }
+        .farmer-presence-meta {
+            font-size: 0.85rem;
+            color: var(--text-light);
+            margin-top: 2px;
+        }
         
         /* Buttons */
         .btn-group { display: flex; gap: 12px; flex-wrap: wrap; }
@@ -624,7 +690,17 @@
                 <div class="stat-card">
                     <div class="stat-icon"><i class="fas fa-user-friends"></i></div>
                     <div class="stat-value" id="totalMembers">0</div>
-                    <div class="stat-label">Active Members</div>
+                    <div class="stat-label">Registered Farmers</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fas fa-wifi"></i></div>
+                    <div class="stat-value" id="onlineMembers">0</div>
+                    <div class="stat-label">Online Now</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fas fa-user-clock"></i></div>
+                    <div class="stat-value" id="offlineMembers">0</div>
+                    <div class="stat-label">Offline</div>
                 </div>
             </div>
         </div>
@@ -638,6 +714,34 @@
                     <div class="empty-state" style="grid-column: 1 / -1;">
                         <i class="fas fa-user-friends"></i>
                         <p>No active farmers visible yet.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="community-section">
+            <div class="section-title">
+                <i class="fas fa-list"></i> All Registered Farmers Status
+            </div>
+            <div class="community-card">
+                <div class="presence-summary">
+                    <div class="presence-chip">
+                        <strong id="presenceTotal">0</strong>
+                        <span>Total Registered</span>
+                    </div>
+                    <div class="presence-chip">
+                        <strong id="presenceOnline">0</strong>
+                        <span>Online</span>
+                    </div>
+                    <div class="presence-chip">
+                        <strong id="presenceOffline">0</strong>
+                        <span>Offline</span>
+                    </div>
+                </div>
+                <div id="farmersPresenceList" class="farmers-list">
+                    <div class="empty-state" style="grid-column: 1 / -1;">
+                        <i class="fas fa-users"></i>
+                        <p>No registered farmers found yet.</p>
                     </div>
                 </div>
             </div>
@@ -806,7 +910,6 @@
         }
         
         function goToDashboard() { window.location.href = '/dashboard.html'; }
-        function goToMarket() { window.location.href = '/market.html'; }
         function goToFeedback() { window.location.href = '/feedback.html'; }
         function goToProfile() { window.location.href = '/profile.html'; }
         function goToSettings() { window.location.href = '/settings.html'; }
@@ -877,8 +980,15 @@ function changeLanguage(lang) { setLanguage(lang); translatePage(lang); }
                 document.getElementById('totalQuestions').textContent = result.stats?.totalQuestions || 0;
                 document.getElementById('totalAnswers').textContent = result.stats?.totalAnswers || 0;
                 document.getElementById('totalStories').textContent = result.stats?.approvedStories || 0;
-                document.getElementById('totalMembers').textContent = result.stats?.activeMembers || 0;
+                document.getElementById('onlineMembers').textContent = result.stats?.activeMembers || 0;
             }
+        }
+
+        async function sendAuthHeartbeat() {
+            await apiCall('/api/auth/heartbeat', {
+                method: 'POST',
+                body: JSON.stringify({})
+            });
         }
 
         async function updateCommunityPresence() {
@@ -920,6 +1030,58 @@ function changeLanguage(lang) { setLanguage(lang); translatePage(lang); }
                     </div>
                 `;
             }
+        }
+
+        function formatLastSeen(lastSeenAt) {
+            if (!lastSeenAt) return 'No activity yet';
+            const ts = new Date(lastSeenAt).getTime();
+            if (!Number.isFinite(ts)) return 'No activity yet';
+
+            const diffMs = Date.now() - ts;
+            const mins = Math.floor(diffMs / 60000);
+            if (mins < 1) return 'Seen just now';
+            if (mins < 60) return `Seen ${mins}m ago`;
+            const hrs = Math.floor(mins / 60);
+            if (hrs < 24) return `Seen ${hrs}h ago`;
+            const days = Math.floor(hrs / 24);
+            return `Seen ${days}d ago`;
+        }
+
+        async function loadFarmersPresence() {
+            const result = await apiCall('/api/auth/farmers-presence?limit=500');
+            const list = document.getElementById('farmersPresenceList');
+
+            if (result.status === 'success' && Array.isArray(result.data)) {
+                const counts = result.counts || { totalRegistered: 0, online: 0, offline: 0 };
+                document.getElementById('totalMembers').textContent = counts.totalRegistered || 0;
+                document.getElementById('onlineMembers').textContent = counts.online || 0;
+                document.getElementById('offlineMembers').textContent = counts.offline || 0;
+                document.getElementById('presenceTotal').textContent = counts.totalRegistered || 0;
+                document.getElementById('presenceOnline').textContent = counts.online || 0;
+                document.getElementById('presenceOffline').textContent = counts.offline || 0;
+
+                if (result.data.length > 0) {
+                    list.innerHTML = result.data.map((farmer) => `
+                        <div class="farmer-presence-card">
+                            <div class="farmer-presence-header">
+                                <div class="farmer-presence-name">${farmer.name || 'Farmer'}</div>
+                                <span class="status-pill ${farmer.isOnline ? 'online' : 'offline'}">${farmer.isOnline ? 'Online' : 'Offline'}</span>
+                            </div>
+                            <div class="farmer-presence-meta"><i class="fas fa-phone"></i> ${farmer.phone || 'No phone'}</div>
+                            <div class="farmer-presence-meta"><i class="fas fa-map-marker-alt"></i> ${farmer.subCounty || 'Sub-county not set'}</div>
+                            <div class="farmer-presence-meta"><i class="fas fa-clock"></i> ${formatLastSeen(farmer.lastSeenAt)}</div>
+                        </div>
+                    `).join('');
+                    return;
+                }
+            }
+
+            list.innerHTML = `
+                <div class="empty-state" style="grid-column: 1 / -1;">
+                    <i class="fas fa-users"></i>
+                    <p>No registered farmers found yet.</p>
+                </div>
+            `;
         }
         
         // Load questions
@@ -1354,14 +1516,18 @@ function changeLanguage(lang) { setLanguage(lang); translatePage(lang); }
             loadMyQuestions();
             loadMyStories();
             updateCommunityPresence();
+            sendAuthHeartbeat();
             loadActiveMembers();
+            loadFarmersPresence();
 
             if (presenceInterval) clearInterval(presenceInterval);
             presenceInterval = setInterval(() => {
                 updateCommunityPresence();
+                sendAuthHeartbeat();
                 loadActiveMembers();
                 loadCommunityStats();
-            }, 30000);
+                loadFarmersPresence();
+            }, 20000);
         });
     </script>
 </body>
