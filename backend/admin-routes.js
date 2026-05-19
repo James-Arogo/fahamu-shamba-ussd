@@ -188,7 +188,7 @@ router.post('/admin/verify-otp', sanitizeInput, async (req, res) => {
     }
 
     const storedToken = await req.dbAsync.get(
-      `SELECT * FROM mfa_tokens WHERE admin_id = ? AND token = ? AND used = 0 AND expires_at > CURRENT_TIMESTAMP`,
+      `SELECT * FROM mfa_tokens WHERE admin_id = ? AND token = ? AND used = FALSE AND expires_at > CURRENT_TIMESTAMP`,
       [admin.id, otp]
     );
 

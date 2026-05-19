@@ -269,7 +269,7 @@ export async function storeMFAToken(dbAsync, adminId, token, expiresAt) {
  */
 export async function markMFATokenAsUsed(dbAsync, adminId, token) {
   return await dbAsync.run(
-    `UPDATE mfa_tokens SET used = 1 WHERE admin_id = ? AND token = ?`,
+    `UPDATE mfa_tokens SET used = TRUE WHERE admin_id = ? AND token = ?`,
     [adminId, token]
   );
 }
