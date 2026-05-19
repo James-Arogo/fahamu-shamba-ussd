@@ -595,8 +595,9 @@ export function initAuthRoutes(db, dbAsync = null) {
   // POST /api/auth/login
   router.post('/login', async (req, res) => {
     try {
-      const { username, email, password } = req.body;
-      const usernameIdentifier = (username || email || '').trim().toLowerCase();
+      const { username, email, identifier, password } = req.body;
+      const rawIdentifier = (identifier || username || email || '').trim();
+      const usernameIdentifier = rawIdentifier.toLowerCase();
 
       // Validate input
       if (!usernameIdentifier) {
@@ -619,18 +620,18 @@ export function initAuthRoutes(db, dbAsync = null) {
       let user;
       try {
         user = await safeGetUserColumns(
-          'SELECT id, phone, username, email, password_hash, name, preferred_language, profile_photo FROM users WHERE username = ? OR LOWER(COALESCE(email, \'\')) = ?',
-          'SELECT id, phone, username, email, password_hash, name, preferred_language FROM users WHERE username = ? OR LOWER(COALESCE(email, \'\')) = ?',
-          [usernameIdentifier, usernameIdentifier]
+          'SELECT id, phone, username, email, password_hash, name, preferred_language, profile_photo, is_active, failed_login_attempts, lockout_until FROM users WHERE LOWER(COALESCE(username, \'\')) = ? OR LOWER(COALESCE(email, \'\')) = ? OR phone = ?',
+          'SELECT id, phone, username, email, password_hash, name, preferred_language, is_active, failed_login_attempts, lockout_until FROM users WHERE LOWER(COALESCE(username, \'\')) = ? OR LOWER(COALESCE(email, \'\')) = ? OR phone = ?',
+          [usernameIdentifier, usernameIdentifier, rawIdentifier]
         );
       } catch (lookupError) {
         if (!isMissingColumnError(lookupError, 'email')) {
           throw lookupError;
         }
         user = await safeGetUserColumns(
-          'SELECT id, phone, username, password_hash, name, preferred_language, profile_photo FROM users WHERE username = ?',
-          'SELECT id, phone, username, password_hash, name, preferred_language FROM users WHERE username = ?',
-          [usernameIdentifier]
+          'SELECT id, phone, username, password_hash, name, preferred_language, profile_photo, is_active, failed_login_attempts, lockout_until FROM users WHERE LOWER(COALESCE(username, \'\')) = ? OR phone = ?',
+          'SELECT id, phone, username, password_hash, name, preferred_language, is_active, failed_login_attempts, lockout_until FROM users WHERE LOWER(COALESCE(username, \'\')) = ? OR phone = ?',
+          [usernameIdentifier, rawIdentifier]
         );
       }
        

@@ -45,6 +45,24 @@ const isMissingRelationError = (error) => {
 
 const toCount = (row, key = 'count') => Number(row?.[key] || 0);
 
+async function safeGet(dbAsync, sql, params = [], fallback = null) {
+  try {
+    return await dbAsync.get(sql, params) || fallback;
+  } catch (error) {
+    if (isMissingRelationError(error)) return fallback;
+    throw error;
+  }
+}
+
+async function safeAll(dbAsync, sql, params = [], fallback = []) {
+  try {
+    return await dbAsync.all(sql, params) || fallback;
+  } catch (error) {
+    if (isMissingRelationError(error)) return fallback;
+    throw error;
+  }
+}
+
 async function getLegacyFarmerProfiles(dbAsync, limit, offset) {
   try {
     const profiles = await dbAsync.all(
@@ -84,6 +102,111 @@ async function getLegacyFarmerProfiles(dbAsync, limit, offset) {
     }
     throw error;
   }
+}
+
+async function getAdminOperationalInsights(dbAsync) {
+  let feedbackCount = toCount(await safeGet(
+    dbAsync,
+    `SELECT COUNT(*) as count FROM enhanced_feedback`,
+    [],
+    { count: 0 }
+  ));
+
+  if (!feedbackCount) {
+    feedbackCount = toCount(await safeGet(
+      dbAsync,
+      `SELECT COUNT(*) as count FROM feedback`,
+      [],
+      { count: 0 }
+    ));
+  }
+
+  const feedbackSummary = await safeGet(
+    dbAsync,
+    `SELECT 
+      AVG(rating) as average_rating,
+      SUM(CASE WHEN was_helpful = TRUE THEN 1 ELSE 0 END) as helpful_count
+     FROM enhanced_feedback
+     WHERE rating IS NOT NULL OR was_helpful IS NOT NULL`,
+    [],
+    { average_rating: 0, helpful_count: 0 }
+  );
+
+  let recentFeedback = await safeAll(
+    dbAsync,
+    `SELECT 
+      phone_number,
+      crop_recommended,
+      rating,
+      was_helpful,
+      suggestions as comments,
+      feedback_type,
+      created_at
+     FROM enhanced_feedback
+     ORDER BY created_at DESC
+     LIMIT 8`,
+    [],
+    []
+  );
+
+  if (!recentFeedback.length) {
+    recentFeedback = await safeAll(
+      dbAsync,
+      `SELECT
+        phone_number,
+        is_helpful as was_helpful,
+        comments,
+        created_at
+       FROM feedback
+       ORDER BY created_at DESC
+       LIMIT 8`,
+      [],
+      []
+    );
+  }
+
+  const recentRecommendations = await safeAll(
+    dbAsync,
+    `SELECT
+      id,
+      phone_number,
+      sub_county,
+      soil_type,
+      season,
+      predicted_crop,
+      confidence,
+      reason,
+      created_at
+     FROM predictions
+     ORDER BY created_at DESC
+     LIMIT 8`,
+    [],
+    []
+  );
+
+  const topCrops = await safeAll(
+    dbAsync,
+    `SELECT
+      predicted_crop as crop,
+      COUNT(*) as count,
+      AVG(confidence) as average_confidence
+     FROM predictions
+     WHERE predicted_crop IS NOT NULL
+     GROUP BY predicted_crop
+     ORDER BY count DESC
+     LIMIT 6`,
+    [],
+    []
+  );
+
+  return {
+    feedbackCount,
+    averageRating: Number(feedbackSummary?.average_rating || 0),
+    helpfulFeedback: toCount(feedbackSummary, 'helpful_count'),
+    recentFeedback,
+    recentRecommendations,
+    topCrops
+  };
 }
 
 // Session storage (in production, use Redis or database)
@@ -473,6 +596,7 @@ router.get('/admin/dashboard', authenticateAdmin, async (req, res) => {
 
     const recentAlerts = await adminDB.getActiveSystemAlerts(req.dbAsync);
     const auditLogs = await adminDB.getAuditLogsDB(req.dbAsync, 10);
+    const operationalInsights = await getAdminOperationalInsights(req.dbAsync);
 
     logDataAccess(req.admin.adminId, req.admin.email, 'dashboard', 0, getClientIP(req));
 
@@ -487,10 +611,16 @@ router.get('/admin/dashboard', authenticateAdmin, async (req, res) => {
           farmerProfiles: toCount(farmerProfileCount),
           legacyFarmers: toCount(farmerCount),
           totalPredictions: toCount(predictionCount),
+          totalFeedback: operationalInsights.feedbackCount,
+          averageRating: operationalInsights.averageRating,
+          helpfulFeedback: operationalInsights.helpfulFeedback,
           activeAlerts: recentAlerts.length
         },
         recentAlerts,
-        recentActivity: auditLogs
+        recentActivity: auditLogs,
+        recentFeedback: operationalInsights.recentFeedback,
+        recentRecommendations: operationalInsights.recentRecommendations,
+        topCrops: operationalInsights.topCrops
       }
     });
   } catch (error) {

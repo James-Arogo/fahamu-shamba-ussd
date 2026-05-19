@@ -326,7 +326,7 @@
             try {
                 // Try canonical auth endpoint first (server.js), then fallback to legacy endpoint (serverless-server.js)
                 const payloads = [
-                    { url: '/api/auth/login', body: { username: identifier.toLowerCase(), password } },
+                    { url: '/api/auth/login', body: { identifier, username: identifier, email: identifier, password } },
                     { url: '/api/login', body: { username: identifier, email: identifier, password } }
                 ];
 
