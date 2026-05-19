@@ -240,7 +240,7 @@ export function refreshTokenMiddleware(req, res, next) {
  * Middleware to check session validity
  */
 export function validateSession(sessionStore) {
-  return (req, res, next) => {
+  return async (req, res, next) => {
     if (!req.admin) {
       return next();
     }
@@ -258,7 +258,26 @@ export function validateSession(sessionStore) {
       });
     }
 
-    const session = sessionStore.get(sessionId);
+    let session = sessionStore.get(sessionId);
+    if (!session && req.dbAsync) {
+      const persistedSession = await req.dbAsync.get(
+        `SELECT * FROM admin_sessions
+         WHERE session_id = ? AND admin_id = ? AND expires_at > CURRENT_TIMESTAMP`,
+        [sessionId, req.admin.adminId]
+      );
+
+      if (persistedSession) {
+        session = {
+          adminId: persistedSession.admin_id,
+          lastActivity: persistedSession.last_activity ? new Date(persistedSession.last_activity).getTime() : Date.now(),
+          csrfToken: persistedSession.csrf_token,
+          ipAddress: persistedSession.ip_address,
+          userAgent: persistedSession.user_agent || 'unknown'
+        };
+        sessionStore.set(sessionId, session);
+      }
+    }
+
     if (!session || session.adminId !== req.admin.adminId) {
       logSecurityEvent('session_mismatch', {
         adminId: req.admin.adminId,
@@ -290,6 +309,15 @@ export function validateSession(sessionStore) {
     session.lastActivity = Date.now();
     sessionStore.set(sessionId, session);
     req.adminSession = session;
+
+    if (req.dbAsync) {
+      req.dbAsync.run(
+        `UPDATE admin_sessions SET last_activity = CURRENT_TIMESTAMP WHERE session_id = ?`,
+        [sessionId]
+      ).catch((error) => {
+        console.warn('Admin session heartbeat update failed:', error.message);
+      });
+    }
 
     next();
   };

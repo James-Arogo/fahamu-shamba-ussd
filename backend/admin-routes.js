@@ -257,7 +257,23 @@ router.post('/admin/refresh-token', async (req, res) => {
   try {
     const { refreshToken } = req.body;
     const sessionId = req.headers['x-session-id'];
-    const session = sessionId ? sessionStore.get(sessionId) : null;
+    let session = sessionId ? sessionStore.get(sessionId) : null;
+
+    if (!session && sessionId) {
+      const persistedSession = await req.dbAsync.get(
+        `SELECT * FROM admin_sessions WHERE session_id = ? AND expires_at > CURRENT_TIMESTAMP`,
+        [sessionId]
+      );
+      if (persistedSession) {
+        session = {
+          adminId: persistedSession.admin_id,
+          csrfToken: persistedSession.csrf_token,
+          ipAddress: persistedSession.ip_address,
+          userAgent: persistedSession.user_agent || 'unknown'
+        };
+        sessionStore.set(sessionId, session);
+      }
+    }
 
     if (!refreshToken || !sessionId || !session) {
       return res.status(400).json({
