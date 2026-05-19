@@ -404,8 +404,107 @@ async function ensurePostgresAdminSchema() {
     )
   `);
 
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS system_audit_logs (
+      id SERIAL PRIMARY KEY,
+      admin_id INTEGER REFERENCES admin_users(id) ON DELETE SET NULL,
+      email TEXT,
+      action TEXT NOT NULL,
+      resource_type TEXT,
+      resource_id TEXT,
+      details TEXT,
+      status TEXT DEFAULT 'success',
+      ip_address TEXT,
+      user_agent TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS system_alerts (
+      id SERIAL PRIMARY KEY,
+      alert_type TEXT NOT NULL,
+      severity TEXT DEFAULT 'warning' CHECK(severity IN ('info', 'warning', 'critical')),
+      title TEXT NOT NULL,
+      message TEXT,
+      triggered_by TEXT,
+      resolved BOOLEAN DEFAULT FALSE,
+      resolved_at TIMESTAMP,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS system_config (
+      id SERIAL PRIMARY KEY,
+      config_key TEXT UNIQUE NOT NULL,
+      config_value TEXT,
+      data_type TEXT DEFAULT 'string',
+      modified_by TEXT,
+      modified_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS admin_permissions (
+      id SERIAL PRIMARY KEY,
+      role TEXT NOT NULL,
+      permission TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(role, permission)
+    )
+  `);
+
+  const permissions = {
+    super_admin: [
+      'view_dashboard',
+      'manage_admins',
+      'manage_system_config',
+      'view_audit_logs',
+      'manage_farmers',
+      'manage_predictions',
+      'view_analytics',
+      'export_data',
+      'manage_alerts',
+      'system_maintenance',
+      'reset_user_passwords',
+      'backup_database',
+      'view_security_logs'
+    ],
+    admin: [
+      'view_dashboard',
+      'view_audit_logs',
+      'manage_farmers',
+      'manage_predictions',
+      'view_analytics',
+      'export_data',
+      'view_alerts'
+    ],
+    moderator: [
+      'view_dashboard',
+      'view_audit_logs',
+      'manage_farmers',
+      'view_alerts'
+    ]
+  };
+
+  for (const [role, rolePermissions] of Object.entries(permissions)) {
+    for (const permission of rolePermissions) {
+      await pool.query(
+        `INSERT INTO admin_permissions (role, permission)
+         VALUES ($1, $2)
+         ON CONFLICT (role, permission) DO NOTHING`,
+        [role, permission]
+      );
+    }
+  }
+
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_admin_users_email ON admin_users(email)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_admin_sessions_admin ON admin_sessions(admin_id)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_system_audit_logs_admin ON system_audit_logs(admin_id)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_system_audit_logs_created ON system_audit_logs(created_at)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_system_alerts_severity ON system_alerts(severity)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_mfa_tokens_admin ON mfa_tokens(admin_id)`);
 
   console.log('✅ PostgreSQL admin schema compatibility check complete');

@@ -378,6 +378,7 @@ router.get('/admin/session', async (req, res) => {
       }
     });
   } catch (error) {
+    console.error('Admin session load error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to load session'

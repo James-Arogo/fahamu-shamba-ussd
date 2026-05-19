@@ -347,7 +347,7 @@ export async function createSystemAlert(dbAsync, alertType, severity, title, mes
 export async function getActiveSystemAlerts(dbAsync) {
   return await dbAsync.all(
     `SELECT * FROM system_alerts 
-     WHERE resolved = 0 
+     WHERE resolved = FALSE
      ORDER BY created_at DESC`
   );
 }
@@ -358,7 +358,7 @@ export async function getActiveSystemAlerts(dbAsync) {
 export async function resolveSystemAlert(dbAsync, alertId) {
   return await dbAsync.run(
     `UPDATE system_alerts 
-     SET resolved = 1, resolved_at = CURRENT_TIMESTAMP 
+     SET resolved = TRUE, resolved_at = CURRENT_TIMESTAMP
      WHERE id = ?`,
     [alertId]
   );
