@@ -36,6 +36,56 @@ import { sendOTPEmail, sendSecurityAlertEmail } from './email-service.js';
 const router = express.Router();
 const MFA_TOKEN_REGEX = /^[0-9]{8}$/;
 
+const isMissingRelationError = (error) => {
+  const message = String(error?.message || '').toLowerCase();
+  return error?.code === '42P01' ||
+    message.includes('no such table') ||
+    (message.includes('relation') && message.includes('does not exist'));
+};
+
+const toCount = (row, key = 'count') => Number(row?.[key] || 0);
+
+async function getLegacyFarmerProfiles(dbAsync, limit, offset) {
+  try {
+    const profiles = await dbAsync.all(
+      `SELECT 
+        u.id AS farmer_id,
+        u.phone AS phone_number,
+        u.username,
+        u.name AS full_name,
+        u.email,
+        u.preferred_language,
+        u.created_at,
+        f.location AS sub_county,
+        f.ward,
+        f.farm_size,
+        f.farm_size_unit,
+        f.soil_type,
+        f.water_source
+       FROM users u
+       LEFT JOIN farms f ON f.user_id = u.id
+       WHERE COALESCE(u.is_active, TRUE) = TRUE
+       ORDER BY u.created_at DESC
+       LIMIT ? OFFSET ?`,
+      [limit, offset]
+    );
+
+    const countResult = await dbAsync.get(
+      `SELECT COUNT(*) AS total FROM users WHERE COALESCE(is_active, TRUE) = TRUE`
+    );
+
+    return {
+      profiles: profiles || [],
+      total: toCount(countResult, 'total')
+    };
+  } catch (error) {
+    if (isMissingRelationError(error)) {
+      return { profiles: [], total: 0 };
+    }
+    throw error;
+  }
+}
+
 // Session storage (in production, use Redis or database)
 const sessionStore = new Map();
 
@@ -393,39 +443,50 @@ router.get('/admin/session', async (req, res) => {
 router.get('/admin/dashboard', authenticateAdmin, async (req, res) => {
   try {
     // Get system statistics - count from both farmers and farmer_profiles tables
-    const farmerCount = await req.dbAsync.get(
-      `SELECT COUNT(*) as count FROM farmers`
-    );
+    let farmerCount = { count: 0 };
+    try {
+      farmerCount = await req.dbAsync.get(
+        `SELECT COUNT(*) as count FROM farmers`
+      ) || { count: 0 };
+    } catch (e) {
+      if (!isMissingRelationError(e)) throw e;
+    }
     
     // Try to get count from farmer_profiles table (enhanced profiles)
     let farmerProfileCount = { count: 0 };
     try {
       farmerProfileCount = await req.dbAsync.get(
-        `SELECT COUNT(*) as count FROM farmer_profiles WHERE is_active = 1`
+        `SELECT COUNT(*) as count FROM farmer_profiles WHERE is_active = TRUE`
       ) || { count: 0 };
     } catch (e) {
-      // Table might not exist yet
+      if (!isMissingRelationError(e)) throw e;
     }
     
-    const predictionCount = await req.dbAsync.get(
-      `SELECT COUNT(*) as count FROM predictions`
-    );
+    let predictionCount = { count: 0 };
+    try {
+      predictionCount = await req.dbAsync.get(
+        `SELECT COUNT(*) as count FROM predictions`
+      ) || { count: 0 };
+    } catch (e) {
+      if (!isMissingRelationError(e)) throw e;
+    }
+
     const recentAlerts = await adminDB.getActiveSystemAlerts(req.dbAsync);
     const auditLogs = await adminDB.getAuditLogsDB(req.dbAsync, 10);
 
     logDataAccess(req.admin.adminId, req.admin.email, 'dashboard', 0, getClientIP(req));
 
     // Combine farmer counts from both sources
-    const totalFarmers = (farmerCount?.count || 0) + (farmerProfileCount?.count || 0);
+    const totalFarmers = toCount(farmerCount) + toCount(farmerProfileCount);
 
     res.json({
       success: true,
       data: {
         statistics: {
           totalFarmers: totalFarmers,
-          farmerProfiles: farmerProfileCount?.count || 0,
-          legacyFarmers: farmerCount?.count || 0,
-          totalPredictions: predictionCount?.count || 0,
+          farmerProfiles: toCount(farmerProfileCount),
+          legacyFarmers: toCount(farmerCount),
+          totalPredictions: toCount(predictionCount),
           activeAlerts: recentAlerts.length
         },
         recentAlerts,
@@ -666,19 +727,29 @@ router.get('/admin/farmer-profiles', authenticateAdmin, async (req, res) => {
     const limit = parseInt(req.query.limit) || 50;
     const offset = parseInt(req.query.offset) || 0;
 
-    // Get farmer profiles
-    const profiles = await req.dbAsync.all(
-      `SELECT * FROM farmer_profiles 
-       WHERE is_active = 1 
-       ORDER BY created_at DESC 
-       LIMIT ? OFFSET ?`,
-      [limit, offset]
-    );
+    let profiles = [];
+    let total = 0;
 
-    // Get total count
-    const countResult = await req.dbAsync.get(
-      `SELECT COUNT(*) as total FROM farmer_profiles WHERE is_active = 1`
-    );
+    try {
+      profiles = await req.dbAsync.all(
+        `SELECT * FROM farmer_profiles 
+         WHERE is_active = TRUE 
+         ORDER BY created_at DESC 
+         LIMIT ? OFFSET ?`,
+        [limit, offset]
+      );
+
+      const countResult = await req.dbAsync.get(
+        `SELECT COUNT(*) as total FROM farmer_profiles WHERE is_active = TRUE`
+      );
+      total = toCount(countResult, 'total');
+    } catch (error) {
+      if (!isMissingRelationError(error)) throw error;
+
+      const fallback = await getLegacyFarmerProfiles(req.dbAsync, limit, offset);
+      profiles = fallback.profiles;
+      total = fallback.total;
+    }
 
     logDataAccess(req.admin.adminId, req.admin.email, 'farmer_profiles', profiles.length, getClientIP(req));
 
@@ -688,8 +759,8 @@ router.get('/admin/farmer-profiles', authenticateAdmin, async (req, res) => {
       pagination: {
         limit,
         offset,
-        total: countResult?.total || 0,
-        hasMore: (offset + limit) < (countResult?.total || 0)
+        total,
+        hasMore: (offset + limit) < total
       }
     });
   } catch (error) {
@@ -758,31 +829,58 @@ router.get('/admin/farmer-profiles/:farmerId', authenticateAdmin, async (req, re
  */
 router.get('/admin/farmer-profiles/stats/summary', authenticateAdmin, async (req, res) => {
   try {
-    const stats = await req.dbAsync.get(
-      `SELECT 
-        COUNT(*) as total_profiles,
-        SUM(CASE WHEN profile_verified = 1 THEN 1 ELSE 0 END) as verified_profiles,
-        SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active_profiles
-       FROM farmer_profiles`
-    );
+    let stats = {};
+    let bySubcounty = [];
+    let bySoilType = [];
 
-    // Get breakdown by sub-county
-    const bySubcounty = await req.dbAsync.all(
-      `SELECT sub_county, COUNT(*) as count 
-       FROM farmer_profiles 
-       WHERE is_active = 1 
-       GROUP BY sub_county 
-       ORDER BY count DESC`
-    );
+    try {
+      stats = await req.dbAsync.get(
+        `SELECT 
+          COUNT(*) as total_profiles,
+          SUM(CASE WHEN profile_verified = TRUE THEN 1 ELSE 0 END) as verified_profiles,
+          SUM(CASE WHEN is_active = TRUE THEN 1 ELSE 0 END) as active_profiles
+         FROM farmer_profiles`
+      );
 
-    // Get breakdown by soil type
-    const bySoilType = await req.dbAsync.all(
-      `SELECT soil_type, COUNT(*) as count 
-       FROM farmer_profiles 
-       WHERE is_active = 1 AND soil_type IS NOT NULL
-       GROUP BY soil_type 
-       ORDER BY count DESC`
-    );
+      bySubcounty = await req.dbAsync.all(
+        `SELECT sub_county, COUNT(*) as count 
+         FROM farmer_profiles 
+         WHERE is_active = TRUE 
+         GROUP BY sub_county 
+         ORDER BY count DESC`
+      );
+
+      bySoilType = await req.dbAsync.all(
+        `SELECT soil_type, COUNT(*) as count 
+         FROM farmer_profiles 
+         WHERE is_active = TRUE AND soil_type IS NOT NULL
+         GROUP BY soil_type 
+         ORDER BY count DESC`
+      );
+    } catch (error) {
+      if (!isMissingRelationError(error)) throw error;
+
+      const fallback = await getLegacyFarmerProfiles(req.dbAsync, 1000, 0);
+      stats = {
+        total_profiles: fallback.total,
+        verified_profiles: 0,
+        active_profiles: fallback.total
+      };
+      const subcountyCounts = new Map();
+      const soilCounts = new Map();
+
+      fallback.profiles.forEach((profile) => {
+        if (profile.sub_county) {
+          subcountyCounts.set(profile.sub_county, (subcountyCounts.get(profile.sub_county) || 0) + 1);
+        }
+        if (profile.soil_type) {
+          soilCounts.set(profile.soil_type, (soilCounts.get(profile.soil_type) || 0) + 1);
+        }
+      });
+
+      bySubcounty = [...subcountyCounts.entries()].map(([sub_county, count]) => ({ sub_county, count }));
+      bySoilType = [...soilCounts.entries()].map(([soil_type, count]) => ({ soil_type, count }));
+    }
 
     logDataAccess(req.admin.adminId, req.admin.email, 'farmer_profiles_stats', 1, getClientIP(req));
 
