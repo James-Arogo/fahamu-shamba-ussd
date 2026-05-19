@@ -82,32 +82,19 @@ The pipeline writes:
 - `backend/training/data/processed/training_sources_manifest.json`
 - `backend/training/models/crop_naive_bayes_model.json`
 
-## Ensemble training (real data + farmer profiles)
+## Prediction model integration
 
-An ensemble training script is now available at the project root:
+The main crop recommendation model is now served from the project root script:
 
-- `code.py`
+- `ML TRAINING/predict_service.py`
 
-It trains:
+The backend recommendation engine calls this script directly for top-3 crop predictions.
 
-- `RandomForestClassifier`
-- `XGBClassifier`
-- weighted soft-voting ensemble (`0.3 * RF + 0.7 * XGB`)
-
-The script uses:
-
-- `backend/training/data/processed/training_dataset_real.csv` (real pipeline output)
-- plus `~500` generated farmer-profile records (`backend/training/data/processed/farmer_profiles_dummy.csv`)
-
-To run from the backend folder:
+To run a local prediction smoke test from the backend folder:
 
 ```bash
 npm run training:model
 ```
-
-Outputs include:
-
-- `backend/training/models/rf_model.joblib`
 - `backend/training/models/xgb_model.joblib`
 - `backend/training/models/le_*.joblib`
 - `backend/training/models/crop_naive_bayes_model.json` (distilled JSON consumed by the Node.js recommendation engine)

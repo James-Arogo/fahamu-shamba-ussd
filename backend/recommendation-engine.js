@@ -1,5 +1,14 @@
 import farmInputsData from './farm-inputs-data.js';
 import realDataStore from './real-data-store.js';
+import { spawnSync } from 'child_process';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const ROOT_DIR = path.resolve(__dirname, '..');
+const PYTHON_RECOMMENDER_SCRIPT = path.join(ROOT_DIR, 'ML TRAINING', 'predict_service.py');
+const TRAINING_VENV_PYTHON = path.join(ROOT_DIR, 'backend', 'training', '.venv', 'bin', 'python');
 
 const DEFAULT_CROP_PROFILES = {
   Maize: {
@@ -445,6 +454,116 @@ class RecommendationEngine {
     };
   }
 
+  getDefaultSoilMetrics(subCounty, soilType) {
+    const assessment = this.getSoilAssessment(subCounty, soilType);
+    const profile = assessment || {};
+    return {
+      pH: Number(profile.pH) || 6.3,
+      nitrogen: Number(profile.nitrogen) || 0.14,
+      phosphorus: Number(profile.phosphorus) || 15.0,
+      potassium: Number(profile.potassium) || 140.0,
+      organicMatter: Number(profile.organicMatter) || 1.8
+    };
+  }
+
+  normalizeSoilTextureForModel(soilType) {
+    const value = normalizeKey(soilType);
+    if (value.includes('sand')) return 'Sandy';
+    if (value.includes('clay')) return 'Clayey';
+    return 'Loamy';
+  }
+
+  mapFarmerDataToPythonModelInput(normalizedInput) {
+    const weather = this.getWeatherSummary(normalizedInput.subCounty, normalizedInput.season) || {};
+    const soilMetrics = this.getDefaultSoilMetrics(normalizedInput.subCounty, normalizedInput.soilType);
+    const marketPrice = this.getMarketPrice('Maize', normalizedInput.subCounty);
+
+    const rainfallMm = Number.isFinite(Number(weather.totalRainfall))
+      ? Number(weather.totalRainfall)
+      : 540;
+    const temperatureC = Number.isFinite(Number(weather.avgTemperature))
+      ? Number(weather.avgTemperature)
+      : 24.5;
+    const humidityPct = Number.isFinite(Number(weather.avgHumidity))
+      ? Number(weather.avgHumidity)
+      : 72;
+
+    const irrigation = normalizeKey(normalizedInput.waterSource).includes('rain') ? 0 : 1;
+    const farmerProfile = deriveFarmerProfile(
+      normalizedInput.farmSize,
+      normalizedInput.budget,
+      normalizedInput.waterSource
+    );
+
+    return {
+      pH: soilMetrics.pH,
+      Nitrogen: soilMetrics.nitrogen,
+      Phosphorus: soilMetrics.phosphorus,
+      Potassium: soilMetrics.potassium,
+      Organic_Carbon: soilMetrics.organicMatter,
+      Soil_Texture: this.normalizeSoilTextureForModel(normalizedInput.soilType),
+      Rainfall_mm: rainfallMm,
+      Temperature_C: temperatureC,
+      Market_Price_KES: Number(marketPrice?.price) || 6500,
+      Farm_Size_ha: normalizedInput.farmSize,
+      Irrigation: irrigation,
+      Input_Budget_KES: normalizedInput.budget,
+      Farmer_Profile: farmerProfile,
+      Sub_County: normalizedInput.subCounty,
+      Season: normalizedInput.season,
+      Humidity_pct: humidityPct,
+      market_signal: marketPrice?.signal || 'fair'
+    };
+  }
+
+  getRecommendationsFromPython(normalizedInput) {
+    const payload = this.mapFarmerDataToPythonModelInput(normalizedInput);
+    const command = process.env.PYTHON_BIN || (process.env.VERCEL ? 'python3' : TRAINING_VENV_PYTHON);
+    const run = spawnSync(command, [PYTHON_RECOMMENDER_SCRIPT, '--json', JSON.stringify(payload)], {
+      encoding: 'utf-8',
+      cwd: ROOT_DIR,
+      timeout: Number(process.env.PYTHON_MODEL_TIMEOUT_MS || 60000)
+    });
+
+    if (run.error && run.status == null) throw run.error;
+    if (run.status !== 0) {
+      throw new Error((run.stderr || run.stdout || 'ML TRAINING predictor failed').trim());
+    }
+
+    const parsed = JSON.parse((run.stdout || '').trim());
+    const modelRecs = Array.isArray(parsed.recommendations) ? parsed.recommendations : [];
+    const recommendations = modelRecs.map((rec) => ({
+      name: rec.crop,
+      crop: rec.crop,
+      confidence: Number(rec.suitability) || 0,
+      score: Number(rec.suitability) || 0,
+      conditions: {
+        soil: normalizedInput.soilType,
+        season: normalizedInput.season,
+        subcounty: normalizeKey(normalizedInput.subCounty)
+      },
+      reasons: {
+        english: `${rec.crop} is recommended by the primary Python ensemble model.`,
+        swahili: `${rec.crop} imependekezwa na modeli kuu ya Python.`
+      }
+    }));
+
+    return {
+      recommendations,
+      allScores: recommendations,
+      metadata: {
+        timestamp: new Date().toISOString(),
+        location: normalizedInput.subCounty,
+        soil: normalizedInput.soilType,
+        season: normalizedInput.season,
+        budget: normalizedInput.budget,
+        farmSize: normalizedInput.farmSize,
+        engine: 'ml_training_xgb',
+        script: 'ML TRAINING/predict_service.py'
+      }
+    };
+  }
+
   scoreCrop(cropName, farmerData) {
     const profile = this.getCropProfile(cropName);
     const weather = this.getWeatherSummary(farmerData.subCounty, farmerData.season);
@@ -539,6 +658,15 @@ class RecommendationEngine {
       farmSize: Number(farmerData.farmSize || 1),
       waterSource: farmerData.waterSource || 'Rainfall'
     };
+
+    try {
+      const pythonResult = this.getRecommendationsFromPython(normalizedInput);
+      if (pythonResult.recommendations.length > 0) {
+        return pythonResult;
+      }
+    } catch (error) {
+      console.error('[RecommendationEngine] Python predictor failed, using JS fallback:', error.message);
+    }
 
     const candidates = this.getCropCatalog()
       .map((cropName) => this.scoreCrop(cropName, normalizedInput))
