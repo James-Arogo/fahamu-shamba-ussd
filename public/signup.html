@@ -496,8 +496,16 @@
                     const fallbackData = fallback.data;
                     if (fallback.ok && fallbackData.success) {
                         registrationSuccess = true;
-                        registrationMessage = 'Registration successful! Redirecting to login...';
+                        registrationMessage = 'Registration successful! Redirecting to dashboard...';
                         userPayload = fallbackData.farmer || fallbackData.user || { username: normalizedUsername, name: displayName, phone: phoneNumber };
+                        if (fallbackData.token) {
+                            sessionStorage.setItem('token', fallbackData.token);
+                            sessionStorage.setItem('user', JSON.stringify(userPayload || {}));
+                            localStorage.setItem('token', fallbackData.token);
+                            localStorage.setItem('user', JSON.stringify(userPayload || {}));
+                            localStorage.removeItem('fahamu_token');
+                            localStorage.removeItem('fahamu_user');
+                        }
                     } else {
                         registrationMessage = fallbackData.message
                             || fallbackData.error
@@ -536,8 +544,16 @@
 
                     if (profile.ok && profileData.status === 'success') {
                         registrationSuccess = true;
-                        registrationMessage = 'Registration successful! Redirecting to login...';
+                        registrationMessage = 'Registration successful! Redirecting to dashboard...';
                         userPayload = profileData.user || { username: normalizedUsername, name: displayName, phone: phoneNumber };
+                        if (profileData.token) {
+                            sessionStorage.setItem('token', profileData.token);
+                            sessionStorage.setItem('user', JSON.stringify(userPayload || {}));
+                            localStorage.setItem('token', profileData.token);
+                            localStorage.setItem('user', JSON.stringify(userPayload || {}));
+                            localStorage.removeItem('fahamu_token');
+                            localStorage.removeItem('fahamu_user');
+                        }
                     } else {
                         registrationMessage = profileData.message
                             || profileData.error
@@ -547,11 +563,10 @@
 
                 if (registrationSuccess) {
                     showMessage(registrationMessage, 'success');
-                    localStorage.setItem('fahamu_user', JSON.stringify(userPayload || {}));
+                    localStorage.setItem('user', JSON.stringify(userPayload || {}));
 
-                    // Redirect to login with username prefilled
                     setTimeout(() => {
-                        window.location.href = `/login.html?username=${encodeURIComponent(normalizedUsername)}`;
+                        window.location.href = '/dashboard.html';
                     }, 1500);
                 } else {
                     showMessage(registrationMessage, 'error');

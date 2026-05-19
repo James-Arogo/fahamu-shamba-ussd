@@ -204,6 +204,16 @@ export function initAuthRoutes(db, dbAsync = null) {
     return phoneRegex.test(phone.replace(/\s/g, ''));
   };
 
+  const normalizePhone = (phone) => {
+    let normalizedPhone = String(phone || '').trim().replace(/\s/g, '');
+    if (normalizedPhone.startsWith('0')) {
+      normalizedPhone = '+254' + normalizedPhone.substring(1);
+    } else if (normalizedPhone.startsWith('254')) {
+      normalizedPhone = '+' + normalizedPhone;
+    }
+    return normalizedPhone;
+  };
+
   // Security constants
   const MAX_LOGIN_ATTEMPTS = 5;
   const LOCKOUT_DURATION_MINUTES = 15;
@@ -303,12 +313,7 @@ export function initAuthRoutes(db, dbAsync = null) {
       }
 
       // Normalize phone to +254 format
-      let normalizedPhone = phone.trim();
-      if (normalizedPhone.startsWith('0')) {
-        normalizedPhone = '+254' + normalizedPhone.substring(1);
-      } else if (normalizedPhone.startsWith('254')) {
-        normalizedPhone = '+' + normalizedPhone;
-      }
+      const normalizedPhone = normalizePhone(phone);
 
       // Normalize username to lowercase
       const normalizedUsername = username.trim().toLowerCase();
@@ -402,6 +407,87 @@ export function initAuthRoutes(db, dbAsync = null) {
       res.status(500).json({
         status: 'error',
         message: 'Registration failed. Please try again.'
+      });
+    }
+  });
+
+  // POST /api/auth/reset-password - Reset forgotten farmer password
+  router.post('/reset-password', async (req, res) => {
+    try {
+      const { identifier, phone, newPassword } = req.body;
+      const normalizedIdentifier = String(identifier || '').trim().toLowerCase();
+      const normalizedPhone = normalizePhone(phone);
+
+      if (!normalizedIdentifier || !phone || !newPassword) {
+        return res.status(400).json({
+          status: 'error',
+          message: 'Username/email, phone number, and new password are required'
+        });
+      }
+
+      if (!isValidPhone(normalizedPhone)) {
+        return res.status(400).json({
+          status: 'error',
+          message: 'Invalid phone format. Use: +2547XXXXXXXX or 2547XXXXXXXX'
+        });
+      }
+
+      if (!isStrongPassword(newPassword)) {
+        return res.status(400).json({
+          status: 'error',
+          message: 'Password must be at least 10 characters with uppercase, lowercase, number, and symbol'
+        });
+      }
+
+      let user;
+      try {
+        user = await dbHelper.get(
+          'SELECT id, username, email, phone FROM users WHERE phone = ? AND (username = ? OR LOWER(COALESCE(email, \'\')) = ?)',
+          [normalizedPhone, normalizedIdentifier, normalizedIdentifier]
+        );
+      } catch (lookupError) {
+        if (!isMissingColumnError(lookupError, 'email')) {
+          throw lookupError;
+        }
+        user = await dbHelper.get(
+          'SELECT id, username, phone FROM users WHERE phone = ? AND username = ?',
+          [normalizedPhone, normalizedIdentifier]
+        );
+      }
+
+      if (!user) {
+        return res.status(404).json({
+          status: 'error',
+          message: 'No matching account found for that username/email and phone number'
+        });
+      }
+
+      const passwordHash = await hashPassword(newPassword);
+      try {
+        await dbHelper.run(
+          'UPDATE users SET password_hash = ?, password_changed_at = CURRENT_TIMESTAMP, failed_login_attempts = 0, lockout_until = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+          [passwordHash, user.id]
+        );
+      } catch (updateError) {
+        if (!isMissingColumnError(updateError)) {
+          throw updateError;
+        }
+        await dbHelper.run(
+          'UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+          [passwordHash, user.id]
+        );
+      }
+
+      clearAuthCookie(res);
+      return res.json({
+        status: 'success',
+        message: 'Password reset successfully. Please login with your new password.'
+      });
+    } catch (error) {
+      console.error('Password reset error:', error);
+      return res.status(500).json({
+        status: 'error',
+        message: 'Password reset failed. Please try again.'
       });
     }
   });

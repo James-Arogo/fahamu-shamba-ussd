@@ -299,6 +299,21 @@
             color: #176237;
         }
 
+        .admin-access-note {
+            margin-top: 14px;
+            padding: 12px 14px;
+            border-radius: 18px;
+            background: rgba(238, 245, 238, 0.92);
+            border: 1px solid rgba(22, 32, 25, 0.08);
+            color: var(--ink-700);
+            font-size: 0.86rem;
+            line-height: 1.55;
+        }
+
+        .admin-access-note strong {
+            color: var(--forest-950);
+        }
+
         .muted {
             color: var(--ink-500);
             font-size: 0.86rem;
@@ -930,6 +945,9 @@
                         <i class="fas fa-arrow-right-to-bracket"></i>
                         Continue to OTP
                     </button>
+                    <div class="admin-access-note">
+                        <strong>Default admin email:</strong> cjoarogo@gmail.com. Use the secured admin password and complete the email OTP step to open the dashboard.
+                    </div>
                 </form>
 
                 <form id="otpForm" class="stack hidden">

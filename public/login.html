@@ -100,6 +100,11 @@
             text-align: center;
             margin-top: 20px;
         }
+
+        .form-toggle {
+            margin-top: 12px;
+            text-align: right;
+        }
         
         .links a {
             color: #2E7D32;
@@ -128,6 +133,10 @@
             background: #e8f5e8;
             color: #2e7d32;
             border: 1px solid #c8e6c9;
+        }
+
+        .hidden {
+            display: none !important;
         }
         
         @media (max-width: 768px) {
@@ -204,6 +213,38 @@
             <button type="submit" class="btn" id="loginBtn">
                 Login
             </button>
+            <div class="form-toggle">
+                <a href="#" id="showResetForm">Forgot Password?</a>
+            </div>
+        </form>
+
+        <form id="resetForm" class="hidden">
+            <div class="form-group">
+                <label for="resetIdentifier">Username or Email</label>
+                <input type="text" id="resetIdentifier" name="resetIdentifier" placeholder="Enter username or email">
+            </div>
+
+            <div class="form-group">
+                <label for="resetPhone">Registered Phone Number</label>
+                <input type="tel" id="resetPhone" name="resetPhone" placeholder="+254712345678">
+            </div>
+
+            <div class="form-group">
+                <label for="newPassword">New Password</label>
+                <input type="password" id="newPassword" name="newPassword" placeholder="Create new password">
+            </div>
+
+            <div class="form-group">
+                <label for="confirmNewPassword">Confirm New Password</label>
+                <input type="password" id="confirmNewPassword" name="confirmNewPassword" placeholder="Confirm new password">
+            </div>
+
+            <button type="submit" class="btn" id="resetBtn">
+                Reset Password
+            </button>
+            <div class="form-toggle">
+                <a href="#" id="showLoginForm">Back to Login</a>
+            </div>
         </form>
         
         <div class="links">
@@ -214,8 +255,12 @@
 
     <script>
         const loginForm = document.getElementById('loginForm');
+        const resetForm = document.getElementById('resetForm');
         const loginBtn = document.getElementById('loginBtn');
+        const resetBtn = document.getElementById('resetBtn');
         const messageDiv = document.getElementById('message');
+        const showResetForm = document.getElementById('showResetForm');
+        const showLoginForm = document.getElementById('showLoginForm');
 
         function showMessage(message, type) {
             messageDiv.textContent = message;
@@ -227,6 +272,41 @@
                 messageDiv.style.display = 'none';
             }, 5000);
         }
+
+        function normalizeKenyaPhone(phone) {
+            phone = String(phone || '').replace(/\D/g, '');
+            if (phone.startsWith('254') && phone.length === 12) return '+' + phone;
+            if (phone.startsWith('0') && phone.length === 10) return '+254' + phone.substring(1);
+            if (phone.startsWith('7') && phone.length === 9) return '+254' + phone;
+            return phone;
+        }
+
+        function isStrongPassword(password) {
+            return typeof password === 'string'
+                && password.length >= 10
+                && /[A-Z]/.test(password)
+                && /[a-z]/.test(password)
+                && /[0-9]/.test(password)
+                && /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password);
+        }
+
+        function setAuthView(mode) {
+            const resetMode = mode === 'reset';
+            loginForm.classList.toggle('hidden', resetMode);
+            resetForm.classList.toggle('hidden', !resetMode);
+            messageDiv.style.display = 'none';
+        }
+
+        showResetForm.addEventListener('click', (event) => {
+            event.preventDefault();
+            document.getElementById('resetIdentifier').value = document.getElementById('email').value.trim();
+            setAuthView('reset');
+        });
+
+        showLoginForm.addEventListener('click', (event) => {
+            event.preventDefault();
+            setAuthView('login');
+        });
 
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -306,6 +386,63 @@
                 // Reset button state
                 loginBtn.disabled = false;
                 loginBtn.textContent = 'Login';
+            }
+        });
+
+        resetForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const identifier = document.getElementById('resetIdentifier').value.trim();
+            const phone = normalizeKenyaPhone(document.getElementById('resetPhone').value);
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmNewPassword = document.getElementById('confirmNewPassword').value;
+
+            if (!identifier || !phone || !newPassword || !confirmNewPassword) {
+                showMessage('Please fill in all password reset fields', 'error');
+                return;
+            }
+
+            if (newPassword !== confirmNewPassword) {
+                showMessage('New passwords do not match', 'error');
+                return;
+            }
+
+            if (!isStrongPassword(newPassword)) {
+                showMessage('Password must be at least 10 chars with uppercase, lowercase, number, and symbol', 'error');
+                return;
+            }
+
+            resetBtn.disabled = true;
+            resetBtn.textContent = 'Resetting...';
+
+            try {
+                const response = await fetch('/api/auth/reset-password', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        identifier: identifier.toLowerCase(),
+                        phone,
+                        newPassword
+                    })
+                });
+
+                const result = await response.json().catch(() => ({}));
+                if (response.ok && result.status === 'success') {
+                    document.getElementById('email').value = identifier;
+                    resetForm.reset();
+                    setAuthView('login');
+                    showMessage(result.message || 'Password reset successfully. Please login.', 'success');
+                } else {
+                    showMessage(result.message || 'Password reset failed. Please try again.', 'error');
+                }
+            } catch (error) {
+                console.error('Password reset error:', error);
+                showMessage('Network error. Please try again.', 'error');
+            } finally {
+                resetBtn.disabled = false;
+                resetBtn.textContent = 'Reset Password';
             }
         });
 
