@@ -352,6 +352,23 @@ async function ensurePostgresAuthSchema() {
   await runSchemaQuery(`ALTER TABLE farms ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`, 'farms.updated_at');
   await runSchemaQuery(`CREATE INDEX IF NOT EXISTS idx_farms_user_id ON farms(user_id)`, 'idx_farms_user_id');
 
+  await runSchemaQuery(`
+    CREATE TABLE IF NOT EXISTS predictions (
+      id SERIAL PRIMARY KEY,
+      farmer_id INTEGER,
+      phone_number VARCHAR(20),
+      sub_county VARCHAR(100),
+      soil_type VARCHAR(50),
+      season VARCHAR(50),
+      predicted_crop VARCHAR(100),
+      confidence INTEGER,
+      reason TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `, 'predictions table');
+  await runSchemaQuery(`CREATE INDEX IF NOT EXISTS idx_predictions_phone ON predictions(phone_number)`, 'idx_predictions_phone');
+  await runSchemaQuery(`CREATE INDEX IF NOT EXISTS idx_predictions_created ON predictions(created_at)`, 'idx_predictions_created');
+
   console.log('✅ PostgreSQL auth schema compatibility check complete');
 }
 
@@ -2844,10 +2861,33 @@ app.get('/api/stats', async (req, res) => {
 
 // ==================== NEW RECOMMENDATION ENDPOINTS ====================
 
-// Get crop recommendations
-app.post('/api/recommend', (req, res) => {
+async function saveRecommendationSnapshot({ phoneNumber, subCounty, soilType, season, recommendation }) {
+  if (!recommendation?.name && !recommendation?.crop) return null;
+
+  const normalizedPhone = normalizePhoneNumber(phoneNumber);
+  const cropName = recommendation.name || recommendation.crop;
+  const confidence = Math.round(Number(recommendation.confidence || recommendation.score || 0));
+  const reason = recommendation.reasons?.english ||
+    recommendation.reason ||
+    `${cropName} is recommended for ${subCounty} during ${String(season || '').replace('_', ' ')}.`;
+
   try {
-    const { subCounty, soilType, season, budget = 5000, farmSize = 1, waterSource = 'Rainfall' } = req.body;
+    const result = await dbAsync.run(
+      `INSERT INTO predictions (sub_county, soil_type, season, predicted_crop, confidence, reason, phone_number)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [subCounty, soilType || 'unknown', season, cropName, confidence, reason, normalizedPhone]
+    );
+    return result.lastID || null;
+  } catch (error) {
+    console.warn('Unable to save recommendation snapshot:', error.message);
+    return null;
+  }
+}
+
+// Get crop recommendations
+app.post('/api/recommend', async (req, res) => {
+  try {
+    const { subCounty, soilType, season, budget = 5000, farmSize = 1, waterSource = 'Rainfall', phoneNumber } = req.body;
 
     // Validate inputs
     if (!subCounty || !soilType || !season) {
@@ -2865,10 +2905,20 @@ app.post('/api/recommend', (req, res) => {
       farmSize,
       waterSource
     });
+    const predictionId = await saveRecommendationSnapshot({
+      phoneNumber,
+      subCounty,
+      soilType,
+      season,
+      recommendation: result.recommendations?.[0]
+    });
 
     res.json({
       success: true,
-      data: result
+      data: {
+        ...result,
+        predictionId
+      }
     });
   } catch (error) {
     console.error('Recommendation error:', error);
@@ -2881,7 +2931,7 @@ app.post('/api/recommend', (req, res) => {
 });
 
 // Analyze complete farm conditions
-app.post('/api/analyze-farm', (req, res) => {
+app.post('/api/analyze-farm', async (req, res) => {
   try {
     const {
       subCounty,
@@ -2890,6 +2940,7 @@ app.post('/api/analyze-farm', (req, res) => {
       budget = 5000,
       farmSize = 1,
       waterSource = 'Rainfall',
+      phoneNumber = null,
       selectedWard = null,
       selectedRegionLabel = null,
       climateSnapshot = null
@@ -2910,11 +2961,19 @@ app.post('/api/analyze-farm', (req, res) => {
       farmSize,
       waterSource
     });
+    const predictionId = await saveRecommendationSnapshot({
+      phoneNumber,
+      subCounty,
+      soilType,
+      season,
+      recommendation: analysis.recommendations?.recommendations?.[0]
+    });
 
     res.json({
       success: true,
       data: {
         ...analysis,
+        predictionId,
         locationContext: {
           subCounty,
           selectedWard,

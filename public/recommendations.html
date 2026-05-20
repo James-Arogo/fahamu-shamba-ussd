@@ -436,6 +436,15 @@
             }
         }
 
+        function getCurrentUserPhone() {
+            try {
+                const user = JSON.parse(localStorage.getItem('user') || '{}');
+                return user.phone || user.phoneNumber || user.phone_number || '';
+            } catch {
+                return '';
+            }
+        }
+
         function logout() {
             localStorage.removeItem('token');
             localStorage.removeItem('user');
@@ -790,6 +799,7 @@
             const selectedWard = document.getElementById('selectedWardDisplay')?.textContent || '';
             const selectedRegionLabel = document.getElementById('regionReadout')?.value || '';
             const climateSnapshot = window.recommendationMapState?.climateSnapshot || null;
+            const phoneNumber = getCurrentUserPhone();
             
             if (!location || !soilType || !season || !farmSize || !waterSource) {
                 showToast('Please choose a map location and complete the remaining fields before generating recommendations.', 'error');
@@ -805,7 +815,7 @@
                 const response = await fetch('/api/analyze-farm', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ subCounty: apiLocation, soilType, season, farmSize, budget, waterSource, selectedWard, selectedRegionLabel, climateSnapshot })
+                    body: JSON.stringify({ subCounty: apiLocation, soilType, season, farmSize, budget, waterSource, selectedWard, selectedRegionLabel, climateSnapshot, phoneNumber })
                 });
 
                 const text = await response.text();
@@ -841,7 +851,9 @@
 
         async function loadRecommendationHistory() {
             try {
-                const response = await fetch('/api/predictions');
+                const phoneNumber = getCurrentUserPhone();
+                const query = phoneNumber ? `?phoneNumber=${encodeURIComponent(phoneNumber)}` : '';
+                const response = await fetch(`/api/predictions${query}`);
                 const { predictions } = await response.json();
                 
                 if (predictions && predictions.length > 0) {
