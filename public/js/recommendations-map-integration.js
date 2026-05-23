@@ -18,7 +18,7 @@
         'Ugenya': '#90be6d',
         'Ugunja': '#f9c74f'
     };
-    const subLocationColors = ['rgba(255, 255, 255, 0.72)', 'rgba(249, 199, 79, 0.62)', 'rgba(126, 193, 213, 0.62)', 'rgba(67, 170, 139, 0.58)'];
+    const subLocationColors = ['rgba(249, 199, 79, 0.68)', 'rgba(126, 193, 213, 0.68)', 'rgba(67, 170, 139, 0.64)', 'rgba(215, 122, 43, 0.58)'];
 
     const svgBox = { width: 820, height: 620, padding: 34 };
     const mapState = {
@@ -494,6 +494,36 @@
         });
     }
 
+    function renderVillageList(feature) {
+        const container = document.getElementById('recommendationVillageList');
+        if (!container) return;
+
+        const villages = getVillagesForSubLocation(feature);
+        if (!villages.length) {
+            container.innerHTML = '<span class="map-village-list-title">Villages in selected sub-location</span><span>No villages available yet.</span>';
+            return;
+        }
+
+        container.innerHTML = `
+            <span class="map-village-list-title">Villages in ${mapState.selectedSubLocation || 'selected sub-location'}</span>
+            ${villages.map((village) => `
+                <button type="button" class="village-chip${village === mapState.selectedVillage ? ' active' : ''}" data-village="${village}">
+                    ${village}
+                </button>
+            `).join('')}
+        `;
+
+        container.querySelectorAll('.village-chip').forEach((button) => {
+            button.addEventListener('click', () => selectVillage(button.dataset.village));
+        });
+    }
+
+    function updateVillageListActive() {
+        document.querySelectorAll('#recommendationVillageList .village-chip').forEach((button) => {
+            button.classList.toggle('active', button.dataset.village === mapState.selectedVillage);
+        });
+    }
+
     function updateSubLocationOptions(feature) {
         const subLocationSelect = document.getElementById('mapSubLocationSelect');
         const subLocations = getSubLocationsForWard(feature);
@@ -527,7 +557,7 @@
                     role="button"
                     aria-label="${point.name}, ${feature.ward}"
                 ></circle>
-                <text class="map-village-label${point.name === mapState.selectedVillage ? ' selected' : ''}" x="${point.x.toFixed(2)}" y="${(point.y - 10).toFixed(2)}">${point.name}</text>
+                ${point.name === mapState.selectedVillage ? `<text class="map-village-label selected" x="${point.x.toFixed(2)}" y="${(point.y - 10).toFixed(2)}">${point.name}</text>` : ''}
             </g>
         `).join('');
 
@@ -558,6 +588,7 @@
         mapState.selectedVillage = getVillagesForSubLocation(feature, subLocationName)[0] || '';
         renderSubLocationBoundaries(feature);
         renderVillageMarkers(feature);
+        renderVillageList(feature);
         selectVillage(mapState.selectedVillage);
     }
 
@@ -578,12 +609,8 @@
             regionReadout.value = `${villageName}, ${mapState.selectedSubLocation}, ${feature.ward}, ${feature.subCounty}`;
         }
 
-        document.querySelectorAll('.map-village-marker').forEach((marker) => {
-            marker.classList.toggle('selected', marker.dataset.village === villageName);
-        });
-        document.querySelectorAll('.map-village-label').forEach((label) => {
-            label.classList.toggle('selected', label.textContent === villageName);
-        });
+        if (feature) renderVillageMarkers(feature);
+        updateVillageListActive();
     }
 
     function updateMapVisualState() {

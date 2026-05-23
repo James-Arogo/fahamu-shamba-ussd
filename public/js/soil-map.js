@@ -18,7 +18,7 @@
         'Ugenya': '#90be6d',
         'Ugunja': '#f9c74f'
     };
-    const SUBLOCATION_COLORS = ['rgba(255, 255, 255, 0.72)', 'rgba(249, 199, 79, 0.62)', 'rgba(126, 193, 213, 0.62)', 'rgba(67, 170, 139, 0.58)'];
+    const SUBLOCATION_COLORS = ['rgba(249, 199, 79, 0.68)', 'rgba(126, 193, 213, 0.68)', 'rgba(67, 170, 139, 0.64)', 'rgba(215, 122, 43, 0.58)'];
 
     const SUBCOUNTY_SOIL_PROFILES = {
         'Alego Usonga': {
@@ -125,6 +125,7 @@
         elements.mapRegions = document.getElementById('mapRegions');
         elements.subLocationLayer = document.getElementById('subLocationLayer');
         elements.villageLayer = document.getElementById('villageLayer');
+        elements.villageList = document.getElementById('soilVillageList');
         elements.subCountyLabels = document.getElementById('subCountyLabels');
         elements.subCountySelect = document.getElementById('subCountySelect');
         elements.wardSelect = document.getElementById('wardSelect');
@@ -369,6 +370,7 @@
         state.selectedVillage = getVillagesForSubLocation(feature, subLocationName)[0] || '';
         renderSubLocationBoundaries(feature);
         renderVillageMarkers(feature);
+        renderVillageList(feature);
         selectVillage(state.selectedVillage);
     }
 
@@ -377,15 +379,12 @@
 
         state.selectedVillage = villageName;
         elements.villageSelect.value = villageName;
-        document.querySelectorAll('.village-marker').forEach((marker) => {
-            marker.classList.toggle('selected', marker.dataset.village === villageName);
-        });
-        document.querySelectorAll('.village-label').forEach((label) => {
-            label.classList.toggle('selected', label.textContent === villageName);
-        });
-
         const feature = features.find((item) => item.id === state.selectedWardId);
-        if (feature) updateDetails(feature);
+        if (feature) {
+            renderVillageMarkers(feature);
+            updateDetails(feature);
+        }
+        updateVillageListActive();
         renderWardList();
     }
 
@@ -517,7 +516,7 @@
                         role="button"
                         aria-label="${village}, ${feature.ward}"
                     ></circle>
-                    <text class="village-label${village === state.selectedVillage ? ' selected' : ''}" x="${x.toFixed(2)}" y="${(y - 10).toFixed(2)}">${village}</text>
+                    ${village === state.selectedVillage ? `<text class="village-label selected" x="${x.toFixed(2)}" y="${(y - 10).toFixed(2)}">${village}</text>` : ''}
                 </g>
             `;
         }).join('');
@@ -530,6 +529,36 @@
                     selectVillage(marker.dataset.village);
                 }
             });
+        });
+    }
+
+    function renderVillageList(feature) {
+        if (!elements.villageList) return;
+
+        const villages = getVillagesForSubLocation(feature);
+        if (!villages.length) {
+            elements.villageList.innerHTML = '<span class="village-list-title">Villages in selected sub-location</span><span>No villages available yet.</span>';
+            return;
+        }
+
+        elements.villageList.innerHTML = `
+            <span class="village-list-title">Villages in ${state.selectedSubLocation || 'selected sub-location'}</span>
+            ${villages.map((village) => `
+                <button type="button" class="village-chip${village === state.selectedVillage ? ' active' : ''}" data-village="${village}">
+                    ${village}
+                </button>
+            `).join('')}
+        `;
+
+        elements.villageList.querySelectorAll('.village-chip').forEach((button) => {
+            button.addEventListener('click', () => selectVillage(button.dataset.village));
+        });
+    }
+
+    function updateVillageListActive() {
+        if (!elements.villageList) return;
+        elements.villageList.querySelectorAll('.village-chip').forEach((button) => {
+            button.classList.toggle('active', button.dataset.village === state.selectedVillage);
         });
     }
 

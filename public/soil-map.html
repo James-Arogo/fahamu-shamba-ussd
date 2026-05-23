@@ -286,18 +286,25 @@
 
         .sublocation-boundary {
             cursor: pointer;
-            opacity: 0.52;
-            stroke: #163425;
-            stroke-width: 1.4;
-            stroke-dasharray: 5 3;
-            transition: opacity 0.18s ease, stroke-width 0.18s ease;
+            opacity: 0.68;
+            stroke: rgba(255, 255, 255, 0.96);
+            stroke-width: 1.2;
+            transition: opacity 0.18s ease, stroke-width 0.18s ease, filter 0.18s ease;
         }
 
         .sublocation-boundary:hover,
-        .sublocation-boundary:focus,
+        .sublocation-boundary:focus {
+            opacity: 0.9;
+            stroke: #163425;
+            stroke-width: 1.8;
+            filter: brightness(1.04);
+        }
+
         .sublocation-boundary.selected {
-            opacity: 0.82;
+            opacity: 0.94;
+            stroke: var(--accent);
             stroke-width: 2.2;
+            filter: drop-shadow(0 4px 8px rgba(22, 52, 37, 0.22));
         }
 
         .sublocation-label {
@@ -369,6 +376,50 @@
             flex-wrap: wrap;
             gap: 10px;
             padding-top: 16px;
+        }
+
+        .village-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 14px;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.76);
+            border: 1px solid rgba(37, 95, 56, 0.12);
+            border-radius: 16px;
+        }
+
+        .village-list-title {
+            width: 100%;
+            color: var(--muted);
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-weight: 800;
+        }
+
+        .village-chip {
+            border: 1px solid rgba(37, 95, 56, 0.16);
+            background: #fff;
+            color: var(--primary-dark);
+            border-radius: 999px;
+            padding: 8px 11px;
+            font-weight: 700;
+            font-size: 0.84rem;
+            cursor: pointer;
+            transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
+        }
+
+        .village-chip:hover,
+        .village-chip:focus {
+            transform: translateY(-1px);
+            border-color: rgba(37, 95, 56, 0.36);
+        }
+
+        .village-chip.active {
+            background: var(--primary-dark);
+            border-color: var(--primary-dark);
+            color: #fff;
         }
 
         .legend-chip {
@@ -643,6 +694,7 @@
                             </svg>
                         </div>
                         <div class="map-legend" id="mapLegend"></div>
+                        <div class="village-list" id="soilVillageList" aria-live="polite"></div>
                     </div>
 
                     <div class="ward-list" id="wardList"></div>
