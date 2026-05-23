@@ -4,6 +4,7 @@
     const boundaries = window.SIAYA_BOUNDARIES;
     const soilMapData = window.SIAYA_SOIL_MAP_DATA;
     const villageData = window.SIAYA_VILLAGES_BY_WARD || {};
+    const locationHierarchy = window.SIAYA_LOCATION_HIERARCHY || {};
 
     if (!boundaries || !Array.isArray(boundaries.features)) {
         return;
@@ -21,6 +22,7 @@
     const svgBox = { width: 820, height: 620, padding: 34 };
     const mapState = {
         selectedWardId: '',
+        selectedSubLocation: '',
         selectedVillage: '',
         selectedSubCounty: '',
         climateSnapshot: null
@@ -61,6 +63,7 @@
     function buildMap() {
         const filter = document.getElementById('mapSubCountyFilter');
         const wardSelect = document.getElementById('mapWardSelect');
+        const subLocationSelect = document.getElementById('mapSubLocationSelect');
         const villageSelect = document.getElementById('mapVillageSelect');
         const legend = document.getElementById('recommendationMapLegend');
         const regions = document.getElementById('recommendationMapRegions');
@@ -127,6 +130,12 @@
         wardSelect.addEventListener('change', () => {
             if (wardSelect.value) {
                 selectWard(wardSelect.value);
+            }
+        });
+
+        subLocationSelect.addEventListener('change', () => {
+            if (subLocationSelect.value) {
+                selectSubLocation(subLocationSelect.value);
             }
         });
 
@@ -364,15 +373,32 @@
         ).join('');
     }
 
-    function getVillagesForWard(feature) {
-        const configured = villageData[feature?.ward];
+    function getSubLocationsForWard(feature) {
+        const configured = locationHierarchy[feature?.ward];
         if (Array.isArray(configured) && configured.length) return configured;
+        const flatVillages = villageData[feature?.ward];
+        if (Array.isArray(flatVillages) && flatVillages.length) {
+            return [{ name: `${feature.ward} Sub-Location`, villages: flatVillages }];
+        }
         const ward = feature?.ward || 'Selected Ward';
-        return [`${ward} Centre`, `North ${ward}`, `South ${ward}`];
+        return [
+            { name: `${ward} North Sub-Location`, villages: [`${ward} Centre`, `North ${ward}`] },
+            { name: `${ward} South Sub-Location`, villages: [`South ${ward}`] }
+        ];
+    }
+
+    function getVillagesForSubLocation(feature, subLocationName = mapState.selectedSubLocation) {
+        const subLocations = getSubLocationsForWard(feature);
+        const selected = subLocations.find((subLocation) => subLocation.name === subLocationName) || subLocations[0];
+        return selected?.villages || [];
+    }
+
+    function getAllVillagesForWard(feature) {
+        return getSubLocationsForWard(feature).flatMap((subLocation) => subLocation.villages || []);
     }
 
     function buildVillagePoints(feature) {
-        const villages = getVillagesForWard(feature);
+        const villages = getVillagesForSubLocation(feature);
         const [centerX, centerY] = projectPoint([feature.centroid.lng, feature.centroid.lat]);
         const radius = 18 + Math.min(14, villages.length * 2);
         return villages.map((name, index) => {
@@ -385,9 +411,17 @@
         });
     }
 
+    function updateSubLocationOptions(feature) {
+        const subLocationSelect = document.getElementById('mapSubLocationSelect');
+        const subLocations = getSubLocationsForWard(feature);
+        subLocationSelect.innerHTML = '<option value="">Select sub-location...</option>' + subLocations.map((subLocation) =>
+            `<option value="${subLocation.name}">${subLocation.name}</option>`
+        ).join('');
+    }
+
     function updateVillageOptions(feature) {
         const villageSelect = document.getElementById('mapVillageSelect');
-        const villages = getVillagesForWard(feature);
+        const villages = getVillagesForSubLocation(feature);
         villageSelect.innerHTML = '<option value="">Select village...</option>' + villages.map((village) =>
             `<option value="${village}">${village}</option>`
         ).join('');
@@ -425,18 +459,40 @@
         });
     }
 
+    function selectSubLocation(subLocationName) {
+        if (!subLocationName) return;
+        mapState.selectedSubLocation = subLocationName;
+
+        const feature = features.find((item) => item.id === mapState.selectedWardId);
+        const subLocationSelect = document.getElementById('mapSubLocationSelect');
+        const selectedSubLocationDisplay = document.getElementById('selectedSubLocationDisplay');
+
+        if (subLocationSelect) subLocationSelect.value = subLocationName;
+        if (selectedSubLocationDisplay) selectedSubLocationDisplay.textContent = subLocationName;
+
+        if (!feature) return;
+        updateVillageOptions(feature);
+        mapState.selectedVillage = getVillagesForSubLocation(feature, subLocationName)[0] || '';
+        renderVillageMarkers(feature);
+        selectVillage(mapState.selectedVillage);
+    }
+
     function selectVillage(villageName) {
         if (!villageName) return;
         mapState.selectedVillage = villageName;
 
         const villageSelect = document.getElementById('mapVillageSelect');
         const selectedVillageDisplay = document.getElementById('selectedVillageDisplay');
+        const selectedSubLocationDisplay = document.getElementById('selectedSubLocationDisplay');
         const regionReadout = document.getElementById('regionReadout');
         const feature = features.find((item) => item.id === mapState.selectedWardId);
 
         if (villageSelect) villageSelect.value = villageName;
         if (selectedVillageDisplay) selectedVillageDisplay.textContent = villageName;
-        if (regionReadout && feature) regionReadout.value = `${villageName}, ${feature.ward}, ${feature.subCounty}`;
+        if (selectedSubLocationDisplay) selectedSubLocationDisplay.textContent = mapState.selectedSubLocation || 'No sub-location selected';
+        if (regionReadout && feature) {
+            regionReadout.value = `${villageName}, ${mapState.selectedSubLocation}, ${feature.ward}, ${feature.subCounty}`;
+        }
 
         document.querySelectorAll('.map-village-marker').forEach((marker) => {
             marker.classList.toggle('selected', marker.dataset.village === villageName);
@@ -467,10 +523,9 @@
         document.getElementById('mapWardSelect').value = wardId;
         updateMapVisualState();
         syncLocationFields(feature);
-        updateVillageOptions(feature);
-        mapState.selectedVillage = getVillagesForWard(feature)[0] || '';
-        renderVillageMarkers(feature);
-        selectVillage(mapState.selectedVillage);
+        updateSubLocationOptions(feature);
+        mapState.selectedSubLocation = getSubLocationsForWard(feature)[0]?.name || '';
+        selectSubLocation(mapState.selectedSubLocation);
         await Promise.all([
             syncSoilProfile(feature),
             syncClimateProfile(feature)
@@ -482,12 +537,14 @@
         const locationSelect = document.getElementById('location');
         const regionReadout = document.getElementById('regionReadout');
         const selectedWardDisplay = document.getElementById('selectedWardDisplay');
+        const selectedSubLocationDisplay = document.getElementById('selectedSubLocationDisplay');
         const selectedVillageDisplay = document.getElementById('selectedVillageDisplay');
         const selectedRegionDisplay = document.getElementById('selectedRegionDisplay');
 
         locationSelect.value = locationValue;
         regionReadout.value = `${feature.ward}, ${feature.subCounty}`;
         selectedWardDisplay.textContent = feature.ward;
+        if (selectedSubLocationDisplay) selectedSubLocationDisplay.textContent = 'No sub-location selected';
         if (selectedVillageDisplay) selectedVillageDisplay.textContent = 'No village selected';
         selectedRegionDisplay.textContent = feature.subCounty;
     }
