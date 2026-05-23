@@ -82,6 +82,10 @@
         .map-ward-shape.dimmed { opacity: 0.24; }
         .map-ward-shape.selected { stroke: #163425; stroke-width: 2.2; opacity: 1; }
         .map-subcounty-label { font-size: 12px; fill: #163425; font-weight: 700; text-anchor: middle; paint-order: stroke; stroke: rgba(255,255,255,0.95); stroke-width: 4px; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+        .map-village-marker { fill: #163425; stroke: #fff; stroke-width: 2; cursor: pointer; transition: transform 0.18s ease, fill 0.18s ease; transform-box: fill-box; transform-origin: center; }
+        .map-village-marker:hover, .map-village-marker:focus { fill: #2d7649; transform: scale(1.25); }
+        .map-village-marker.selected { fill: #f9c74f; stroke: #163425; stroke-width: 2.4; transform: scale(1.35); }
+        .map-village-label { font-size: 10px; fill: #163425; font-weight: 700; text-anchor: middle; paint-order: stroke; stroke: rgba(255,255,255,0.95); stroke-width: 3px; pointer-events: none; }
         .map-selection-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: 14px; }
         .selection-stat { background: white; border: 1px solid rgba(45,118,73,0.1); border-radius: 14px; padding: 14px; }
         .selection-stat-label { color: var(--text-light); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
@@ -179,7 +183,8 @@
     <script src="/js/navbar.js?v=20260409-mobile-fix" defer></script>
     <script src="/js/siaya-soil-map-data.js?v=20260409-mobile-fix" defer></script>
     <script src="/js/siaya-boundaries.js?v=20260409-mobile-fix" defer></script>
-    <script src="/js/recommendations-map-integration.js?v=20260409-mobile-fix" defer></script>
+    <script src="/js/siaya-villages.js?v=20260523-village-level" defer></script>
+    <script src="/js/recommendations-map-integration.js?v=20260523-village-level" defer></script>
     <link rel="stylesheet" href="/css/mobile-responsiveness-fixes.css?v=20260409-mobile-fix">
     <script src="/js/chatbot-widget.js" defer></script>
 </head>
@@ -245,9 +250,15 @@
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label>🧭 Specific Place</label>
+                                <label>🧭 Specific Ward</label>
                                 <select id="mapWardSelect">
                                     <option value="">Select a ward from the map...</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>🏘️ Village Within Ward</label>
+                                <select id="mapVillageSelect">
+                                    <option value="">Select a ward first...</option>
                                 </select>
                             </div>
                             <div class="form-group">
@@ -261,6 +272,7 @@
                         <div class="map-selection-wrap">
                             <svg class="map-selection-stage" viewBox="0 0 820 620" aria-label="Siaya recommendation location map">
                                 <g id="recommendationMapRegions"></g>
+                                <g id="recommendationMapVillages"></g>
                                 <g id="recommendationMapLabels"></g>
                             </svg>
                         </div>
@@ -269,6 +281,10 @@
                             <div class="selection-stat">
                                 <div class="selection-stat-label">Selected ward</div>
                                 <div class="selection-stat-value" id="selectedWardDisplay">No ward selected</div>
+                            </div>
+                            <div class="selection-stat">
+                                <div class="selection-stat-label">Selected village</div>
+                                <div class="selection-stat-value" id="selectedVillageDisplay">No village selected</div>
                             </div>
                             <div class="selection-stat">
                                 <div class="selection-stat-label">Prediction region</div>
@@ -311,7 +327,7 @@
                         <div class="form-group">
                             <label>📍 Selected Region</label>
                             <input type="text" id="regionReadout" class="readout-input" placeholder="Pick a ward on the map above" readonly>
-                            <div class="form-note">🗺️ The recommendation engine uses the selected ward and its mapped sub-county automatically.</div>
+                            <div class="form-note">🗺️ The recommendation engine uses the selected village, ward, and mapped sub-county automatically.</div>
                         </div>
                         <div class="form-group">
                             <label>🌱 Soil Type</label>
@@ -668,7 +684,7 @@
 
             summaryEl.innerHTML = `
                 <strong>${topCrop?.name || 'Top crop'}</strong> currently leads for this profile.
-                Soil quality is <strong>${soilQuality}</strong>${climate ? `, while live conditions in <strong>${analysis?.locationContext?.selectedWard || analysis?.locationContext?.subCounty}</strong> are around <strong>${climate.temperature}°C</strong> and <strong>${climate.humidity}% humidity</strong>.` : weather ? `, with ${weather.rainfall || 'n/a'} mm expected rainfall in the selected season.` : ''} 
+                Soil quality is <strong>${soilQuality}</strong>${climate ? `, while live conditions in <strong>${analysis?.locationContext?.selectedVillage || analysis?.locationContext?.selectedWard || analysis?.locationContext?.subCounty}</strong> are around <strong>${climate.temperature}°C</strong> and <strong>${climate.humidity}% humidity</strong>.` : weather ? `, with ${weather.rainfall || 'n/a'} mm expected rainfall in the selected season.` : ''} 
                 Compare the top options below before deciding what to plant.
             `;
         }
@@ -797,12 +813,13 @@
             const waterSource = document.getElementById('waterSource').value;
             const budget = estimateBudgetFromFarmSize(farmSize, soilType, waterSource || 'Rainfall') || 5000;
             const selectedWard = document.getElementById('selectedWardDisplay')?.textContent || '';
+            const selectedVillage = document.getElementById('selectedVillageDisplay')?.textContent || '';
             const selectedRegionLabel = document.getElementById('regionReadout')?.value || '';
             const climateSnapshot = window.recommendationMapState?.climateSnapshot || null;
             const phoneNumber = getCurrentUserPhone();
             
-            if (!location || !soilType || !season || !farmSize || !waterSource) {
-                showToast('Please choose a map location and complete the remaining fields before generating recommendations.', 'error');
+            if (!location || !soilType || !season || !farmSize || !waterSource || !selectedVillage || selectedVillage === 'No village selected') {
+                showToast('Please choose a village within the selected ward and complete the remaining fields before generating recommendations.', 'error');
                 return;
             }
             
@@ -815,7 +832,7 @@
                 const response = await fetch('/api/analyze-farm', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ subCounty: apiLocation, soilType, season, farmSize, budget, waterSource, selectedWard, selectedRegionLabel, climateSnapshot, phoneNumber })
+                    body: JSON.stringify({ subCounty: apiLocation, soilType, season, farmSize, budget, waterSource, selectedWard, selectedVillage, selectedRegionLabel, climateSnapshot, phoneNumber })
                 });
 
                 const text = await response.text();

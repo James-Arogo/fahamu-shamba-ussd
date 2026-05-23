@@ -3,6 +3,7 @@
 
     const boundaries = window.SIAYA_BOUNDARIES;
     const soilMapData = window.SIAYA_SOIL_MAP_DATA;
+    const villageData = window.SIAYA_VILLAGES_BY_WARD || {};
 
     if (!boundaries || !Array.isArray(boundaries.features)) {
         return;
@@ -20,6 +21,7 @@
     const svgBox = { width: 820, height: 620, padding: 34 };
     const mapState = {
         selectedWardId: '',
+        selectedVillage: '',
         selectedSubCounty: '',
         climateSnapshot: null
     };
@@ -59,6 +61,7 @@
     function buildMap() {
         const filter = document.getElementById('mapSubCountyFilter');
         const wardSelect = document.getElementById('mapWardSelect');
+        const villageSelect = document.getElementById('mapVillageSelect');
         const legend = document.getElementById('recommendationMapLegend');
         const regions = document.getElementById('recommendationMapRegions');
         const labels = document.getElementById('recommendationMapLabels');
@@ -124,6 +127,12 @@
         wardSelect.addEventListener('change', () => {
             if (wardSelect.value) {
                 selectWard(wardSelect.value);
+            }
+        });
+
+        villageSelect.addEventListener('change', () => {
+            if (villageSelect.value) {
+                selectVillage(villageSelect.value);
             }
         });
 
@@ -355,6 +364,85 @@
         ).join('');
     }
 
+    function getVillagesForWard(feature) {
+        const configured = villageData[feature?.ward];
+        if (Array.isArray(configured) && configured.length) return configured;
+        const ward = feature?.ward || 'Selected Ward';
+        return [`${ward} Centre`, `North ${ward}`, `South ${ward}`];
+    }
+
+    function buildVillagePoints(feature) {
+        const villages = getVillagesForWard(feature);
+        const [centerX, centerY] = projectPoint([feature.centroid.lng, feature.centroid.lat]);
+        const radius = 18 + Math.min(14, villages.length * 2);
+        return villages.map((name, index) => {
+            const angle = ((Math.PI * 2) / villages.length) * index - Math.PI / 2;
+            return {
+                name,
+                x: centerX + Math.cos(angle) * radius,
+                y: centerY + Math.sin(angle) * radius
+            };
+        });
+    }
+
+    function updateVillageOptions(feature) {
+        const villageSelect = document.getElementById('mapVillageSelect');
+        const villages = getVillagesForWard(feature);
+        villageSelect.innerHTML = '<option value="">Select village...</option>' + villages.map((village) =>
+            `<option value="${village}">${village}</option>`
+        ).join('');
+    }
+
+    function renderVillageMarkers(feature) {
+        const villageLayer = document.getElementById('recommendationMapVillages');
+        if (!villageLayer) return;
+
+        const points = buildVillagePoints(feature);
+        villageLayer.innerHTML = points.map((point) => `
+            <g>
+                <circle
+                    class="map-village-marker${point.name === mapState.selectedVillage ? ' selected' : ''}"
+                    data-village="${point.name}"
+                    cx="${point.x.toFixed(2)}"
+                    cy="${point.y.toFixed(2)}"
+                    r="5"
+                    tabindex="0"
+                    role="button"
+                    aria-label="${point.name}, ${feature.ward}"
+                ></circle>
+                <text class="map-village-label" x="${point.x.toFixed(2)}" y="${(point.y - 10).toFixed(2)}">${point.name}</text>
+            </g>
+        `).join('');
+
+        villageLayer.querySelectorAll('.map-village-marker').forEach((marker) => {
+            marker.addEventListener('click', () => selectVillage(marker.dataset.village));
+            marker.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    selectVillage(marker.dataset.village);
+                }
+            });
+        });
+    }
+
+    function selectVillage(villageName) {
+        if (!villageName) return;
+        mapState.selectedVillage = villageName;
+
+        const villageSelect = document.getElementById('mapVillageSelect');
+        const selectedVillageDisplay = document.getElementById('selectedVillageDisplay');
+        const regionReadout = document.getElementById('regionReadout');
+        const feature = features.find((item) => item.id === mapState.selectedWardId);
+
+        if (villageSelect) villageSelect.value = villageName;
+        if (selectedVillageDisplay) selectedVillageDisplay.textContent = villageName;
+        if (regionReadout && feature) regionReadout.value = `${villageName}, ${feature.ward}, ${feature.subCounty}`;
+
+        document.querySelectorAll('.map-village-marker').forEach((marker) => {
+            marker.classList.toggle('selected', marker.dataset.village === villageName);
+        });
+    }
+
     function updateMapVisualState() {
         document.querySelectorAll('.map-ward-shape').forEach((shape) => {
             const matchesFilter = !mapState.selectedSubCounty || shape.dataset.subcounty === mapState.selectedSubCounty;
@@ -379,6 +467,10 @@
         document.getElementById('mapWardSelect').value = wardId;
         updateMapVisualState();
         syncLocationFields(feature);
+        updateVillageOptions(feature);
+        mapState.selectedVillage = getVillagesForWard(feature)[0] || '';
+        renderVillageMarkers(feature);
+        selectVillage(mapState.selectedVillage);
         await Promise.all([
             syncSoilProfile(feature),
             syncClimateProfile(feature)
@@ -390,11 +482,13 @@
         const locationSelect = document.getElementById('location');
         const regionReadout = document.getElementById('regionReadout');
         const selectedWardDisplay = document.getElementById('selectedWardDisplay');
+        const selectedVillageDisplay = document.getElementById('selectedVillageDisplay');
         const selectedRegionDisplay = document.getElementById('selectedRegionDisplay');
 
         locationSelect.value = locationValue;
         regionReadout.value = `${feature.ward}, ${feature.subCounty}`;
         selectedWardDisplay.textContent = feature.ward;
+        if (selectedVillageDisplay) selectedVillageDisplay.textContent = 'No village selected';
         selectedRegionDisplay.textContent = feature.subCounty;
     }
 
@@ -524,6 +618,7 @@
     function handleMapPointerSelection(event) {
         if (!event || !Number.isFinite(event.clientX) || !Number.isFinite(event.clientY)) return;
         if (event.target && event.target.closest('.map-ward-shape')) return;
+        if (event.target && event.target.closest('.map-village-marker')) return;
 
         const mapStage = document.querySelector('.map-selection-stage');
         if (!mapStage || typeof mapStage.createSVGPoint !== 'function') return;

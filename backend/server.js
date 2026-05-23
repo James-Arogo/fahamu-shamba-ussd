@@ -2861,7 +2861,7 @@ app.get('/api/stats', async (req, res) => {
 
 // ==================== NEW RECOMMENDATION ENDPOINTS ====================
 
-async function saveRecommendationSnapshot({ phoneNumber, subCounty, soilType, season, recommendation }) {
+async function saveRecommendationSnapshot({ phoneNumber, subCounty, soilType, season, recommendation, locationLabel = '' }) {
   if (!recommendation?.name && !recommendation?.crop) return null;
 
   const normalizedPhone = normalizePhoneNumber(phoneNumber);
@@ -2869,7 +2869,7 @@ async function saveRecommendationSnapshot({ phoneNumber, subCounty, soilType, se
   const confidence = Math.round(Number(recommendation.confidence || recommendation.score || 0));
   const reason = recommendation.reasons?.english ||
     recommendation.reason ||
-    `${cropName} is recommended for ${subCounty} during ${String(season || '').replace('_', ' ')}.`;
+    `${cropName} is recommended for ${locationLabel || subCounty} during ${String(season || '').replace('_', ' ')}.`;
 
   try {
     const result = await dbAsync.run(
@@ -2942,6 +2942,7 @@ app.post('/api/analyze-farm', async (req, res) => {
       waterSource = 'Rainfall',
       phoneNumber = null,
       selectedWard = null,
+      selectedVillage = null,
       selectedRegionLabel = null,
       climateSnapshot = null
     } = req.body;
@@ -2966,6 +2967,7 @@ app.post('/api/analyze-farm', async (req, res) => {
       subCounty,
       soilType,
       season,
+      locationLabel: selectedVillage || selectedWard || selectedRegionLabel || subCounty,
       recommendation: analysis.recommendations?.recommendations?.[0]
     });
 
@@ -2977,6 +2979,7 @@ app.post('/api/analyze-farm', async (req, res) => {
         locationContext: {
           subCounty,
           selectedWard,
+          selectedVillage,
           selectedRegionLabel,
           climateSnapshot
         }
