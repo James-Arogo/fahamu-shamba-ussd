@@ -2942,7 +2942,6 @@ app.post('/api/analyze-farm', async (req, res) => {
       waterSource = 'Rainfall',
       phoneNumber = null,
       selectedWard = null,
-      selectedSubLocation = null,
       selectedVillage = null,
       selectedRegionLabel = null,
       climateSnapshot = null
@@ -2968,9 +2967,7 @@ app.post('/api/analyze-farm', async (req, res) => {
       subCounty,
       soilType,
       season,
-      locationLabel: selectedVillage
-        ? `${selectedVillage}${selectedSubLocation ? `, ${selectedSubLocation}` : ''}`
-        : selectedWard || selectedRegionLabel || subCounty,
+      locationLabel: selectedVillage || selectedWard || selectedRegionLabel || subCounty,
       recommendation: analysis.recommendations?.recommendations?.[0]
     });
 
@@ -2982,7 +2979,6 @@ app.post('/api/analyze-farm', async (req, res) => {
         locationContext: {
           subCounty,
           selectedWard,
-          selectedSubLocation,
           selectedVillage,
           selectedRegionLabel,
           climateSnapshot

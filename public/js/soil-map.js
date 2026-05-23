@@ -2,7 +2,6 @@
     'use strict';
 
     const boundaries = window.SIAYA_BOUNDARIES;
-    const locationHierarchy = window.SIAYA_LOCATION_HIERARCHY || {};
     const flatVillageData = window.SIAYA_VILLAGES_BY_WARD || {};
 
     if (!boundaries || !Array.isArray(boundaries.features)) {
@@ -18,8 +17,6 @@
         'Ugenya': '#90be6d',
         'Ugunja': '#f9c74f'
     };
-    const SUBLOCATION_COLORS = ['rgba(249, 199, 79, 0.68)', 'rgba(126, 193, 213, 0.68)', 'rgba(67, 170, 139, 0.64)', 'rgba(215, 122, 43, 0.58)'];
-
     const SUBCOUNTY_SOIL_PROFILES = {
         'Alego Usonga': {
             soilType: 'Clay loam to loam',
@@ -86,7 +83,6 @@
     const state = {
         selectedSubCounty: '',
         selectedWardId: '',
-        selectedSubLocation: '',
         selectedVillage: ''
     };
 
@@ -123,13 +119,11 @@
 
     function bindElements() {
         elements.mapRegions = document.getElementById('mapRegions');
-        elements.subLocationLayer = document.getElementById('subLocationLayer');
         elements.villageLayer = document.getElementById('villageLayer');
         elements.villageList = document.getElementById('soilVillageList');
         elements.subCountyLabels = document.getElementById('subCountyLabels');
         elements.subCountySelect = document.getElementById('subCountySelect');
         elements.wardSelect = document.getElementById('wardSelect');
-        elements.subLocationSelect = document.getElementById('subLocationSelect');
         elements.villageSelect = document.getElementById('villageSelect');
         elements.wardList = document.getElementById('wardList');
         elements.locationStatus = document.getElementById('locationStatus');
@@ -172,10 +166,6 @@
 
         elements.wardSelect.addEventListener('change', (event) => {
             selectWard(event.target.value);
-        });
-
-        elements.subLocationSelect.addEventListener('change', (event) => {
-            selectSubLocation(event.target.value);
         });
 
         elements.villageSelect.addEventListener('change', (event) => {
@@ -256,31 +246,6 @@
         ).join(' ');
     }
 
-    function safeDomId(value) {
-        return String(value || '').replace(/[^a-zA-Z0-9_-]/g, '-');
-    }
-
-    function getFeatureProjectedBounds(feature) {
-        const points = [];
-        feature.geometry.coordinates.forEach((polygon) => {
-            polygon.forEach((ring) => {
-                ring.forEach(([lng, lat]) => points.push(project([lng, lat])));
-            });
-        });
-
-        return points.reduce((bounds, [x, y]) => ({
-            minX: Math.min(bounds.minX, x),
-            maxX: Math.max(bounds.maxX, x),
-            minY: Math.min(bounds.minY, y),
-            maxY: Math.max(bounds.maxY, y)
-        }), {
-            minX: Number.POSITIVE_INFINITY,
-            maxX: Number.NEGATIVE_INFINITY,
-            minY: Number.POSITIVE_INFINITY,
-            maxY: Number.NEGATIVE_INFINITY
-        });
-    }
-
     function project([lng, lat]) {
         const x = offsetX + (lng - bbox.west) * scale;
         const y = offsetY + (bbox.north - lat) * scale;
@@ -292,7 +257,7 @@
         elements.wardList.innerHTML = visible.map((feature) => `
             <button type="button" class="ward-list-item ${feature.id === state.selectedWardId ? 'active' : ''}" data-ward-id="${feature.id}">
                 <span class="ward-list-name">${feature.ward}</span>
-                <span class="ward-list-meta">${feature.subCounty} • ${getSubLocationsForWard(feature).length} sub-locations • ${getAllVillagesForWard(feature).length} villages</span>
+                <span class="ward-list-meta">${feature.subCounty} • ${getAllVillagesForWard(feature).length} villages</span>
             </button>
         `).join('');
 
@@ -336,42 +301,20 @@
 
         elements.wardSelect.value = wardId;
         updateMapState();
-        updateSubLocationSelect(feature);
-        state.selectedSubLocation = getSubLocationsForWard(feature)[0]?.name || '';
-        renderSubLocationBoundaries(feature);
-        selectSubLocation(state.selectedSubLocation);
+        updateVillageSelect(feature);
+        state.selectedVillage = getAllVillagesForWard(feature)[0] || '';
+        renderVillageMarkers(feature);
+        renderVillageList(feature);
+        selectVillage(state.selectedVillage);
         renderWardList();
         updateDetails(feature);
     }
 
-    function updateSubLocationSelect(feature) {
-        const subLocations = getSubLocationsForWard(feature);
-        elements.subLocationSelect.innerHTML = '<option value="">Select sub-location</option>' + subLocations.map((subLocation) =>
-            `<option value="${subLocation.name}">${subLocation.name}</option>`
-        ).join('');
-    }
-
     function updateVillageSelect(feature) {
-        const villages = getVillagesForSubLocation(feature);
+        const villages = getAllVillagesForWard(feature);
         elements.villageSelect.innerHTML = '<option value="">Select village</option>' + villages.map((village) =>
             `<option value="${village}">${village}</option>`
         ).join('');
-    }
-
-    function selectSubLocation(subLocationName) {
-        if (!subLocationName) return;
-
-        const feature = features.find((item) => item.id === state.selectedWardId);
-        if (!feature) return;
-
-        state.selectedSubLocation = subLocationName;
-        elements.subLocationSelect.value = subLocationName;
-        updateVillageSelect(feature);
-        state.selectedVillage = getVillagesForSubLocation(feature, subLocationName)[0] || '';
-        renderSubLocationBoundaries(feature);
-        renderVillageMarkers(feature);
-        renderVillageList(feature);
-        selectVillage(state.selectedVillage);
     }
 
     function selectVillage(villageName) {
@@ -392,7 +335,7 @@
         const profile = SUBCOUNTY_SOIL_PROFILES[feature.subCounty];
 
         elements.infoTitle.textContent = state.selectedVillage || feature.ward;
-        elements.infoMeta.textContent = `${state.selectedSubLocation || 'Sub-location pending'} • ${feature.ward}, ${feature.subCounty}`;
+        elements.infoMeta.textContent = `${feature.ward}, ${feature.subCounty}`;
         elements.wardBadge.textContent = state.selectedVillage ? 'Village soil planning profile' : `${feature.ward} ward profile`;
         elements.soilType.textContent = profile.soilType;
         elements.soilTexture.textContent = profile.texture;
@@ -405,98 +348,22 @@
         elements.sulfur.textContent = profile.nutrients.sulfur;
         elements.zinc.textContent = profile.nutrients.zinc;
         elements.recommendation.textContent = profile.recommendation;
-        elements.note.textContent = 'Ward boundary geometry is drawn from Siaya ward GeoJSON. Sub-location and village selections provide finer planning context inside the ward; soil values remain planning profiles grouped by sub-county until measured village soil data is added.';
+        elements.note.textContent = 'Ward boundary geometry is drawn from Siaya ward GeoJSON. Village selections provide finer planning context inside the ward; soil values remain planning profiles grouped by sub-county until measured village soil data is added.';
         elements.locationStatus.textContent = state.selectedVillage
-            ? `Showing ${state.selectedVillage}, ${state.selectedSubLocation}, ${feature.ward}, ${feature.subCounty}.`
+            ? `Showing ${state.selectedVillage}, ${feature.ward}, ${feature.subCounty}.`
             : `Showing ${feature.ward} in ${feature.subCounty}.`;
     }
 
-    function getSubLocationsForWard(feature) {
-        const configured = locationHierarchy[feature?.ward];
-        if (Array.isArray(configured) && configured.length) return configured;
-
-        const flatVillages = flatVillageData[feature?.ward];
-        if (Array.isArray(flatVillages) && flatVillages.length) {
-            return [{ name: `${feature.ward} Sub-Location`, villages: flatVillages }];
-        }
-
-        const ward = feature?.ward || 'Selected Ward';
-        return [
-            { name: `${ward} North Sub-Location`, villages: [`${ward} Centre`, `North ${ward}`] },
-            { name: `${ward} South Sub-Location`, villages: [`South ${ward}`] }
-        ];
-    }
-
-    function getVillagesForSubLocation(feature, subLocationName = state.selectedSubLocation) {
-        const subLocations = getSubLocationsForWard(feature);
-        const selected = subLocations.find((subLocation) => subLocation.name === subLocationName) || subLocations[0];
-        return selected?.villages || [];
-    }
-
     function getAllVillagesForWard(feature) {
-        return getSubLocationsForWard(feature).flatMap((subLocation) => subLocation.villages || []);
-    }
-
-    function renderSubLocationBoundaries(feature) {
-        if (!elements.subLocationLayer) return;
-
-        const subLocations = getSubLocationsForWard(feature);
-        const bounds = getFeatureProjectedBounds(feature);
-        const clipId = `soil-sublocation-clip-${safeDomId(feature.id)}`;
-        const height = bounds.maxY - bounds.minY;
-        const bandHeight = height / Math.max(subLocations.length, 1);
-        const wardPath = buildFeaturePath(feature.geometry);
-
-        elements.subLocationLayer.innerHTML = `
-            <defs>
-                <clipPath id="${clipId}">
-                    <path d="${wardPath}"></path>
-                </clipPath>
-            </defs>
-            ${subLocations.map((subLocation, index) => {
-                const y = bounds.minY + bandHeight * index;
-                const isSelected = subLocation.name === state.selectedSubLocation;
-                return `
-                    <g>
-                        <rect
-                            class="sublocation-boundary${isSelected ? ' selected' : ''}"
-                            data-sublocation="${subLocation.name}"
-                            x="${bounds.minX.toFixed(2)}"
-                            y="${y.toFixed(2)}"
-                            width="${(bounds.maxX - bounds.minX).toFixed(2)}"
-                            height="${bandHeight.toFixed(2)}"
-                            fill="${SUBLOCATION_COLORS[index % SUBLOCATION_COLORS.length]}"
-                            clip-path="url(#${clipId})"
-                            tabindex="0"
-                            role="button"
-                            aria-label="${subLocation.name}, ${feature.ward}"
-                        ></rect>
-                        <text
-                            class="sublocation-label"
-                            x="${((bounds.minX + bounds.maxX) / 2).toFixed(2)}"
-                            y="${(y + bandHeight / 2).toFixed(2)}"
-                            clip-path="url(#${clipId})"
-                        >${subLocation.name.replace(`${feature.ward} `, '')}</text>
-                    </g>
-                `;
-            }).join('')}
-        `;
-
-        elements.subLocationLayer.querySelectorAll('.sublocation-boundary').forEach((boundary) => {
-            boundary.addEventListener('click', () => selectSubLocation(boundary.dataset.sublocation));
-            boundary.addEventListener('keydown', (event) => {
-                if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    selectSubLocation(boundary.dataset.sublocation);
-                }
-            });
-        });
+        const villages = flatVillageData[feature?.ward];
+        if (Array.isArray(villages) && villages.length) return villages;
+        return [`${feature?.ward || 'Selected Ward'} Village`];
     }
 
     function renderVillageMarkers(feature) {
         if (!elements.villageLayer) return;
 
-        const villages = getVillagesForSubLocation(feature);
+        const villages = getAllVillagesForWard(feature);
         const [centerX, centerY] = project([feature.centroid.lng, feature.centroid.lat]);
         const radius = 18 + Math.min(14, villages.length * 2);
 
@@ -535,14 +402,14 @@
     function renderVillageList(feature) {
         if (!elements.villageList) return;
 
-        const villages = getVillagesForSubLocation(feature);
+        const villages = getAllVillagesForWard(feature);
         if (!villages.length) {
-            elements.villageList.innerHTML = '<span class="village-list-title">Villages in selected sub-location</span><span>No villages available yet.</span>';
+            elements.villageList.innerHTML = '<span class="village-list-title">Villages in selected ward</span><span>No villages available yet.</span>';
             return;
         }
 
         elements.villageList.innerHTML = `
-            <span class="village-list-title">Villages in ${state.selectedSubLocation || 'selected sub-location'}</span>
+            <span class="village-list-title">Villages in ${feature.ward}</span>
             ${villages.map((village) => `
                 <button type="button" class="village-chip${village === state.selectedVillage ? ' active' : ''}" data-village="${village}">
                     ${village}

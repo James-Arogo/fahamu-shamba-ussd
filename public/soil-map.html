@@ -12,8 +12,8 @@
     <script src="/js/sidebar.js" defer></script>
     <script src="/js/navbar.js" defer></script>
     <script src="/js/siaya-boundaries.js" defer></script>
-    <script src="/js/siaya-villages.js?v=20260523-sublocation-village" defer></script>
-    <script src="/js/soil-map.js?v=20260523-sublocation-village" defer></script>
+    <script src="/js/siaya-villages.js?v=20260523-village-only" defer></script>
+    <script src="/js/soil-map.js?v=20260523-village-only" defer></script>
     <style>
         :root {
             --primary: #255f38;
@@ -282,40 +282,6 @@
             stroke: #11261a;
             stroke-width: 2.2;
             opacity: 1;
-        }
-
-        .sublocation-boundary {
-            cursor: pointer;
-            opacity: 0.68;
-            stroke: rgba(255, 255, 255, 0.96);
-            stroke-width: 1.2;
-            transition: opacity 0.18s ease, stroke-width 0.18s ease, filter 0.18s ease;
-        }
-
-        .sublocation-boundary:hover,
-        .sublocation-boundary:focus {
-            opacity: 0.9;
-            stroke: #163425;
-            stroke-width: 1.8;
-            filter: brightness(1.04);
-        }
-
-        .sublocation-boundary.selected {
-            opacity: 0.94;
-            stroke: var(--accent);
-            stroke-width: 2.2;
-            filter: drop-shadow(0 4px 8px rgba(22, 52, 37, 0.22));
-        }
-
-        .sublocation-label {
-            font-size: 10px;
-            fill: #163425;
-            font-weight: 800;
-            text-anchor: middle;
-            paint-order: stroke;
-            stroke: rgba(255, 255, 255, 0.94);
-            stroke-width: 3px;
-            pointer-events: none;
         }
 
         .subcounty-label {
@@ -619,7 +585,7 @@
             <section class="hero">
                 <div>
                     <h1>GPS-assisted village soil map for Siaya County.</h1>
-                    <p>Select a sub-county, ward, sub-location, and village for finer local planning. The map keeps real ward geometry, then adds village-level points inside each ward until measured village boundary polygons are added.</p>
+                    <p>Select a sub-county, ward, and village for finer local planning. The map keeps real ward geometry, then adds official village-unit points inside each ward.</p>
                     <div class="hero-tools">
                         <button type="button" class="action-btn primary" id="gpsLocateButton">
                             <i class="fas fa-location-crosshairs"></i> Use My GPS
@@ -647,14 +613,14 @@
 
             <div class="status-bar">
                 <span class="status-dot"></span>
-                <span id="locationStatus">Select a ward, sub-location, and village or use GPS to match your nearest local profile.</span>
+                <span id="locationStatus">Select a ward and village or use GPS to match your nearest local profile.</span>
             </div>
 
             <section class="workspace">
                 <article class="panel">
                     <div class="panel-header">
                         <h2 class="panel-title">Interactive county map</h2>
-                        <p class="panel-copy">This view uses real Siaya County ward boundaries, then displays sub-location village points inside the selected ward for finer soil planning.</p>
+                        <p class="panel-copy">This view uses real Siaya County ward boundaries, then displays official village-unit points inside the selected ward for finer soil planning.</p>
                     </div>
 
                     <div class="filters">
@@ -671,15 +637,9 @@
                             </select>
                         </div>
                         <div class="filter-group">
-                            <label for="subLocationSelect">Sub-location</label>
-                            <select id="subLocationSelect">
-                                <option value="">Select a ward first</option>
-                            </select>
-                        </div>
-                        <div class="filter-group">
                             <label for="villageSelect">Village</label>
                             <select id="villageSelect">
-                                <option value="">Select a sub-location first</option>
+                                <option value="">Select a ward first</option>
                             </select>
                         </div>
                     </div>
@@ -688,7 +648,6 @@
                         <div class="map-wrap">
                             <svg class="map-stage" viewBox="0 0 800 620" aria-label="Siaya soil map">
                                 <g id="mapRegions"></g>
-                                <g id="subLocationLayer"></g>
                                 <g id="villageLayer"></g>
                                 <g id="subCountyLabels"></g>
                             </svg>

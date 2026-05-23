@@ -1,8 +1,8 @@
 (function () {
     'use strict';
 
-    // Source: Siaya County Village Administrative Units Act, 2020, Schedule:
-    // "List of Village Units" by sub-county, ward, sub-locations, and village unit.
+    // Source: Siaya County Village Administrative Units Act, 2020, Schedule.
+    // This keeps all official village units while exposing a ward -> villages map for the UI.
     const hierarchy = {
         'Central Alego': [
             { name: 'Ojuando A / Ojuando B', villages: ['Ojwando'] },
