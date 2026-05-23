@@ -18,6 +18,7 @@
         'Ugenya': '#90be6d',
         'Ugunja': '#f9c74f'
     };
+    const SUBLOCATION_COLORS = ['rgba(255, 255, 255, 0.72)', 'rgba(249, 199, 79, 0.62)', 'rgba(126, 193, 213, 0.62)', 'rgba(67, 170, 139, 0.58)'];
 
     const SUBCOUNTY_SOIL_PROFILES = {
         'Alego Usonga': {
@@ -122,6 +123,7 @@
 
     function bindElements() {
         elements.mapRegions = document.getElementById('mapRegions');
+        elements.subLocationLayer = document.getElementById('subLocationLayer');
         elements.villageLayer = document.getElementById('villageLayer');
         elements.subCountyLabels = document.getElementById('subCountyLabels');
         elements.subCountySelect = document.getElementById('subCountySelect');
@@ -253,6 +255,31 @@
         ).join(' ');
     }
 
+    function safeDomId(value) {
+        return String(value || '').replace(/[^a-zA-Z0-9_-]/g, '-');
+    }
+
+    function getFeatureProjectedBounds(feature) {
+        const points = [];
+        feature.geometry.coordinates.forEach((polygon) => {
+            polygon.forEach((ring) => {
+                ring.forEach(([lng, lat]) => points.push(project([lng, lat])));
+            });
+        });
+
+        return points.reduce((bounds, [x, y]) => ({
+            minX: Math.min(bounds.minX, x),
+            maxX: Math.max(bounds.maxX, x),
+            minY: Math.min(bounds.minY, y),
+            maxY: Math.max(bounds.maxY, y)
+        }), {
+            minX: Number.POSITIVE_INFINITY,
+            maxX: Number.NEGATIVE_INFINITY,
+            minY: Number.POSITIVE_INFINITY,
+            maxY: Number.NEGATIVE_INFINITY
+        });
+    }
+
     function project([lng, lat]) {
         const x = offsetX + (lng - bbox.west) * scale;
         const y = offsetY + (bbox.north - lat) * scale;
@@ -310,6 +337,7 @@
         updateMapState();
         updateSubLocationSelect(feature);
         state.selectedSubLocation = getSubLocationsForWard(feature)[0]?.name || '';
+        renderSubLocationBoundaries(feature);
         selectSubLocation(state.selectedSubLocation);
         renderWardList();
         updateDetails(feature);
@@ -339,6 +367,7 @@
         elements.subLocationSelect.value = subLocationName;
         updateVillageSelect(feature);
         state.selectedVillage = getVillagesForSubLocation(feature, subLocationName)[0] || '';
+        renderSubLocationBoundaries(feature);
         renderVillageMarkers(feature);
         selectVillage(state.selectedVillage);
     }
@@ -404,6 +433,62 @@
 
     function getAllVillagesForWard(feature) {
         return getSubLocationsForWard(feature).flatMap((subLocation) => subLocation.villages || []);
+    }
+
+    function renderSubLocationBoundaries(feature) {
+        if (!elements.subLocationLayer) return;
+
+        const subLocations = getSubLocationsForWard(feature);
+        const bounds = getFeatureProjectedBounds(feature);
+        const clipId = `soil-sublocation-clip-${safeDomId(feature.id)}`;
+        const height = bounds.maxY - bounds.minY;
+        const bandHeight = height / Math.max(subLocations.length, 1);
+        const wardPath = buildFeaturePath(feature.geometry);
+
+        elements.subLocationLayer.innerHTML = `
+            <defs>
+                <clipPath id="${clipId}">
+                    <path d="${wardPath}"></path>
+                </clipPath>
+            </defs>
+            ${subLocations.map((subLocation, index) => {
+                const y = bounds.minY + bandHeight * index;
+                const isSelected = subLocation.name === state.selectedSubLocation;
+                return `
+                    <g>
+                        <rect
+                            class="sublocation-boundary${isSelected ? ' selected' : ''}"
+                            data-sublocation="${subLocation.name}"
+                            x="${bounds.minX.toFixed(2)}"
+                            y="${y.toFixed(2)}"
+                            width="${(bounds.maxX - bounds.minX).toFixed(2)}"
+                            height="${bandHeight.toFixed(2)}"
+                            fill="${SUBLOCATION_COLORS[index % SUBLOCATION_COLORS.length]}"
+                            clip-path="url(#${clipId})"
+                            tabindex="0"
+                            role="button"
+                            aria-label="${subLocation.name}, ${feature.ward}"
+                        ></rect>
+                        <text
+                            class="sublocation-label"
+                            x="${((bounds.minX + bounds.maxX) / 2).toFixed(2)}"
+                            y="${(y + bandHeight / 2).toFixed(2)}"
+                            clip-path="url(#${clipId})"
+                        >${subLocation.name.replace(`${feature.ward} `, '')}</text>
+                    </g>
+                `;
+            }).join('')}
+        `;
+
+        elements.subLocationLayer.querySelectorAll('.sublocation-boundary').forEach((boundary) => {
+            boundary.addEventListener('click', () => selectSubLocation(boundary.dataset.sublocation));
+            boundary.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    selectSubLocation(boundary.dataset.sublocation);
+                }
+            });
+        });
     }
 
     function renderVillageMarkers(feature) {

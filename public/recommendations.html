@@ -81,6 +81,9 @@
         .map-ward-shape:hover, .map-ward-shape:focus, .map-ward-shape.subcounty-focus { filter: brightness(1.02); }
         .map-ward-shape.dimmed { opacity: 0.24; }
         .map-ward-shape.selected { stroke: #163425; stroke-width: 2.2; opacity: 1; }
+        .map-sublocation-boundary { cursor: pointer; opacity: 0.52; stroke: #163425; stroke-width: 1.4; stroke-dasharray: 5 3; transition: opacity 0.18s ease, stroke-width 0.18s ease; }
+        .map-sublocation-boundary:hover, .map-sublocation-boundary:focus, .map-sublocation-boundary.selected { opacity: 0.82; stroke-width: 2.2; }
+        .map-sublocation-label { font-size: 10px; fill: #163425; font-weight: 800; text-anchor: middle; paint-order: stroke; stroke: rgba(255,255,255,0.95); stroke-width: 3px; pointer-events: none; }
         .map-subcounty-label { font-size: 12px; fill: #163425; font-weight: 700; text-anchor: middle; paint-order: stroke; stroke: rgba(255,255,255,0.95); stroke-width: 4px; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
         .map-village-marker { fill: #163425; stroke: #fff; stroke-width: 2; cursor: pointer; transition: transform 0.18s ease, fill 0.18s ease; transform-box: fill-box; transform-origin: center; }
         .map-village-marker:hover, .map-village-marker:focus { fill: #2d7649; transform: scale(1.25); }
@@ -278,6 +281,7 @@
                         <div class="map-selection-wrap">
                             <svg class="map-selection-stage" viewBox="0 0 820 620" aria-label="Siaya recommendation location map">
                                 <g id="recommendationMapRegions"></g>
+                                <g id="recommendationMapSubLocations"></g>
                                 <g id="recommendationMapVillages"></g>
                                 <g id="recommendationMapLabels"></g>
                             </svg>

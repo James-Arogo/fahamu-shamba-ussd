@@ -284,6 +284,33 @@
             opacity: 1;
         }
 
+        .sublocation-boundary {
+            cursor: pointer;
+            opacity: 0.52;
+            stroke: #163425;
+            stroke-width: 1.4;
+            stroke-dasharray: 5 3;
+            transition: opacity 0.18s ease, stroke-width 0.18s ease;
+        }
+
+        .sublocation-boundary:hover,
+        .sublocation-boundary:focus,
+        .sublocation-boundary.selected {
+            opacity: 0.82;
+            stroke-width: 2.2;
+        }
+
+        .sublocation-label {
+            font-size: 10px;
+            fill: #163425;
+            font-weight: 800;
+            text-anchor: middle;
+            paint-order: stroke;
+            stroke: rgba(255, 255, 255, 0.94);
+            stroke-width: 3px;
+            pointer-events: none;
+        }
+
         .subcounty-label {
             font-size: 13px;
             fill: #102015;
@@ -605,6 +632,7 @@
                         <div class="map-wrap">
                             <svg class="map-stage" viewBox="0 0 800 620" aria-label="Siaya soil map">
                                 <g id="mapRegions"></g>
+                                <g id="subLocationLayer"></g>
                                 <g id="villageLayer"></g>
                                 <g id="subCountyLabels"></g>
                             </svg>
