@@ -527,7 +527,7 @@
                     role="button"
                     aria-label="${point.name}, ${feature.ward}"
                 ></circle>
-                <text class="map-village-label" x="${point.x.toFixed(2)}" y="${(point.y - 10).toFixed(2)}">${point.name}</text>
+                <text class="map-village-label${point.name === mapState.selectedVillage ? ' selected' : ''}" x="${point.x.toFixed(2)}" y="${(point.y - 10).toFixed(2)}">${point.name}</text>
             </g>
         `).join('');
 
@@ -580,6 +580,9 @@
 
         document.querySelectorAll('.map-village-marker').forEach((marker) => {
             marker.classList.toggle('selected', marker.dataset.village === villageName);
+        });
+        document.querySelectorAll('.map-village-label').forEach((label) => {
+            label.classList.toggle('selected', label.textContent === villageName);
         });
     }
 

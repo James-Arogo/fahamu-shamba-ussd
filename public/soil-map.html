@@ -349,6 +349,7 @@
         }
 
         .village-label {
+            display: none;
             font-size: 10px;
             fill: #163425;
             font-weight: 700;
@@ -357,6 +358,10 @@
             stroke: rgba(255, 255, 255, 0.94);
             stroke-width: 3px;
             pointer-events: none;
+        }
+
+        .village-label.selected {
+            display: block;
         }
 
         .map-legend {

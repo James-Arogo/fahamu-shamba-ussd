@@ -88,7 +88,8 @@
         .map-village-marker { fill: #163425; stroke: #fff; stroke-width: 2; cursor: pointer; transition: transform 0.18s ease, fill 0.18s ease; transform-box: fill-box; transform-origin: center; }
         .map-village-marker:hover, .map-village-marker:focus { fill: #2d7649; transform: scale(1.25); }
         .map-village-marker.selected { fill: #f9c74f; stroke: #163425; stroke-width: 2.4; transform: scale(1.35); }
-        .map-village-label { font-size: 10px; fill: #163425; font-weight: 700; text-anchor: middle; paint-order: stroke; stroke: rgba(255,255,255,0.95); stroke-width: 3px; pointer-events: none; }
+        .map-village-label { display: none; font-size: 10px; fill: #163425; font-weight: 700; text-anchor: middle; paint-order: stroke; stroke: rgba(255,255,255,0.95); stroke-width: 3px; pointer-events: none; }
+        .map-village-label.selected { display: block; }
         .map-selection-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: 14px; }
         .selection-stat { background: white; border: 1px solid rgba(45,118,73,0.1); border-radius: 14px; padding: 14px; }
         .selection-stat-label { color: var(--text-light); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }

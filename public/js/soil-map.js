@@ -380,6 +380,9 @@
         document.querySelectorAll('.village-marker').forEach((marker) => {
             marker.classList.toggle('selected', marker.dataset.village === villageName);
         });
+        document.querySelectorAll('.village-label').forEach((label) => {
+            label.classList.toggle('selected', label.textContent === villageName);
+        });
 
         const feature = features.find((item) => item.id === state.selectedWardId);
         if (feature) updateDetails(feature);
@@ -514,7 +517,7 @@
                         role="button"
                         aria-label="${village}, ${feature.ward}"
                     ></circle>
-                    <text class="village-label" x="${x.toFixed(2)}" y="${(y - 10).toFixed(2)}">${village}</text>
+                    <text class="village-label${village === state.selectedVillage ? ' selected' : ''}" x="${x.toFixed(2)}" y="${(y - 10).toFixed(2)}">${village}</text>
                 </g>
             `;
         }).join('');
