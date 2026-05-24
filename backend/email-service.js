@@ -7,7 +7,6 @@ import nodemailer from 'nodemailer';
 let transporter = null;
 let resolvedFromAddress = '';
 const OFFICIAL_PROJECT_EMAIL = 'fahamushamba@gmail.com';
-const LEGACY_PROJECT_EMAIL = 'cjoarogo@gmail.com';
 
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, (char) => ({
@@ -39,21 +38,13 @@ function formatRecommendationList(recommendations = []) {
  */
 export function initializeEmailService() {
   const configuredEmailUser = (process.env.EMAIL_USER || process.env.SMTP_USER || '').trim();
-  const emailUser = (
-    configuredEmailUser.toLowerCase() === LEGACY_PROJECT_EMAIL
-      ? OFFICIAL_PROJECT_EMAIL
-      : configuredEmailUser || OFFICIAL_PROJECT_EMAIL
-  ).trim();
+  const emailUser = (configuredEmailUser || OFFICIAL_PROJECT_EMAIL).trim();
   const emailPassword = (process.env.EMAIL_PASSWORD || process.env.SMTP_PASSWORD || process.env.GMAIL_APP_PASSWORD || '').trim();
   const emailHost = (process.env.SMTP_HOST || '').trim();
   const emailPort = Number(process.env.SMTP_PORT || 0) || 587;
   const emailSecure = String(process.env.SMTP_SECURE || '').toLowerCase() === 'true' || emailPort === 465;
   const configuredFromAddress = (process.env.EMAIL_FROM || '').trim();
-  resolvedFromAddress = (
-    configuredFromAddress.toLowerCase() === LEGACY_PROJECT_EMAIL
-      ? OFFICIAL_PROJECT_EMAIL
-      : configuredFromAddress || OFFICIAL_PROJECT_EMAIL
-  ).trim();
+  resolvedFromAddress = (configuredFromAddress || OFFICIAL_PROJECT_EMAIL).trim();
   const hasEmailConfig =
     !!emailUser &&
     !!emailPassword &&
