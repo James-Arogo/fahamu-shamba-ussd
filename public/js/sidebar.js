@@ -117,6 +117,8 @@
             '/recommendations.html': 'nav-recommendations',
             '/soil-map': 'nav-soil-map',
             '/soil-map.html': 'nav-soil-map',
+            '/ussd-simulator': 'nav-ussd-simulator',
+            '/ussd-simulator.html': 'nav-ussd-simulator',
             '/community': 'nav-community',
             '/community.html': 'nav-community',
             '/feedback': 'nav-feedback',

@@ -3,773 +3,760 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>USSD Simulator - Fahamu Shamba</title>
+    <title>USSD Prototype - Fahamu Shamba</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/css/sidebar.css">
+    <link rel="stylesheet" href="/css/navbar.css">
+    <script src="/js/sidebar.js" defer></script>
+    <script src="/js/navbar.js" defer></script>
+    <script src="/js/siaya-villages.js?v=20260524-ussd-prototype" defer></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        :root {
+            --leaf: #255f38;
+            --leaf-dark: #163425;
+            --lime: #b9d96b;
+            --sun: #e7a73f;
+            --soil: #7a5230;
+            --cream: #f8f1df;
+            --mist: #edf5ef;
+            --ink: #17231b;
+            --muted: #6f7f73;
+            --line: rgba(37, 95, 56, 0.16);
+            --sidebar-width: 260px;
         }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
+            background:
+                radial-gradient(circle at 8% 12%, rgba(185, 217, 107, 0.38), transparent 30%),
+                radial-gradient(circle at 88% 18%, rgba(231, 167, 63, 0.30), transparent 28%),
+                linear-gradient(135deg, #f9f4e7 0%, #e7f1e7 48%, #dcebdc 100%);
+            color: var(--ink);
+            font-family: Georgia, 'Times New Roman', serif;
         }
 
-        .container {
-            display: flex;
-            gap: 30px;
-            max-width: 1200px;
-            width: 100%;
-            flex-wrap: wrap;
+        .main-content {
+            margin-left: var(--sidebar-width);
+            min-height: 100vh;
+            transition: margin-left 0.3s ease;
         }
 
-        /* Phone Simulator */
-        .phone-container {
-            flex: 1;
-            min-width: 300px;
-            max-width: 400px;
+        .page-shell { padding: 24px; }
+
+        .hero {
+            display: grid;
+            grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
+            gap: 24px;
+            align-items: stretch;
+            margin-bottom: 24px;
         }
 
-        .phone {
-            background: #000;
-            border-radius: 40px;
-            padding: 12px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            border: 8px solid #222;
+        .hero-card,
+        .quick-card,
+        .phone-card,
+        .panel {
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.78);
+            box-shadow: 0 24px 70px rgba(22, 52, 37, 0.12);
+            backdrop-filter: blur(14px);
+            border-radius: 28px;
         }
 
-        .phone-screen {
-            background: #f0f0f0;
-            border-radius: 35px;
-            padding: 30px 20px;
-            height: clamp(460px, 72vh, 620px);
-            display: flex;
-            flex-direction: column;
-            font-size: 14px;
-            color: #333;
-            overflow: hidden;
-        }
-
-        .phone-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            font-size: 12px;
-            color: #666;
-            padding-bottom: 10px;
-            border-bottom: 1px solid #ddd;
-        }
-
-        .phone-content {
-            flex: 1;
-            overflow-y: auto;
-            margin-bottom: 15px;
-            padding-right: 5px;
-        }
-
-        .phone-content::-webkit-scrollbar {
-            width: 4px;
-        }
-
-        .phone-content::-webkit-scrollbar-track {
-            background: #e0e0e0;
-            border-radius: 10px;
-        }
-
-        .phone-content::-webkit-scrollbar-thumb {
-            background: #999;
-            border-radius: 10px;
-        }
-
-        .message {
-            margin-bottom: 15px;
-            padding: 12px;
-            border-radius: 8px;
-            line-height: 1.5;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-        }
-
-        .message.incoming {
-            background: #e8f5e9;
-            border-left: 4px solid #4caf50;
-            text-align: left;
-            font-weight: 500;
-        }
-
-        .message.outgoing {
-            background: #c8e6c9;
-            border-left: 4px solid #2e7d32;
-            text-align: right;
-        }
-
-        .message.system {
-            background: #fff3cd;
-            border-left: 4px solid #ffc107;
-            text-align: center;
-            font-size: 12px;
-            color: #856404;
-        }
-
-        .input-area {
-            display: flex;
-            gap: 8px;
-            position: sticky;
-            bottom: 0;
-            background: #f0f0f0;
-            padding-top: 8px;
-            z-index: 2;
-        }
-
-        .input-area input {
-            flex: 1;
-            padding: 12px;
-            border: 2px solid #ddd;
-            border-radius: 20px;
-            font-size: 14px;
-            outline: none;
-            transition: border-color 0.3s;
-        }
-
-        .input-area input:focus {
-            border-color: #667eea;
-        }
-
-        .input-area button {
-            padding: 12px 20px;
-            background: #667eea;
-            color: white;
-            border: none;
-            border-radius: 20px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: background 0.3s;
-        }
-
-        .input-area button:hover {
-            background: #764ba2;
-        }
-
-        .input-area button:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-        }
-
-        /* Control Panel */
-        .control-panel {
-            flex: 1;
-            min-width: 300px;
-            background: white;
-            border-radius: 15px;
-            padding: 30px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-        }
-
-        .control-panel h2 {
-            color: #667eea;
-            margin-bottom: 25px;
-            font-size: 22px;
-        }
-
-        .info-section {
-            margin-bottom: 25px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid #eee;
-        }
-
-        .info-section h3 {
-            color: #333;
-            font-size: 14px;
-            font-weight: 600;
-            margin-bottom: 12px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .info-item {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 10px;
-            font-size: 13px;
-        }
-
-        .info-label {
-            color: #666;
-            font-weight: 500;
-        }
-
-        .info-value {
-            color: #333;
-            font-family: 'Courier New', monospace;
-            background: #f5f5f5;
-            padding: 4px 12px;
-            border-radius: 4px;
-            max-width: 200px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .status-indicator {
-            display: inline-block;
-            width: 10px;
-            height: 10px;
+        .hero-card { padding: clamp(24px, 4vw, 46px); position: relative; overflow: hidden; }
+        .hero-card::after {
+            content: '';
+            position: absolute;
+            right: -80px;
+            top: -80px;
+            width: 240px;
+            height: 240px;
+            background: conic-gradient(from 140deg, var(--lime), var(--sun), #fff4c7, var(--lime));
             border-radius: 50%;
-            margin-right: 6px;
-            animation: pulse 2s infinite;
+            opacity: 0.35;
         }
 
-        .status-indicator.connected {
-            background: #4caf50;
+        .eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 999px;
+            background: rgba(37, 95, 56, 0.10);
+            color: var(--leaf-dark);
+            font: 800 0.78rem Verdana, sans-serif;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
         }
 
-        .status-indicator.disconnected {
-            background: #f44336;
-            animation: none;
+        .hero-card h1 {
+            margin: 18px 0 12px;
+            font-size: clamp(2.2rem, 5vw, 4.6rem);
+            line-height: 0.92;
+            color: var(--leaf-dark);
+            max-width: 860px;
         }
 
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+        .hero-card p {
+            color: var(--muted);
+            font-size: 1.08rem;
+            line-height: 1.7;
+            max-width: 760px;
+            position: relative;
+            z-index: 1;
         }
 
-        .button-group {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
+        .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; position: relative; z-index: 1; }
 
         .btn {
-            flex: 1;
-            padding: 12px;
-            border: none;
-            border-radius: 8px;
+            border: 0;
+            border-radius: 999px;
+            padding: 12px 18px;
+            font: 800 0.9rem Verdana, sans-serif;
             cursor: pointer;
-            font-weight: 600;
-            font-size: 13px;
-            transition: all 0.3s;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
         }
 
-        .btn-primary {
-            background: #667eea;
-            color: white;
+        .btn:hover { transform: translateY(-2px); }
+        .btn-primary { background: var(--leaf); color: #fff; box-shadow: 0 12px 30px rgba(37, 95, 56, 0.22); }
+        .btn-secondary { background: #fff; color: var(--leaf-dark); border: 1px solid var(--line); }
+        .btn-sun { background: var(--sun); color: #2d1e0c; }
+
+        .quick-card { padding: 24px; display: grid; gap: 14px; }
+        .quick-card h2 { color: var(--leaf-dark); font-size: 1.2rem; }
+        .dial-code {
+            padding: 20px;
+            border-radius: 22px;
+            color: #eaf7e9;
+            background: linear-gradient(135deg, var(--leaf-dark), var(--leaf));
+            font: 900 2.2rem 'Courier New', monospace;
+            letter-spacing: 0.08em;
+            text-align: center;
         }
 
-        .btn-primary:hover {
-            background: #764ba2;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        .quick-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+        .quick-pill {
+            padding: 12px;
+            border-radius: 16px;
+            background: rgba(37, 95, 56, 0.08);
+            border: 1px solid var(--line);
+            color: var(--leaf-dark);
+            font: 800 0.82rem Verdana, sans-serif;
         }
 
-        .btn-secondary {
-            background: #f5f5f5;
-            color: #333;
-            border: 2px solid #667eea;
-        }
-
-        .btn-secondary:hover {
-            background: #667eea;
-            color: white;
-        }
-
-        .btn-danger {
-            background: #f44336;
-            color: white;
-        }
-
-        .btn-danger:hover {
-            background: #d32f2f;
-        }
-
-        .quick-test {
-            background: #f9f9f9;
-            border: 2px dashed #667eea;
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 20px;
-        }
-
-        .quick-test h4 {
-            color: #667eea;
-            margin-bottom: 10px;
-            font-size: 13px;
-        }
-
-        .quick-test-buttons {
+        .workspace {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
+            grid-template-columns: minmax(320px, 430px) minmax(0, 1fr);
+            gap: 24px;
+            align-items: start;
         }
 
-        .quick-btn {
-            padding: 8px;
-            background: white;
-            border: 1px solid #ddd;
-            border-radius: 6px;
+        .phone-card { padding: 18px; }
+        .phone {
+            border-radius: 38px;
+            background: #111915;
+            padding: 14px;
+            box-shadow: inset 0 0 0 2px rgba(255,255,255,0.06), 0 28px 70px rgba(0,0,0,0.28);
+        }
+
+        .screen {
+            min-height: 650px;
+            border-radius: 30px;
+            background: linear-gradient(180deg, #eef8ec, #dce9d8);
+            overflow: hidden;
+            display: grid;
+            grid-template-rows: auto 1fr auto;
+        }
+
+        .statusbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 18px 10px;
+            color: #294231;
+            font: 800 0.78rem Verdana, sans-serif;
+        }
+
+        .ussd-title {
+            padding: 16px 18px;
+            background: #f7fff5;
+            border-top: 1px solid rgba(37,95,56,0.10);
+            border-bottom: 1px solid rgba(37,95,56,0.10);
+        }
+
+        .ussd-title strong { display: block; color: var(--leaf-dark); font-size: 1rem; }
+        .ussd-title span { display: block; margin-top: 4px; color: var(--muted); font: 700 0.78rem Verdana, sans-serif; }
+
+        .screen-body {
+            padding: 18px;
+            overflow-y: auto;
+            display: grid;
+            align-content: start;
+            gap: 14px;
+        }
+
+        .ussd-output {
+            white-space: pre-wrap;
+            background: #fbfff7;
+            border: 1px solid rgba(37, 95, 56, 0.14);
+            border-radius: 20px;
+            padding: 18px;
+            min-height: 290px;
+            color: #1d2d22;
+            font: 700 1rem/1.55 'Courier New', monospace;
+            box-shadow: inset 0 0 22px rgba(37, 95, 56, 0.06);
+        }
+
+        .last-action {
+            min-height: 42px;
+            padding: 12px 14px;
+            border-radius: 16px;
+            background: rgba(231, 167, 63, 0.16);
+            color: #5c3b13;
+            font: 800 0.84rem Verdana, sans-serif;
+        }
+
+        .keypad {
+            padding: 16px;
+            background: rgba(255,255,255,0.75);
+            border-top: 1px solid rgba(37,95,56,0.12);
+        }
+
+        .input-row { display: flex; gap: 10px; margin-bottom: 12px; }
+        .input-row input {
+            flex: 1;
+            border: 1px solid rgba(37,95,56,0.22);
+            border-radius: 16px;
+            padding: 13px 14px;
+            font: 800 1rem 'Courier New', monospace;
+            outline: none;
+            background: #fff;
+        }
+
+        .keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; }
+        .key {
+            border: 0;
+            border-radius: 16px;
+            padding: 13px 0;
+            background: #fff;
+            color: var(--leaf-dark);
+            font: 900 1.05rem Verdana, sans-serif;
+            box-shadow: 0 8px 20px rgba(22,52,37,0.08);
             cursor: pointer;
-            font-size: 12px;
-            transition: all 0.3s;
         }
 
-        .quick-btn:hover {
-            background: #667eea;
-            color: white;
-            border-color: #667eea;
-        }
+        .panel { padding: 24px; }
+        .panel h2 { color: var(--leaf-dark); margin-bottom: 12px; }
+        .panel p { color: var(--muted); line-height: 1.6; }
 
-        .current-state {
-            background: #e3f2fd;
-            border-left: 4px solid #2196f3;
+        .state-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 20px 0; }
+        .state-card {
+            padding: 14px;
+            border-radius: 18px;
+            background: rgba(255,255,255,0.72);
+            border: 1px solid var(--line);
+        }
+        .state-label { color: var(--muted); font: 800 0.72rem Verdana, sans-serif; text-transform: uppercase; letter-spacing: 0.08em; }
+        .state-value { margin-top: 8px; color: var(--leaf-dark); font-weight: 900; }
+
+        .flow-list { display: grid; gap: 10px; margin-top: 18px; }
+        .flow-item {
+            display: flex;
+            gap: 12px;
+            align-items: center;
             padding: 12px;
-            border-radius: 6px;
-            margin-bottom: 15px;
-            font-size: 13px;
+            border-radius: 16px;
+            background: rgba(37,95,56,0.07);
+            color: var(--leaf-dark);
+            font: 800 0.9rem Verdana, sans-serif;
+        }
+        .flow-item i { color: var(--sun); width: 20px; }
+
+        .result-card {
+            margin-top: 18px;
+            border-radius: 22px;
+            padding: 18px;
+            background: linear-gradient(135deg, rgba(37,95,56,0.11), rgba(231,167,63,0.12));
+            border: 1px solid var(--line);
+            display: none;
+        }
+        .result-card.show { display: block; }
+        .result-card h3 { color: var(--leaf-dark); margin-bottom: 8px; }
+        .result-card ul { padding-left: 18px; color: var(--muted); line-height: 1.7; }
+
+        @media (max-width: 1100px) {
+            .main-content { margin-left: 0; }
+            .hero, .workspace { grid-template-columns: 1fr; }
+            .phone-card { max-width: 470px; width: 100%; margin: 0 auto; }
         }
 
-        .current-state strong {
-            color: #1976d2;
-        }
-
-        .flow-info {
-            background: #f3e5f5;
-            border-left: 4px solid #9c27b0;
-            padding: 12px;
-            border-radius: 6px;
-            font-size: 12px;
-            line-height: 1.6;
-            margin-bottom: 15px;
-        }
-
-        .flow-info strong {
-            color: #6a1b9a;
-        }
-
-        .note {
-            background: #fff3e0;
-            border-left: 4px solid #ff9800;
-            padding: 12px;
-            border-radius: 6px;
-            font-size: 12px;
-            color: #e65100;
-            margin-top: 20px;
-        }
-
-        @media (max-width: 768px) {
-            .container {
-                flex-direction: column;
-                gap: 20px;
-                padding-bottom: max(12px, env(safe-area-inset-bottom));
-            }
-
-            .phone-container,
-            .control-panel {
-                min-width: 100%;
-                max-width: 100%;
-            }
-
-            .phone {
-                max-width: 100%;
-            }
-
-            .phone-screen {
-                height: min(70dvh, 540px);
-                padding: 18px 14px;
-            }
-
-            .phone-header {
-                margin-bottom: 10px;
-                padding-bottom: 8px;
-            }
-
-            .phone-content {
-                margin-bottom: 8px;
-            }
-
-            .input-area input,
-            .input-area button {
-                padding: 10px 12px;
-                font-size: 13px;
-            }
-
-            .control-panel {
-                padding: 18px;
-            }
-        }
-
-        .loading {
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            background: #667eea;
-            border-radius: 50%;
-            animation: bounce 1.4s infinite;
-            margin-left: 5px;
-        }
-
-        @keyframes bounce {
-            0%, 80%, 100% { opacity: 0.5; }
-            40% { opacity: 1; }
+        @media (max-width: 620px) {
+            .page-shell { padding: 14px; }
+            .screen { min-height: 590px; }
+            .state-grid, .quick-grid { grid-template-columns: 1fr; }
+            .hero-actions { flex-direction: column; }
+            .btn { width: 100%; }
         }
     </style>
     <script src="/js/chatbot-widget.js" defer></script>
 </head>
 <body>
-    <div class="container">
-        <!-- Phone Simulator -->
-        <div class="phone-container">
-            <div class="phone">
-                <div class="phone-screen">
-                    <div class="phone-header">
-                        <span>9:41</span>
-                        <span>📶 4G</span>
+    <div id="sidebar-container"></div>
+
+    <div class="main-content">
+        <header class="top-nav">
+            <div class="nav-left">
+                <button id="hamburger" class="nav-hamburger" type="button" onclick="toggleMobileSidebar()" aria-label="Open menu" aria-expanded="false">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+            <div class="nav-center"><h1 class="nav-page-title active">USSD Prototype</h1></div>
+            <div class="nav-right">
+                <div class="nav-profile" onclick="window.location.href='/profile.html'">
+                    <div class="nav-profile-avatar" id="navProfileAvatar">F</div>
+                    <span class="nav-profile-name" id="navProfileName">Farmer</span>
+                </div>
+            </div>
+        </header>
+
+        <main class="page-shell">
+            <section class="hero">
+                <article class="hero-card">
+                    <span class="eyebrow"><i class="fas fa-mobile-screen-button"></i> Prototype before live USSD</span>
+                    <h1>Dial the farm assistant before we connect the telco.</h1>
+                    <p>This web simulation demonstrates how farmers can use Fahamu Shamba through a simple USSD journey: choose language, get crop advice, check soil guidance, view market prices, request service support, and receive a final recommendation without needing a smartphone app.</p>
+                    <div class="hero-actions">
+                        <button class="btn btn-primary" type="button" onclick="startSession()"><i class="fas fa-play"></i> Start USSD Demo</button>
+                        <button class="btn btn-secondary" type="button" onclick="runAutoDemo()"><i class="fas fa-forward"></i> Auto Demo Recommendation</button>
+                        <a class="btn btn-sun" href="/recommendations.html" style="text-decoration:none;"><i class="fas fa-seedling"></i> Open Full Recommendations</a>
                     </div>
-                    <div class="phone-content" id="phoneContent">
-                        <div class="message system">👋 Welcome to USSD Simulator</div>
+                </article>
+
+                <aside class="quick-card">
+                    <h2>Demo Access Link</h2>
+                    <div class="dial-code">*384*721#</div>
+                    <p style="color:var(--muted);line-height:1.6;">For presentation, open this page directly at <strong>/ussd-simulator.html</strong> or <strong>/ussd-simulator</strong>. The dial code is displayed as the proposed real-world short code.</p>
+                    <div class="quick-grid">
+                        <div class="quick-pill">Languages: EN, SW, LUO</div>
+                        <div class="quick-pill">Village-level advice</div>
+                        <div class="quick-pill">Market snapshots</div>
+                        <div class="quick-pill">Offline-first journey</div>
                     </div>
-                    <div class="input-area">
-                        <input 
-                            type="text" 
-                            id="ussdInput" 
-                            placeholder="Enter menu option (e.g., 1, 2)..."
-                            autocomplete="off"
-                        >
-                        <button id="sendBtn" onclick="sendUSSD()">Send</button>
+                </aside>
+            </section>
+
+            <section class="workspace">
+                <article class="phone-card">
+                    <div class="phone">
+                        <div class="screen">
+                            <div class="statusbar"><span>Safaricom</span><span>USSD 4G</span><span>85%</span></div>
+                            <div class="ussd-title">
+                                <strong>Fahamu Shamba USSD</strong>
+                                <span id="sessionLabel">No active session</span>
+                            </div>
+                            <div class="screen-body">
+                                <div class="ussd-output" id="ussdOutput">Dial *384*721# to begin.
+
+Press "Start USSD Demo" or enter *384*721# below.</div>
+                                <div class="last-action" id="lastAction">Waiting for farmer input.</div>
+                            </div>
+                            <div class="keypad">
+                                <div class="input-row">
+                                    <input id="ussdInput" type="text" inputmode="text" placeholder="Type option, e.g. 1" autocomplete="off">
+                                    <button class="btn btn-primary" type="button" onclick="submitInput()">Send</button>
+                                </div>
+                                <div class="keys" aria-label="USSD keypad">
+                                    <button class="key" onclick="tapKey('1')">1</button>
+                                    <button class="key" onclick="tapKey('2')">2</button>
+                                    <button class="key" onclick="tapKey('3')">3</button>
+                                    <button class="key" onclick="tapKey('4')">4</button>
+                                    <button class="key" onclick="tapKey('5')">5</button>
+                                    <button class="key" onclick="tapKey('6')">6</button>
+                                    <button class="key" onclick="tapKey('7')">7</button>
+                                    <button class="key" onclick="tapKey('8')">8</button>
+                                    <button class="key" onclick="tapKey('9')">9</button>
+                                    <button class="key" onclick="tapKey('*')">*</button>
+                                    <button class="key" onclick="tapKey('0')">0</button>
+                                    <button class="key" onclick="tapKey('#')">#</button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                </div>
-            </div>
-        </div>
+                </article>
 
-        <!-- Control Panel -->
-        <div class="control-panel">
-            <h2>🛠️ USSD Control Panel</h2>
-
-            <div class="current-state">
-                <strong>Current State:</strong>
-                <div id="currentState" style="margin-top: 8px; font-family: monospace;">Not started</div>
-            </div>
-
-            <div class="flow-info">
-                <strong>📱 USSD Flow:</strong>
-                <div style="margin-top: 8px;">
-                    Language → Main Menu → Get Advice → County → Ward → Soil → Season → Size → Budget → Recommendation
-                </div>
-            </div>
-
-            <div class="info-section">
-                <h3>🔗 Session Information</h3>
-                <div class="info-item">
-                    <span class="info-label">Session ID:</span>
-                    <span class="info-value" id="sessionId">Not started</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">Phone Number:</span>
-                    <span class="info-value" id="phoneNumber">254712345678</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">Standard USSD Code:</span>
-                    <span class="info-value" id="standardUssdCode">*123#</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">Language:</span>
-                    <span class="info-value" id="language">Not selected</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">Status:</span>
-                    <span class="info-value">
-                        <span class="status-indicator connected"></span>Ready
-                    </span>
-                </div>
-            </div>
-
-            <div class="quick-test">
-                <h4>⚡ Quick Test Scenarios</h4>
-                <div class="quick-test-buttons">
-                    <button class="quick-btn" onclick="startTest()">🔄 Start Over</button>
-                    <button class="quick-btn" onclick="selectEnglish()">1️⃣ English</button>
-                    <button class="quick-btn" onclick="selectSwahili()">2️⃣ Swahili</button>
-                    <button class="quick-btn" onclick="selectDholuo()">3️⃣ Dholuo</button>
-                    <button class="quick-btn" onclick="autoCompleteFlow()">✅ Full Flow</button>
-                    <button class="quick-btn" onclick="clearChat()">🗑️ Clear Chat</button>
-                </div>
-            </div>
-
-            <div class="info-section" id="selectedDataSection" style="display: none;">
-                <h3>📊 Selected Data</h3>
-                <div id="selectedDataList"></div>
-            </div>
-
-            <div class="info-section" id="registrationSection" style="display: none;">
-                <h3>Registered Account</h3>
-                <div class="info-item">
-                    <span class="info-label">Phone:</span>
-                    <span class="info-value" id="registeredPhone">-</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">Name:</span>
-                    <span class="info-value" id="registeredName">-</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">Status:</span>
-                    <span class="info-value" id="registrationStatus">Not registered</span>
-                </div>
-            </div>
-
-            <div class="button-group">
-                <button class="btn btn-primary" onclick="resetSession()">Reset Session</button>
-                <button class="btn btn-secondary" onclick="togglePhoneNumber()">Change Phone</button>
-            </div>
-
-            <div class="note">
-                <strong>💡 Tip:</strong> This simulator allows you to test the USSD functionality before integrating with a real USSD provider (Safaricom, Airtel, etc.).
-            </div>
-        </div>
+                <aside class="panel">
+                    <h2>Prototype State</h2>
+                    <p>The screen behaves like a real USSD session: each answer moves to the next menu, and the final response summarizes the selected service.</p>
+                    <div class="state-grid">
+                        <div class="state-card"><div class="state-label">Step</div><div class="state-value" id="stateStep">Idle</div></div>
+                        <div class="state-card"><div class="state-label">Language</div><div class="state-value" id="stateLanguage">-</div></div>
+                        <div class="state-card"><div class="state-label">Location</div><div class="state-value" id="stateLocation">-</div></div>
+                        <div class="state-card"><div class="state-label">Village</div><div class="state-value" id="stateVillage">-</div></div>
+                        <div class="state-card"><div class="state-label">Soil</div><div class="state-value" id="stateSoil">-</div></div>
+                        <div class="state-card"><div class="state-label">Service</div><div class="state-value" id="stateService">-</div></div>
+                    </div>
+                    <div class="flow-list">
+                        <div class="flow-item"><i class="fas fa-language"></i> Farmer chooses English, Kiswahili, or Dholuo.</div>
+                        <div class="flow-item"><i class="fas fa-map-location-dot"></i> Farmer selects sub-county, ward, and village.</div>
+                        <div class="flow-item"><i class="fas fa-seedling"></i> System simulates crop recommendation, soil, market, weather, and service flows.</div>
+                        <div class="flow-item"><i class="fas fa-envelope"></i> Full web recommendations can also send email notifications after generation.</div>
+                    </div>
+                    <div class="result-card" id="resultCard">
+                        <h3 id="resultTitle">Latest USSD Result</h3>
+                        <ul id="resultList"></ul>
+                    </div>
+                </aside>
+            </section>
+        </main>
     </div>
 
     <script>
-        const STANDARD_USSD_CODE = '*123#';
-        let sessionId = `test-${Date.now()}`;
-        let phoneNumber = '254712345678';
-        let currentText = '';
-        let selectedData = {};
-        let registrationDraftPhone = '';
-        let registrationDraftName = '';
-        let isLoading = false;
+        const subCounties = ['Alego Usonga', 'Bondo', 'Gem', 'Rarieda', 'Ugenya', 'Ugunja'];
+        const wardsBySubCounty = {
+            'Alego Usonga': ['Central Alego', 'North Alego', 'South East Alego', 'West Alego', 'Usonga'],
+            'Bondo': ['West Yimbo', 'Central Sakwa', 'South Sakwa', 'Yimbo East', 'West Sakwa', 'North Sakwa'],
+            'Gem': ['North Gem', 'West Gem', 'Central Gem', 'Yala Township', 'East Gem', 'South Gem'],
+            'Rarieda': ['East Asembo', 'West Asembo', 'North Uyoma', 'South Uyoma', 'West Uyoma'],
+            'Ugenya': ['West Ugenya', 'Ukwala', 'North Ugenya', 'East Ugenya'],
+            'Ugunja': ['Sidindi', 'Sigomere', 'Ugunja']
+        };
+        const soilTypes = ['Clay loam', 'Sandy loam', 'Loam', 'Silt loam'];
+        const seasons = ['Long rains', 'Short rains', 'Dry season'];
+        const budgets = ['Below KES 5,000', 'KES 5,000 - 15,000', 'Above KES 15,000'];
+        const serviceNames = {
+            recommendation: 'Crop Recommendation',
+            soil: 'Soil Guidance',
+            weather: 'Weather Advisory',
+            market: 'Market Prices',
+            inputs: 'Farm Inputs',
+            community: 'Community Help'
+        };
+        const cropMatrix = {
+            'Alego Usonga': ['Maize', 'Beans', 'Tomatoes'],
+            'Bondo': ['Sorghum', 'Cassava', 'Groundnuts'],
+            'Gem': ['Maize', 'Soybean', 'Tomatoes'],
+            'Rarieda': ['Cassava', 'Sweet Potatoes', 'Sorghum'],
+            'Ugenya': ['Maize', 'Groundnuts', 'Beans'],
+            'Ugunja': ['Cassava', 'Maize', 'Kales']
+        };
 
-        // Initialize
-        window.addEventListener('load', () => {
-            document.getElementById('sessionId').textContent = sessionId;
-            document.getElementById('standardUssdCode').textContent = STANDARD_USSD_CODE;
+        let state = {};
+
+        function resetState() {
+            state = {
+                active: false,
+                step: 'idle',
+                language: '',
+                service: '',
+                subCounty: '',
+                ward: '',
+                village: '',
+                soil: '',
+                season: '',
+                farmSize: '',
+                budget: '',
+                history: []
+            };
+        }
+
+        function t(en, sw, luo) {
+            if (state.language === 'Kiswahili') return sw || en;
+            if (state.language === 'Dholuo') return luo || en;
+            return en;
+        }
+
+        function setOutput(text) {
+            document.getElementById('ussdOutput').textContent = text;
+            document.getElementById('sessionLabel').textContent = state.active ? `Session: ${state.step}` : 'No active session';
+            updateStateCards();
+        }
+
+        function setLastAction(text) {
+            document.getElementById('lastAction').textContent = text;
+        }
+
+        function updateStateCards() {
+            document.getElementById('stateStep').textContent = state.step || 'Idle';
+            document.getElementById('stateLanguage').textContent = state.language || '-';
+            document.getElementById('stateLocation').textContent = state.subCounty || '-';
+            document.getElementById('stateVillage').textContent = state.village || '-';
+            document.getElementById('stateSoil').textContent = state.soil || '-';
+            document.getElementById('stateService').textContent = serviceNames[state.service] || '-';
+        }
+
+        function startSession() {
+            resetState();
+            state.active = true;
+            state.step = 'language';
+            setLastAction('Dialed *384*721#');
+            setOutput(`CON Fahamu Shamba
+Choose language / Chagua lugha / Yer dhok
+1. English
+2. Kiswahili
+3. Dholuo`);
+            document.getElementById('ussdInput').value = '';
             document.getElementById('ussdInput').focus();
-        });
+        }
 
-        // Send USSD request
-        async function sendUSSD() {
+        function submitInput() {
             const input = document.getElementById('ussdInput').value.trim();
-
-            // Prevent confusion: this field is for menu options, not dialing a USSD code.
-            if (/^\*.*#$/.test(input)) {
-                if (input !== STANDARD_USSD_CODE) {
-                    addMessage(`Invalid code in input field: ${input}. Only ${STANDARD_USSD_CODE} is supported.`, 'system');
+            if (!state.active) {
+                if (input === '*384*721#' || input === '*123#' || input === '') {
+                    startSession();
                 } else {
-                    addMessage(`Code ${STANDARD_USSD_CODE} is already fixed for this simulator. Enter menu options like 1, 2, 3.`, 'system');
+                    setLastAction('Enter *384*721# first to start the prototype session.');
                 }
                 document.getElementById('ussdInput').value = '';
-                document.getElementById('ussdInput').focus();
                 return;
             }
-            
-            if (!input && currentText !== '') {
-                alert('Please enter an option');
-                return;
+            handleInput(input);
+            document.getElementById('ussdInput').value = '';
+        }
+
+        function handleInput(input) {
+            if (!input) return setLastAction('Please enter a menu option.');
+            if (input === '0') return showMainMenu();
+            if (input === '00') return startSession();
+            state.history.push(input);
+            setLastAction(`Farmer selected: ${input}`);
+
+            const handlers = {
+                language: handleLanguage,
+                main: handleMainMenu,
+                subCounty: handleSubCounty,
+                ward: handleWard,
+                village: handleVillage,
+                soil: handleSoil,
+                season: handleSeason,
+                farmSize: handleFarmSize,
+                budget: handleBudget,
+                quickSubCounty: handleQuickSubCounty,
+                inputsCrop: handleInputsCrop
+            };
+
+            const handler = handlers[state.step];
+            if (handler) handler(input);
+        }
+
+        function handleLanguage(input) {
+            const languages = { '1': 'English', '2': 'Kiswahili', '3': 'Dholuo' };
+            if (!languages[input]) return invalidOption();
+            state.language = languages[input];
+            showMainMenu();
+        }
+
+        function showMainMenu() {
+            state.step = 'main';
+            setOutput(`CON ${t('Fahamu Shamba Main Menu', 'Menyu Kuu ya Fahamu Shamba', 'Menu maduong mar Fahamu Shamba')}
+1. ${t('Get crop recommendation', 'Pata ushauri wa zao', 'Yud paro mar cham')}
+2. ${t('Soil guidance', 'Ushauri wa udongo', 'Puonj mar lowo')}
+3. ${t('Weather advisory', 'Habari ya hali ya hewa', 'Weche mag koth')}
+4. ${t('Market prices', 'Bei za soko', 'Nengo mag chiro')}
+5. ${t('Farm inputs', 'Pembejeo', 'Gige pur')}
+6. ${t('Community help', 'Msaada wa jamii', 'Konyruok mar oganda')}
+00. Restart`);
+        }
+
+        function handleMainMenu(input) {
+            const serviceMap = { '1': 'recommendation', '2': 'soil', '3': 'weather', '4': 'market', '5': 'inputs', '6': 'community' };
+            if (!serviceMap[input]) return invalidOption();
+            state.service = serviceMap[input];
+            if (state.service === 'inputs') return showInputsCropMenu();
+            showSubCountyMenu(state.service === 'recommendation' ? 'Select your sub-county' : `Select sub-county for ${serviceNames[state.service]}`);
+        }
+
+        function showSubCountyMenu(title) {
+            state.step = state.service === 'recommendation' ? 'subCounty' : 'quickSubCounty';
+            setOutput(`CON ${title}
+${subCounties.map((name, index) => `${index + 1}. ${name}`).join('\n')}
+0. Main menu`);
+        }
+
+        function handleSubCounty(input) {
+            const selected = subCounties[Number(input) - 1];
+            if (!selected) return invalidOption();
+            state.subCounty = selected;
+            state.step = 'ward';
+            const wards = wardsBySubCounty[selected] || [];
+            setOutput(`CON Select ward in ${selected}
+${wards.map((name, index) => `${index + 1}. ${name}`).join('\n')}
+0. Main menu`);
+        }
+
+        function handleWard(input) {
+            const wards = wardsBySubCounty[state.subCounty] || [];
+            const selected = wards[Number(input) - 1];
+            if (!selected) return invalidOption();
+            state.ward = selected;
+            state.step = 'village';
+            const villages = getVillages(selected).slice(0, 9);
+            setOutput(`CON Select village in ${selected}
+${villages.map((name, index) => `${index + 1}. ${name}`).join('\n')}
+0. Main menu`);
+        }
+
+        function handleVillage(input) {
+            const villages = getVillages(state.ward).slice(0, 9);
+            const selected = villages[Number(input) - 1];
+            if (!selected) return invalidOption();
+            state.village = selected;
+            state.step = 'soil';
+            setOutput(`CON Select soil type
+${soilTypes.map((name, index) => `${index + 1}. ${name}`).join('\n')}
+0. Main menu`);
+        }
+
+        function handleSoil(input) {
+            const selected = soilTypes[Number(input) - 1];
+            if (!selected) return invalidOption();
+            state.soil = selected;
+            state.step = 'season';
+            setOutput(`CON Select season
+${seasons.map((name, index) => `${index + 1}. ${name}`).join('\n')}
+0. Main menu`);
+        }
+
+        function handleSeason(input) {
+            const selected = seasons[Number(input) - 1];
+            if (!selected) return invalidOption();
+            state.season = selected;
+            state.step = 'farmSize';
+            setOutput(`CON Enter farm size in acres
+Example: 1.5
+0. Main menu`);
+        }
+
+        function handleFarmSize(input) {
+            const size = Number(input);
+            if (!Number.isFinite(size) || size <= 0) return invalidOption('Enter a valid farm size, e.g. 1 or 1.5');
+            state.farmSize = `${size} acres`;
+            state.step = 'budget';
+            setOutput(`CON Select budget
+${budgets.map((name, index) => `${index + 1}. ${name}`).join('\n')}
+0. Main menu`);
+        }
+
+        function handleBudget(input) {
+            const selected = budgets[Number(input) - 1];
+            if (!selected) return invalidOption();
+            state.budget = selected;
+            finishRecommendation();
+        }
+
+        function finishRecommendation() {
+            const crops = cropMatrix[state.subCounty] || ['Maize', 'Beans', 'Cassava'];
+            const topCrop = state.soil.includes('Sandy') ? crops[1] : crops[0];
+            const response = `END Fahamu Shamba Recommendation
+Village: ${state.village}
+Ward: ${state.ward}
+Best crop: ${topCrop}
+Other options: ${crops.slice(1).join(', ')}
+Soil: ${state.soil}
+Season: ${state.season}
+Advice: Use certified seed, manure, and split fertilizer application. Visit web dashboard for full budget and inputs.`;
+            state.step = 'completed';
+            state.active = false;
+            setOutput(response);
+            showResult('Crop recommendation generated', [
+                `Best crop: ${topCrop}`,
+                `Village: ${state.village}, ${state.ward}`,
+                `Budget level: ${state.budget}`,
+                'Farmer can continue on the full recommendations page for detailed inputs.'
+            ]);
+        }
+
+        function handleQuickSubCounty(input) {
+            const selected = subCounties[Number(input) - 1];
+            if (!selected) return invalidOption();
+            state.subCounty = selected;
+            const quickResponses = {
+                soil: [`Dominant soil: loam to clay loam`, `pH range: 6.0 - 6.6`, `Action: add compost and test soil before planting.`],
+                weather: [`Expected advisory: prepare for rainfall variability`, `Action: mulch early and conserve moisture`, `Planting: follow local rainfall onset alerts.`],
+                market: [`Maize: KES 45-60/kg`, `Beans: KES 120-170/kg`, `Tomatoes: KES 80-140/kg depending on supply.`],
+                community: [`Nearest group request logged for ${selected}`, `Extension support: pending officer assignment`, `Use web community page for posts and replies.`]
+            };
+            const lines = quickResponses[state.service] || ['Service response ready.'];
+            state.step = 'completed';
+            state.active = false;
+            setOutput(`END ${serviceNames[state.service]} - ${selected}\n${lines.join('\n')}`);
+            showResult(`${serviceNames[state.service]} simulated`, lines);
+        }
+
+        function showInputsCropMenu() {
+            state.step = 'inputsCrop';
+            setOutput(`CON Select crop for input estimate
+1. Maize
+2. Beans
+3. Cassava
+4. Tomatoes
+5. Groundnuts
+0. Main menu`);
+        }
+
+        function handleInputsCrop(input) {
+            const crops = ['Maize', 'Beans', 'Cassava', 'Tomatoes', 'Groundnuts'];
+            const crop = crops[Number(input) - 1];
+            if (!crop) return invalidOption();
+            const lines = [`${crop} inputs: certified seed, manure, basal fertilizer`, 'Optional: pesticide only after scouting', 'Visit Service Marketplace to request supplier support.'];
+            state.step = 'completed';
+            state.active = false;
+            setOutput(`END Farm Inputs - ${crop}\n${lines.join('\n')}`);
+            showResult('Farm input estimate simulated', lines);
+        }
+
+        function getVillages(ward) {
+            const villageMap = window.SIAYA_VILLAGES_BY_WARD || {};
+            return villageMap[ward] && villageMap[ward].length ? villageMap[ward] : [`${ward} Centre`, `${ward} East`, `${ward} West`];
+        }
+
+        function invalidOption(message = 'Invalid option. Try again or enter 0 for main menu.') {
+            setLastAction(message);
+        }
+
+        function showResult(title, lines) {
+            document.getElementById('resultCard').classList.add('show');
+            document.getElementById('resultTitle').textContent = title;
+            document.getElementById('resultList').innerHTML = lines.map(line => `<li>${escapeHtml(line)}</li>`).join('');
+            updateStateCards();
+        }
+
+        function tapKey(value) {
+            const input = document.getElementById('ussdInput');
+            input.value += value;
+            input.focus();
+        }
+
+        async function runAutoDemo() {
+            startSession();
+            const steps = ['1', '1', '1', '1', '1', '1', '1.5', '2'];
+            for (const step of steps) {
+                await new Promise(resolve => setTimeout(resolve, 450));
+                document.getElementById('ussdInput').value = step;
+                submitInput();
             }
+        }
 
-            if (isLoading) return;
+        function escapeHtml(value) {
+            return String(value).replace(/[&<>'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
+        }
 
-            isLoading = true;
-            document.getElementById('sendBtn').disabled = true;
-
+        function hydrateUser() {
             try {
-                // Display outgoing message (user choice)
-                if (input) {
-                    addMessage('You: ' + input, 'outgoing');
-                    const state = document.getElementById('currentState').textContent.trim();
-                    if (state === 'REGISTER_PHONE') {
-                        registrationDraftPhone = input;
-                    } else if (state === 'REGISTER_NAME') {
-                        registrationDraftName = input;
-                    }
-                    currentText += (currentText ? '\n' : '') + input;
-                }
-
-                // Call USSD API
-                const response = await fetch('/api/ussd', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        sessionId,
-                        phoneNumber,
-                        text: currentText,
-                        serviceCode: STANDARD_USSD_CODE
-                    })
-                });
-
-                const responseText = await response.text();
-                
-                // Parse USSD response
-                let isEndSession = responseText.startsWith('END');
-                let displayText = responseText.replace(/^(END|CON)\s+/, '');
-
-                // For REAL USSD experience: clear old messages and show only current prompt
-                // (This is how real feature phone USSD works - one prompt at a time)
-                if (isEndSession || displayText.includes('Session ended') || displayText.includes('Goodbye')) {
-                    // Last message - show it
-                    addMessage(displayText, 'incoming');
-                } else {
-                    // Regular flow - show only the new prompt
-                    // Clear previous messages except first welcome
-                    const allMessages = document.querySelectorAll('.message');
-                    if (allMessages.length > 1) {
-                        // Keep only welcome message, remove rest
-                        allMessages.forEach((msg, idx) => {
-                            if (idx > 0) msg.remove();
-                        });
-                    }
-                    addMessage(displayText, 'incoming');
-                }
-
-                // Update state based on response
-                updateState(displayText);
-
-                // Clear input
-                document.getElementById('ussdInput').value = '';
-                document.getElementById('ussdInput').focus();
-
-                // If session ended
-                if (isEndSession) {
-                    addMessage('Session ended. Click "Start Over" to begin again.', 'system');
-                    document.getElementById('ussdInput').disabled = true;
-                    document.getElementById('sendBtn').disabled = true;
-                }
-
-            } catch (error) {
-                console.error('Error:', error);
-                addMessage(`Error: ${error.message}`, 'system');
-            } finally {
-                isLoading = false;
-                document.getElementById('sendBtn').disabled = false;
-            }
+                const user = JSON.parse(localStorage.getItem('user') || '{}');
+                const name = user.name || user.username || 'Farmer';
+                document.getElementById('navProfileName').textContent = name;
+                document.getElementById('navProfileAvatar').textContent = (name.charAt(0) || 'F').toUpperCase();
+            } catch (_) {}
         }
 
-        // Add message to chat
-        function addMessage(text, type = 'incoming') {
-            const content = document.getElementById('phoneContent');
-            const message = document.createElement('div');
-            message.className = `message ${type}`;
-            message.textContent = text;
-            content.appendChild(message);
-            content.scrollTop = content.scrollHeight;
-        }
-
-        // Update displayed state
-        function updateState(responseText) {
-            if (responseText.includes('Choose language')) {
-                document.getElementById('currentState').textContent = 'LANGUAGE_SELECT';
-            } else if (responseText.includes('Main Menu')) {
-                document.getElementById('currentState').textContent = 'MAIN_MENU';
-            } else if (responseText.includes('Enter your phone number') || responseText.includes('Ingiza nambari yako ya simu') || responseText.includes('Ket namba mar simu')) {
-                document.getElementById('currentState').textContent = 'REGISTER_PHONE';
-            } else if (responseText.includes('Enter your full name') || responseText.includes('Ingiza jina lako kamili') || responseText.includes('Ket nying')) {
-                document.getElementById('currentState').textContent = 'REGISTER_NAME';
-            } else if (responseText.includes('County')) {
-                document.getElementById('currentState').textContent = 'LOCATION_SELECT';
-            } else if (responseText.includes('Ward')) {
-                document.getElementById('currentState').textContent = 'WARD_SELECT';
-            } else if (responseText.includes('Soil')) {
-                document.getElementById('currentState').textContent = 'SOIL_SELECT';
-            } else if (responseText.includes('Season')) {
-                document.getElementById('currentState').textContent = 'SEASON_SELECT';
-            } else if (responseText.includes('Farm size')) {
-                document.getElementById('currentState').textContent = 'SIZE_SELECT';
-            } else if (responseText.includes('Budget')) {
-                document.getElementById('currentState').textContent = 'BUDGET_SELECT';
-            } else if (responseText.includes('Recommendation')) {
-                document.getElementById('currentState').textContent = 'RESULT_DISPLAYED';
-            }
-
-            if (
-                responseText.includes('Account created') ||
-                responseText.includes('Akaunti ilitengenezwa') ||
-                responseText.includes('Profile nilikre')
-            ) {
-                document.getElementById('registrationSection').style.display = 'block';
-                document.getElementById('registeredPhone').textContent = registrationDraftPhone || phoneNumber;
-                document.getElementById('registeredName').textContent = registrationDraftName || 'N/A';
-                document.getElementById('registrationStatus').textContent = 'Registered';
-            }
-        }
-
-        // Quick test functions
-        function startTest() {
-            sessionId = `test-${Date.now()}`;
-            currentText = '';
-            selectedData = {};
-            clearChat();
-            document.getElementById('ussdInput').disabled = false;
-            document.getElementById('sendBtn').disabled = false;
-            document.getElementById('sessionId').textContent = sessionId;
-            document.getElementById('currentState').textContent = 'LANGUAGE_SELECT';
-            document.getElementById('language').textContent = 'Not selected';
-            document.getElementById('selectedDataSection').style.display = 'none';
-            document.getElementById('registrationSection').style.display = 'none';
-            document.getElementById('registrationStatus').textContent = 'Not registered';
-            registrationDraftPhone = '';
-            registrationDraftName = '';
-
-            // Start a real USSD session request so language prompt appears only once.
-            sendUSSD();
-        }
-
-        function selectEnglish() {
-            document.getElementById('ussdInput').value = '1';
-            document.getElementById('language').textContent = 'English';
-            sendUSSD();
-        }
-
-        function selectSwahili() {
-            document.getElementById('ussdInput').value = '2';
-            document.getElementById('language').textContent = 'Kiswahili';
-            sendUSSD();
-        }
-
-        function selectDholuo() {
-            document.getElementById('ussdInput').value = '3';
-            document.getElementById('language').textContent = 'Dholuo';
-            sendUSSD();
-        }
-
-        function clearChat() {
-            document.getElementById('phoneContent').innerHTML = '';
-            addMessage('Chat cleared', 'system');
-        }
-
-        function resetSession() {
-            startTest();
-        }
-
-        function togglePhoneNumber() {
-            const newPhone = prompt('Enter phone number (254xxxxxxxxx):', phoneNumber);
-            if (newPhone) {
-                phoneNumber = newPhone;
-                document.getElementById('phoneNumber').textContent = phoneNumber;
-                addMessage(`Phone number changed to ${phoneNumber}`, 'system');
-            }
-        }
-
-        // Auto-complete flow
-        async function autoCompleteFlow() {
-            const steps = ['1', '1', '1', '2', '2', '2', '1'];
-            for (let i = 0; i < steps.length; i++) {
-                await new Promise(resolve => {
-                    setTimeout(() => {
-                        document.getElementById('ussdInput').value = steps[i];
-                        sendUSSD().then(resolve);
-                    }, 800);
-                });
-            }
-        }
-
-        // Enter key support
-        document.getElementById('ussdInput').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                sendUSSD();
-            }
+        document.getElementById('ussdInput').addEventListener('keydown', event => {
+            if (event.key === 'Enter') submitInput();
         });
+
+        resetState();
+        hydrateUser();
+        updateStateCards();
     </script>
 </body>
 </html>

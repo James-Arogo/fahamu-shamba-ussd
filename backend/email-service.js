@@ -7,6 +7,31 @@ import nodemailer from 'nodemailer';
 let transporter = null;
 let resolvedFromAddress = '';
 
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  }[char]));
+}
+
+function formatRecommendationList(recommendations = []) {
+  return recommendations.slice(0, 3).map((recommendation, index) => {
+    const crop = recommendation.name || recommendation.crop || 'Recommended crop';
+    const confidence = Math.round(Number(recommendation.confidence || recommendation.score || 0));
+    const reason = recommendation.reasons?.english || recommendation.reason || recommendation.summary || 'Suitable for the selected farm conditions.';
+    return `
+      <tr>
+        <td style="padding:14px;border-bottom:1px solid #e8efe7;font-weight:700;color:#163425;">${index + 1}. ${escapeHtml(crop)}</td>
+        <td style="padding:14px;border-bottom:1px solid #e8efe7;color:#255f38;font-weight:700;">${confidence}%</td>
+        <td style="padding:14px;border-bottom:1px solid #e8efe7;color:#4f6255;">${escapeHtml(reason)}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
 /**
  * Initialize email transporter
  */
@@ -271,9 +296,128 @@ export async function sendWelcomeEmail(email, adminName) {
   }
 }
 
+/**
+ * Send recommendation summary to a farmer after recommendations are generated.
+ */
+export async function sendRecommendationEmail(email, payload = {}) {
+  const recipient = String(email || '').trim();
+  if (!recipient) {
+    return {
+      success: false,
+      method: 'none',
+      message: 'No farmer email address was provided'
+    };
+  }
+
+  const recommendations = Array.isArray(payload.recommendations) ? payload.recommendations : [];
+  if (!recommendations.length) {
+    return {
+      success: false,
+      method: 'none',
+      message: 'No recommendations were available to email'
+    };
+  }
+
+  const topCrop = recommendations[0]?.name || recommendations[0]?.crop || 'your recommended crop';
+  const locationLabel = payload.locationLabel || payload.selectedVillage || payload.selectedWard || payload.subCounty || 'your farm';
+  const seasonLabel = String(payload.season || 'selected season').replace(/_/g, ' ');
+  const farmerName = payload.farmerName || 'Farmer';
+
+  if (!transporter) {
+    console.log(`\n📧 Recommendation email for ${recipient}: ${topCrop} at ${locationLabel}\n`);
+    return {
+      success: process.env.NODE_ENV !== 'production',
+      method: process.env.NODE_ENV === 'production' ? 'none' : 'console',
+      message: process.env.NODE_ENV === 'production'
+        ? 'Email service is not configured in production'
+        : 'Recommendation email logged to console because email is not configured'
+    };
+  }
+
+  try {
+    const mailOptions = {
+      from: resolvedFromAddress || process.env.EMAIL_USER || process.env.SMTP_USER,
+      to: recipient,
+      subject: `Fahamu Shamba Recommendation: ${topCrop}`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <style>
+            body { margin:0; padding:0; background:#edf5ef; font-family:Arial, sans-serif; color:#17231b; }
+            .wrapper { max-width:680px; margin:0 auto; padding:24px; }
+            .card { background:#ffffff; border-radius:20px; overflow:hidden; border:1px solid #dfeadd; box-shadow:0 16px 40px rgba(22,52,37,0.12); }
+            .hero { background:linear-gradient(135deg,#163425,#255f38); color:white; padding:28px; }
+            .hero h1 { margin:0 0 10px; font-size:26px; }
+            .hero p { margin:0; line-height:1.6; color:#e6f3e7; }
+            .content { padding:26px; }
+            .summary { background:#f8f1df; border-left:5px solid #e7a73f; padding:16px; border-radius:14px; margin:18px 0; }
+            table { width:100%; border-collapse:collapse; margin-top:18px; }
+            th { text-align:left; background:#edf5ef; padding:12px 14px; color:#163425; font-size:13px; }
+            .footer { color:#6f7f73; font-size:12px; line-height:1.5; padding:0 26px 24px; }
+          </style>
+        </head>
+        <body>
+          <div class="wrapper">
+            <div class="card">
+              <div class="hero">
+                <h1>Fahamu Shamba Crop Recommendation</h1>
+                <p>Hello ${escapeHtml(farmerName)}, your recommendation has been generated successfully and is also available inside your Fahamu Shamba dashboard.</p>
+              </div>
+              <div class="content">
+                <div class="summary">
+                  <strong>Top recommendation:</strong> ${escapeHtml(topCrop)}<br>
+                  <strong>Location:</strong> ${escapeHtml(locationLabel)}<br>
+                  <strong>Season:</strong> ${escapeHtml(seasonLabel)}<br>
+                  <strong>Soil:</strong> ${escapeHtml(payload.soilType || 'Selected soil profile')}<br>
+                  <strong>Farm size:</strong> ${escapeHtml(payload.farmSize || 'Not specified')} acres
+                </div>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Crop</th>
+                      <th>Match</th>
+                      <th>Why it fits</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${formatRecommendationList(recommendations)}
+                  </tbody>
+                </table>
+              </div>
+              <div class="footer">
+                This is an automated Fahamu Shamba notification. Use the web dashboard for full budget, inputs, market, and soil details.
+              </div>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+      text: `Fahamu Shamba Recommendation\n\nHello ${farmerName},\nTop recommendation: ${topCrop}\nLocation: ${locationLabel}\nSeason: ${seasonLabel}\nSoil: ${payload.soilType || 'Selected soil profile'}\n\nRecommendations:\n${recommendations.slice(0, 3).map((rec, index) => `${index + 1}. ${rec.name || rec.crop || 'Crop'} - ${Math.round(Number(rec.confidence || rec.score || 0))}%`).join('\n')}\n\nOpen Fahamu Shamba for full details.`
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`✅ Recommendation email sent to ${recipient}`);
+    return {
+      success: true,
+      method: 'email',
+      messageId: info.messageId
+    };
+  } catch (error) {
+    console.error('❌ Error sending recommendation email:', error.message);
+    return {
+      success: false,
+      method: 'email',
+      error: error.message
+    };
+  }
+}
+
 export default {
   initializeEmailService,
   sendOTPEmail,
   sendSecurityAlertEmail,
-  sendWelcomeEmail
+  sendWelcomeEmail,
+  sendRecommendationEmail
 };

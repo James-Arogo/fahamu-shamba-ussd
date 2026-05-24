@@ -13,7 +13,7 @@ import * as adminDB from './admin-database.js';
 import * as farmerDB from './farmer-module.js';
 import * as farmerProfileDB from './farmer-profile-dashboard.js';
 import { securityHeaders, sanitizeInput, logAPICall } from './admin-middleware.js';
-import { initializeEmailService } from './email-service.js';
+import { initializeEmailService, sendRecommendationEmail } from './email-service.js';
 import { hashPassword } from './admin-auth.js';
 import { initAuthRoutes } from './auth-routes.js';
 import { initializeAuthTables } from './init-auth-tables.js';
@@ -2884,10 +2884,40 @@ async function saveRecommendationSnapshot({ phoneNumber, subCounty, soilType, se
   }
 }
 
+function isValidEmailAddress(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || '').trim());
+}
+
+async function findFarmerEmailByPhone(phoneNumber) {
+  const normalizedPhone = normalizePhoneNumber(phoneNumber);
+  if (!normalizedPhone) return '';
+
+  try {
+    const user = await dbAsync.get(
+      'SELECT email FROM users WHERE phone = ? AND email IS NOT NULL AND email != ? LIMIT 1',
+      [normalizedPhone, '']
+    );
+    if (user?.email) return user.email;
+  } catch (error) {
+    console.warn('Unable to resolve farmer email from users table:', error.message);
+  }
+
+  try {
+    const farmer = await dbAsync.get(
+      'SELECT email FROM farmers WHERE phone = ? AND email IS NOT NULL AND email != ? LIMIT 1',
+      [normalizedPhone, '']
+    );
+    return farmer?.email || '';
+  } catch (error) {
+    console.warn('Unable to resolve farmer email from farmers table:', error.message);
+    return '';
+  }
+}
+
 // Get crop recommendations
 app.post('/api/recommend', async (req, res) => {
   try {
-    const { subCounty, soilType, season, budget = 5000, farmSize = 1, waterSource = 'Rainfall', phoneNumber } = req.body;
+    const { subCounty, soilType, season, budget = 5000, farmSize = 1, waterSource = 'Rainfall', phoneNumber, farmerEmail = '', farmerName = '' } = req.body;
 
     // Validate inputs
     if (!subCounty || !soilType || !season) {
@@ -2912,12 +2942,25 @@ app.post('/api/recommend', async (req, res) => {
       season,
       recommendation: result.recommendations?.[0]
     });
+    const recipientEmail = isValidEmailAddress(farmerEmail) ? farmerEmail : await findFarmerEmailByPhone(phoneNumber);
+    const emailStatus = recipientEmail
+      ? await sendRecommendationEmail(recipientEmail, {
+          recommendations: result.recommendations || [],
+          subCounty,
+          soilType,
+          season,
+          farmSize,
+          farmerName,
+          locationLabel: subCounty
+        })
+      : { success: false, method: 'none', message: 'No farmer email available for notification' };
 
     res.json({
       success: true,
       data: {
         ...result,
-        predictionId
+        predictionId,
+        emailStatus
       }
     });
   } catch (error) {
@@ -2941,6 +2984,8 @@ app.post('/api/analyze-farm', async (req, res) => {
       farmSize = 1,
       waterSource = 'Rainfall',
       phoneNumber = null,
+      farmerEmail = '',
+      farmerName = '',
       selectedWard = null,
       selectedVillage = null,
       selectedRegionLabel = null,
@@ -2970,12 +3015,28 @@ app.post('/api/analyze-farm', async (req, res) => {
       locationLabel: selectedVillage || selectedWard || selectedRegionLabel || subCounty,
       recommendation: analysis.recommendations?.recommendations?.[0]
     });
+    const recommendationList = analysis.recommendations?.recommendations || [];
+    const recipientEmail = isValidEmailAddress(farmerEmail) ? farmerEmail : await findFarmerEmailByPhone(phoneNumber);
+    const emailStatus = recipientEmail
+      ? await sendRecommendationEmail(recipientEmail, {
+          recommendations: recommendationList,
+          subCounty,
+          soilType,
+          season,
+          farmSize,
+          farmerName,
+          selectedWard,
+          selectedVillage,
+          locationLabel: selectedVillage || selectedWard || selectedRegionLabel || subCounty
+        })
+      : { success: false, method: 'none', message: 'No farmer email available for notification' };
 
     res.json({
       success: true,
       data: {
         ...analysis,
         predictionId,
+        emailStatus,
         locationContext: {
           subCounty,
           selectedWard,
