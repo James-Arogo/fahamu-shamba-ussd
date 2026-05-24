@@ -20,7 +20,7 @@ async function test() {
     // Test with the admin email
     const admin = await dbAsync.get(
       `SELECT * FROM admin_users WHERE email = ?`,
-      ['cjoarogo@gmail.com']
+      ['fahamushamba@gmail.com']
     );
     
     if (admin) {
@@ -31,7 +31,7 @@ async function test() {
       console.log('   Password Hash:', admin.password_hash?.substring(0, 20) + '...');
       
       // Test password hashing
-      const testPassword = 'Jemo@721';
+      const testPassword = 'FahamuShamba01';
       const hash = hashPassword(testPassword);
       console.log('\n🔐 Password Hash Test:');
       console.log('   Input:', testPassword);

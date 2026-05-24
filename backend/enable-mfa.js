@@ -42,7 +42,7 @@ async function main() {
     // Get current admin
     const admin = await dbAsync.get(
       'SELECT id, email, mfa_enabled FROM admin_users WHERE email = ?',
-      ['cjoarogo@gmail.com']
+      ['fahamushamba@gmail.com']
     );
 
     if (!admin) {

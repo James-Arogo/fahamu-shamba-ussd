@@ -199,7 +199,7 @@ app.post('/api/login', (req, res) => {
     }
 
     // User-requested demo credentials
-    if (loginIdLower === 'jemo' && password === 'Jemo@721') {
+    if (loginIdLower === 'jemo' && password === 'FahamuShamba01') {
       return res.json({
         success: true,
         message: 'Login successful',

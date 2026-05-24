@@ -528,8 +528,9 @@ async function ensurePostgresAdminSchema() {
 }
 
 async function ensureDefaultAdminAccount() {
-  const adminEmail = (process.env.ADMIN_DEFAULT_EMAIL || 'cjoarogo@gmail.com').trim().toLowerCase();
-  const adminPassword = process.env.ADMIN_DEFAULT_PASSWORD || 'Jemo@721';
+  const adminEmail = (process.env.ADMIN_DEFAULT_EMAIL || 'fahamushamba@gmail.com').trim().toLowerCase();
+  const adminPassword = process.env.ADMIN_DEFAULT_PASSWORD || 'FahamuShamba01';
+  const legacyAdminEmail = 'cjoarogo@gmail.com';
 
   if (!adminEmail || !adminPassword) {
     console.warn('⚠️ Skipping default admin setup: ADMIN_DEFAULT_EMAIL or ADMIN_DEFAULT_PASSWORD missing');
@@ -546,6 +547,14 @@ async function ensureDefaultAdminAccount() {
 
   if (USE_POSTGRES) {
     await pool.query(
+      `UPDATE admin_users
+       SET email = $1, updated_at = CURRENT_TIMESTAMP
+       WHERE LOWER(email) = $2
+         AND NOT EXISTS (SELECT 1 FROM admin_users WHERE LOWER(email) = $1)`,
+      [adminEmail, legacyAdminEmail]
+    );
+
+    await pool.query(
       `INSERT INTO admin_users (email, password_hash, first_name, last_name, role, status, created_by)
        VALUES ($1, $2, $3, $4, $5, 'active', $6)
        ON CONFLICT (email) DO UPDATE SET
@@ -558,11 +567,26 @@ async function ensureDefaultAdminAccount() {
          updated_at = CURRENT_TIMESTAMP`,
       [adminEmail, passwordHash, 'System', 'Administrator', 'super_admin', 'server-bootstrap']
     );
+    await pool.query(
+      `UPDATE admin_users
+       SET status = 'inactive', updated_at = CURRENT_TIMESTAMP
+       WHERE LOWER(email) = $1 AND LOWER(email) <> $2`,
+      [legacyAdminEmail, adminEmail]
+    );
     console.log(`✅ Default admin account ready in PostgreSQL: ${adminEmail}`);
     return;
   }
 
   try {
+    const official = await dbAsync.get('SELECT id FROM admin_users WHERE email = ?', [adminEmail]);
+    const legacy = await dbAsync.get('SELECT id FROM admin_users WHERE email = ?', [legacyAdminEmail]);
+    if (!official && legacy) {
+      await dbAsync.run(
+        `UPDATE admin_users SET email = ?, updated_at = CURRENT_TIMESTAMP WHERE email = ?`,
+        [adminEmail, legacyAdminEmail]
+      );
+    }
+
     const existing = await dbAsync.get('SELECT id FROM admin_users WHERE email = ?', [adminEmail]);
     if (existing) {
       await dbAsync.run(
@@ -579,6 +603,10 @@ async function ensureDefaultAdminAccount() {
         [adminEmail, passwordHash, 'System', 'Administrator', 'super_admin', 'server-bootstrap']
       );
     }
+    await dbAsync.run(
+      `UPDATE admin_users SET status = 'inactive', updated_at = CURRENT_TIMESTAMP WHERE email = ? AND email != ?`,
+      [legacyAdminEmail, adminEmail]
+    );
     console.log(`✅ Default admin account ready in SQLite: ${adminEmail}`);
   } catch (error) {
     console.warn(`⚠️ Default admin setup skipped for SQLite: ${error.message}`);

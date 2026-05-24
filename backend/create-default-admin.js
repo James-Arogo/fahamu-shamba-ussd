@@ -2,7 +2,7 @@
 
 /**
  * Create or Reset Default Admin User
- * Ensures the admin account uses credentials: cjoarogo@gmail.com / Jemo@721
+ * Ensures the admin account uses credentials: fahamushamba@gmail.com / FahamuShamba01
  * Usage: node create-default-admin.js
  */
 
@@ -82,9 +82,34 @@ async function main() {
       adminDB.initializeAdminDatabase(db, dbAsync);
     }
 
-    const email = 'cjoarogo@gmail.com';
-    const password = 'Jemo@721';
+    const email = 'fahamushamba@gmail.com';
+    const password = 'FahamuShamba01';
+    const legacyEmail = 'cjoarogo@gmail.com';
     const passwordHash = hashPassword(password);
+
+    const officialAdmin = await dbAsync.get(
+      'SELECT id FROM admin_users WHERE email = ?',
+      [email]
+    );
+    const legacyAdmin = await dbAsync.get(
+      'SELECT id FROM admin_users WHERE email = ?',
+      [legacyEmail]
+    );
+
+    if (!officialAdmin && legacyAdmin) {
+      console.log(`⏳ Migrating legacy admin email ${legacyEmail} to ${email}...\n`);
+      if (usePostgres) {
+        await pool.query(
+          `UPDATE admin_users SET email = $1, updated_at = CURRENT_TIMESTAMP WHERE email = $2`,
+          [email, legacyEmail]
+        );
+      } else {
+        await dbAsync.run(
+          `UPDATE admin_users SET email = ?, updated_at = CURRENT_TIMESTAMP WHERE email = ?`,
+          [email, legacyEmail]
+        );
+      }
+    }
 
     // Check if admin already exists
     const existingAdmin = await dbAsync.get(
@@ -148,9 +173,21 @@ async function main() {
 
       console.log('✅ Admin account created successfully!\n');
     }
+
+    if (usePostgres) {
+      await pool.query(
+        `UPDATE admin_users SET status = 'inactive', updated_at = CURRENT_TIMESTAMP WHERE email = $1 AND email <> $2`,
+        [legacyEmail, email]
+      );
+    } else {
+      await dbAsync.run(
+        `UPDATE admin_users SET status = 'inactive', updated_at = CURRENT_TIMESTAMP WHERE email = ? AND email != ?`,
+        [legacyEmail, email]
+      );
+    }
     console.log('╔════════════════════════════════════════════════════════╗');
-    console.log(`║  Email:    cjoarogo@gmail.com                          ║`);
-    console.log(`║  Password: Jemo@721                                    ║`);
+    console.log(`║  Email:    fahamushamba@gmail.com                      ║`);
+    console.log(`║  Password: FahamuShamba01                              ║`);
     console.log(`║  Role:     Super Admin (Full Access)                   ║`);
     console.log('╚════════════════════════════════════════════════════════╝\n');
 
@@ -164,7 +201,7 @@ async function main() {
     console.log('📧 Email Configuration:\n');
     console.log('The system is configured to send OTP codes via email.');
     console.log('Add these to your .env file for email functionality:\n');
-    console.log('EMAIL_USER=your-email@gmail.com');
+    console.log('EMAIL_USER=fahamushamba@gmail.com');
     console.log('EMAIL_PASSWORD=your-app-password\n');
     console.log('Note: Use App Password, not your regular password\n');
 

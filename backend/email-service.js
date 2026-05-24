@@ -6,6 +6,8 @@ import nodemailer from 'nodemailer';
 
 let transporter = null;
 let resolvedFromAddress = '';
+const OFFICIAL_PROJECT_EMAIL = 'fahamushamba@gmail.com';
+const LEGACY_PROJECT_EMAIL = 'cjoarogo@gmail.com';
 
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, (char) => ({
@@ -36,12 +38,22 @@ function formatRecommendationList(recommendations = []) {
  * Initialize email transporter
  */
 export function initializeEmailService() {
-  const emailUser = (process.env.EMAIL_USER || process.env.SMTP_USER || '').trim();
+  const configuredEmailUser = (process.env.EMAIL_USER || process.env.SMTP_USER || '').trim();
+  const emailUser = (
+    configuredEmailUser.toLowerCase() === LEGACY_PROJECT_EMAIL
+      ? OFFICIAL_PROJECT_EMAIL
+      : configuredEmailUser || OFFICIAL_PROJECT_EMAIL
+  ).trim();
   const emailPassword = (process.env.EMAIL_PASSWORD || process.env.SMTP_PASSWORD || process.env.GMAIL_APP_PASSWORD || '').trim();
   const emailHost = (process.env.SMTP_HOST || '').trim();
   const emailPort = Number(process.env.SMTP_PORT || 0) || 587;
   const emailSecure = String(process.env.SMTP_SECURE || '').toLowerCase() === 'true' || emailPort === 465;
-  resolvedFromAddress = (process.env.EMAIL_FROM || emailUser || '').trim();
+  const configuredFromAddress = (process.env.EMAIL_FROM || '').trim();
+  resolvedFromAddress = (
+    configuredFromAddress.toLowerCase() === LEGACY_PROJECT_EMAIL
+      ? OFFICIAL_PROJECT_EMAIL
+      : configuredFromAddress || OFFICIAL_PROJECT_EMAIL
+  ).trim();
   const hasEmailConfig =
     !!emailUser &&
     !!emailPassword &&
@@ -110,7 +122,7 @@ export async function sendOTPEmail(email, otp) {
 
   try {
     const mailOptions = {
-      from: resolvedFromAddress || process.env.EMAIL_USER || process.env.SMTP_USER,
+      from: `"Fahamu Shamba" <${resolvedFromAddress || OFFICIAL_PROJECT_EMAIL}>`,
       to: email,
       subject: '🌱 Fahamu Shamba - Admin Login OTP',
       html: `
@@ -198,7 +210,7 @@ export async function sendSecurityAlertEmail(email, alertTitle, alertDetails) {
 
   try {
     const mailOptions = {
-      from: resolvedFromAddress || process.env.EMAIL_USER || process.env.SMTP_USER,
+      from: `"Fahamu Shamba" <${resolvedFromAddress || OFFICIAL_PROJECT_EMAIL}>`,
       to: email,
       subject: `🚨 Fahamu Shamba - ${alertTitle}`,
       html: `
@@ -246,7 +258,7 @@ export async function sendWelcomeEmail(email, adminName) {
 
   try {
     const mailOptions = {
-      from: resolvedFromAddress || process.env.EMAIL_USER || process.env.SMTP_USER,
+      from: `"Fahamu Shamba" <${resolvedFromAddress || OFFICIAL_PROJECT_EMAIL}>`,
       to: email,
       subject: '🌱 Welcome to Fahamu Shamba Admin Dashboard',
       html: `
@@ -322,6 +334,8 @@ export async function sendRecommendationEmail(email, payload = {}) {
   const locationLabel = payload.locationLabel || payload.selectedVillage || payload.selectedWard || payload.subCounty || 'your farm';
   const seasonLabel = String(payload.season || 'selected season').replace(/_/g, ' ');
   const farmerName = payload.farmerName || 'Farmer';
+  const soilLabel = payload.soilType || 'Selected soil profile';
+  const farmSizeLabel = payload.farmSize ? `${payload.farmSize} acres` : 'Not specified';
 
   if (!transporter) {
     console.log(`\n📧 Recommendation email for ${recipient}: ${topCrop} at ${locationLabel}\n`);
@@ -336,9 +350,9 @@ export async function sendRecommendationEmail(email, payload = {}) {
 
   try {
     const mailOptions = {
-      from: resolvedFromAddress || process.env.EMAIL_USER || process.env.SMTP_USER,
+      from: `"Fahamu Shamba" <${resolvedFromAddress || OFFICIAL_PROJECT_EMAIL}>`,
       to: recipient,
-      subject: `Fahamu Shamba Recommendation: ${topCrop}`,
+      subject: `Your Fahamu Shamba recommendation: ${topCrop}`,
       html: `
         <!DOCTYPE html>
         <html>
@@ -346,32 +360,48 @@ export async function sendRecommendationEmail(email, payload = {}) {
           <meta charset="UTF-8">
           <style>
             body { margin:0; padding:0; background:#edf5ef; font-family:Arial, sans-serif; color:#17231b; }
-            .wrapper { max-width:680px; margin:0 auto; padding:24px; }
-            .card { background:#ffffff; border-radius:20px; overflow:hidden; border:1px solid #dfeadd; box-shadow:0 16px 40px rgba(22,52,37,0.12); }
-            .hero { background:linear-gradient(135deg,#163425,#255f38); color:white; padding:28px; }
-            .hero h1 { margin:0 0 10px; font-size:26px; }
-            .hero p { margin:0; line-height:1.6; color:#e6f3e7; }
-            .content { padding:26px; }
-            .summary { background:#f8f1df; border-left:5px solid #e7a73f; padding:16px; border-radius:14px; margin:18px 0; }
+            .preheader { display:none; max-height:0; overflow:hidden; opacity:0; color:transparent; }
+            .wrapper { max-width:720px; margin:0 auto; padding:28px 18px; }
+            .card { background:#ffffff; border-radius:26px; overflow:hidden; border:1px solid #dfeadd; box-shadow:0 18px 46px rgba(22,52,37,0.14); }
+            .hero { background:linear-gradient(135deg,#143320 0%,#255f38 58%,#e7a73f 140%); color:white; padding:34px 30px; }
+            .brand { font-size:13px; text-transform:uppercase; letter-spacing:0.14em; color:#cfe8c8; font-weight:800; }
+            .hero h1 { margin:12px 0 10px; font-size:30px; line-height:1.1; }
+            .hero p { margin:0; line-height:1.65; color:#e6f3e7; font-size:15px; }
+            .content { padding:28px; }
+            .top-crop { background:#f8f1df; border:1px solid #f0dbad; border-radius:20px; padding:20px; margin-bottom:20px; }
+            .top-crop-label { color:#7a5230; font-size:12px; text-transform:uppercase; letter-spacing:0.12em; font-weight:800; }
+            .top-crop-name { color:#163425; font-size:28px; font-weight:900; margin-top:6px; }
+            .summary-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin:18px 0 22px; }
+            .summary-item { background:#f4faf3; border:1px solid #dfeadd; border-radius:16px; padding:14px; }
+            .summary-item span { display:block; color:#6f7f73; font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:0.08em; }
+            .summary-item strong { display:block; margin-top:6px; color:#163425; font-size:15px; }
             table { width:100%; border-collapse:collapse; margin-top:18px; }
             th { text-align:left; background:#edf5ef; padding:12px 14px; color:#163425; font-size:13px; }
-            .footer { color:#6f7f73; font-size:12px; line-height:1.5; padding:0 26px 24px; }
+            .next { margin-top:22px; background:#163425; color:#eef8ed; border-radius:18px; padding:18px; line-height:1.6; }
+            .next strong { color:#f8d68e; }
+            .footer { color:#6f7f73; font-size:12px; line-height:1.5; padding:0 28px 26px; }
+            @media (max-width:620px) { .summary-grid { grid-template-columns:1fr; } .hero h1 { font-size:24px; } }
           </style>
         </head>
         <body>
+          <div class="preheader">Your Fahamu Shamba crop recommendation is ready: ${escapeHtml(topCrop)} for ${escapeHtml(locationLabel)}.</div>
           <div class="wrapper">
             <div class="card">
               <div class="hero">
-                <h1>Fahamu Shamba Crop Recommendation</h1>
+                <div class="brand">Fahamu Shamba Advisory</div>
+                <h1>Your farm recommendation is ready</h1>
                 <p>Hello ${escapeHtml(farmerName)}, your recommendation has been generated successfully and is also available inside your Fahamu Shamba dashboard.</p>
               </div>
               <div class="content">
-                <div class="summary">
-                  <strong>Top recommendation:</strong> ${escapeHtml(topCrop)}<br>
-                  <strong>Location:</strong> ${escapeHtml(locationLabel)}<br>
-                  <strong>Season:</strong> ${escapeHtml(seasonLabel)}<br>
-                  <strong>Soil:</strong> ${escapeHtml(payload.soilType || 'Selected soil profile')}<br>
-                  <strong>Farm size:</strong> ${escapeHtml(payload.farmSize || 'Not specified')} acres
+                <div class="top-crop">
+                  <div class="top-crop-label">Top crop match</div>
+                  <div class="top-crop-name">${escapeHtml(topCrop)}</div>
+                </div>
+                <div class="summary-grid">
+                  <div class="summary-item"><span>Location</span><strong>${escapeHtml(locationLabel)}</strong></div>
+                  <div class="summary-item"><span>Season</span><strong>${escapeHtml(seasonLabel)}</strong></div>
+                  <div class="summary-item"><span>Soil profile</span><strong>${escapeHtml(soilLabel)}</strong></div>
+                  <div class="summary-item"><span>Farm size</span><strong>${escapeHtml(farmSizeLabel)}</strong></div>
                 </div>
                 <table>
                   <thead>
@@ -385,16 +415,19 @@ export async function sendRecommendationEmail(email, payload = {}) {
                     ${formatRecommendationList(recommendations)}
                   </tbody>
                 </table>
+                <div class="next">
+                  <strong>Next step:</strong> Open the Fahamu Shamba dashboard for detailed input quantities, budget planning, soil notes, and market context before planting.
+                </div>
               </div>
               <div class="footer">
-                This is an automated Fahamu Shamba notification. Use the web dashboard for full budget, inputs, market, and soil details.
+                Sent by Fahamu Shamba from ${OFFICIAL_PROJECT_EMAIL}. This is an automated recommendation notification.
               </div>
             </div>
           </div>
         </body>
         </html>
       `,
-      text: `Fahamu Shamba Recommendation\n\nHello ${farmerName},\nTop recommendation: ${topCrop}\nLocation: ${locationLabel}\nSeason: ${seasonLabel}\nSoil: ${payload.soilType || 'Selected soil profile'}\n\nRecommendations:\n${recommendations.slice(0, 3).map((rec, index) => `${index + 1}. ${rec.name || rec.crop || 'Crop'} - ${Math.round(Number(rec.confidence || rec.score || 0))}%`).join('\n')}\n\nOpen Fahamu Shamba for full details.`
+      text: `Fahamu Shamba Recommendation\n\nHello ${farmerName},\nTop recommendation: ${topCrop}\nLocation: ${locationLabel}\nSeason: ${seasonLabel}\nSoil: ${soilLabel}\nFarm size: ${farmSizeLabel}\n\nRecommendations:\n${recommendations.slice(0, 3).map((rec, index) => `${index + 1}. ${rec.name || rec.crop || 'Crop'} - ${Math.round(Number(rec.confidence || rec.score || 0))}%`).join('\n')}\n\nOpen Fahamu Shamba for full budget, input, soil, and market details.`
     };
 
     const info = await transporter.sendMail(mailOptions);
