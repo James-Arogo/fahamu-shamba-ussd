@@ -683,7 +683,7 @@ class RecommendationEngine {
     ].filter(Boolean);
 
     return {
-      english: `${cropName} is selected because ${soilParts.join(', ')} create suitable soil conditions for its nutrient needs. The ${String(normalizedInput.season || '').replace('_', ' ')} climate profile${climateParts.length ? ` (${climateParts.join(', ')})` : ''} fits this crop type, and ${cropParts.join(', ')}.`,
+      english: `${cropName} is selected because the soil profile shows ${soilParts.join(', ')}, which fits its nutrient needs. The ${String(normalizedInput.season || '').replace('_', ' ')} climate profile${climateParts.length ? ` (${climateParts.join(', ')})` : ''} fits this crop type, and ${cropParts.join(', ')}.`,
       swahili: `${cropName} imechaguliwa kwa sababu hali ya udongo, virutubisho, msimu na mahitaji ya maji ya zao hili yanaendana na shamba lako.`
     };
   }
