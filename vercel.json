@@ -8,8 +8,11 @@
         "maxLambdaSize": "50mb",
         "nodeVersion": "24.x",
         "includeFiles": [
-          "../public/**",
-          "../Model Training/**"
+          "../public/**"
+        ],
+        "excludeFiles": [
+          "../backend/training/.venv/**",
+          "../backend/training/models/*.joblib"
         ]
       }
     }
