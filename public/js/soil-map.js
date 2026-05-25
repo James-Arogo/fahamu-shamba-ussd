@@ -108,13 +108,22 @@
     const elements = {};
 
     document.addEventListener('DOMContentLoaded', () => {
-        bindElements();
-        buildFilters();
-        renderMap();
-        renderWardList();
-        bindEvents();
-        resetSummary();
-        selectWard(features[0].id);
+        try {
+            bindElements();
+            assertRequiredElements();
+            buildFilters();
+            renderMap();
+            renderWardList();
+            bindEvents();
+            resetSummary();
+            selectWard(features[0].id);
+        } catch (error) {
+            console.error('Siaya soil map failed to initialize:', error);
+            const status = document.getElementById('locationStatus');
+            if (status) {
+                status.textContent = `The soil map could not load on this device: ${error.message || 'unknown error'}. Please refresh the page and try again.`;
+            }
+        }
     });
 
     function bindElements() {
@@ -150,6 +159,24 @@
         elements.legend = document.getElementById('mapLegend');
     }
 
+    function assertRequiredElements() {
+        const required = [
+            'mapRegions',
+            'villageLayer',
+            'subCountyLabels',
+            'subCountySelect',
+            'wardSelect',
+            'villageSelect',
+            'wardList',
+            'locationStatus',
+            'legend'
+        ];
+        const missing = required.filter((key) => !elements[key]);
+        if (missing.length) {
+            throw new Error(`Missing soil map elements: ${missing.join(', ')}`);
+        }
+    }
+
     function bindEvents() {
         elements.subCountySelect.addEventListener('change', (event) => {
             const subCounty = event.target.value;
@@ -174,6 +201,12 @@
 
         elements.gpsButton.addEventListener('click', locateUser);
         elements.resetButton.addEventListener('click', resetFilters);
+
+        const mapStage = document.querySelector('.map-stage');
+        if (mapStage) {
+            mapStage.addEventListener('pointerup', handleMapPointerSelection);
+            mapStage.addEventListener('touchend', handleMapPointerSelection, { passive: true });
+        }
     }
 
     function buildFilters() {
@@ -216,6 +249,7 @@
 
         document.querySelectorAll('.ward-shape').forEach((shape) => {
             shape.addEventListener('click', () => selectWard(shape.dataset.wardId));
+            shape.addEventListener('touchend', () => selectWard(shape.dataset.wardId), { passive: true });
             shape.addEventListener('keydown', (event) => {
                 if (event.key === 'Enter' || event.key === ' ') {
                     event.preventDefault();
@@ -293,6 +327,7 @@
         if (!feature) return;
 
         state.selectedWardId = wardId;
+        state.selectedSubCounty = feature.subCounty;
 
         if (elements.subCountySelect.value !== state.selectedSubCounty) {
             elements.subCountySelect.value = state.selectedSubCounty;
@@ -390,6 +425,7 @@
 
         elements.villageLayer.querySelectorAll('.village-marker').forEach((marker) => {
             marker.addEventListener('click', () => selectVillage(marker.dataset.village));
+            marker.addEventListener('touchend', () => selectVillage(marker.dataset.village), { passive: true });
             marker.addEventListener('keydown', (event) => {
                 if (event.key === 'Enter' || event.key === ' ') {
                     event.preventDefault();
@@ -419,7 +455,25 @@
 
         elements.villageList.querySelectorAll('.village-chip').forEach((button) => {
             button.addEventListener('click', () => selectVillage(button.dataset.village));
+            button.addEventListener('touchend', () => selectVillage(button.dataset.village), { passive: true });
         });
+    }
+
+    function handleMapPointerSelection(event) {
+        const target = typeof event.target?.closest === 'function'
+            ? event.target.closest('.ward-shape, .village-marker')
+            : null;
+
+        if (!target) return;
+
+        if (target.classList.contains('ward-shape')) {
+            selectWard(target.dataset.wardId);
+            return;
+        }
+
+        if (target.classList.contains('village-marker')) {
+            selectVillage(target.dataset.village);
+        }
     }
 
     function updateVillageListActive() {
