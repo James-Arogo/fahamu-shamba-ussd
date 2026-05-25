@@ -164,6 +164,8 @@
         .toast.show { opacity: 1; transform: translateY(0); }
         .toast.error { background: #e74c3c; }
         .toast.warning { background: #d97706; }
+        .form-error-banner { display: none; margin: 0 0 16px; padding: 12px 14px; border: 1px solid rgba(231,76,60,0.25); background: rgba(231,76,60,0.08); color: #8a1f17; border-radius: 8px; font-weight: 600; line-height: 1.45; }
+        .form-error-banner.show { display: block; }
         .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -186,13 +188,13 @@
     <link rel="stylesheet" href="/css/sidebar.css">
     <link rel="stylesheet" href="/css/navbar.css">
     <script src="/language-utils.js?v=20260409-mobile-fix"></script>
-    <script src="/js/sidebar.js?v=20260525-mobile-taps-2" defer></script>
+    <script src="/js/sidebar.js?v=20260525-mobile-submit" defer></script>
     <script src="/js/navbar.js?v=20260409-mobile-fix" defer></script>
     <script src="/js/siaya-soil-map-data.js?v=20260409-mobile-fix" defer></script>
     <script src="/js/siaya-boundaries.js?v=20260409-mobile-fix" defer></script>
     <script src="/js/siaya-villages.js?v=20260523-village-only" defer></script>
     <script src="/js/recommendations-map-integration.js?v=20260523-village-only" defer></script>
-    <link rel="stylesheet" href="/css/mobile-responsiveness-fixes.css?v=20260525-mobile-taps-2">
+    <link rel="stylesheet" href="/css/mobile-responsiveness-fixes.css?v=20260525-mobile-submit">
     <script src="/js/chatbot-widget.js" defer></script>
 </head>
 <body>
@@ -246,6 +248,7 @@
                         <div class="auto-badge" id="budgetSourceBadge" style="display:none;"><i class="fas fa-coins"></i> Cost view ready</div>
                     </div>
                 </div>
+                <div id="recommendationFormError" class="form-error-banner" role="alert"></div>
                 <form id="recommendationForm">
                     <div class="map-selection-panel">
                         <div class="section-title"><i class="fas fa-map-location-dot"></i> Select Your Farm Location From The Map</div>
@@ -368,7 +371,7 @@
                         </div>
                     </div>
                     <div class="form-actions">
-                        <button type="submit" class="btn btn-primary">
+                        <button type="submit" class="btn btn-primary" id="generateRecommendationsBtn">
                             <span class="spinner" style="display:none;"></span>
                             <i class="fas fa-wand-magic-sparkles"></i>
                             Generate Recommendations
@@ -868,15 +871,77 @@
             }).join('');
         }
 
-        document.getElementById('recommendationForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            await getRecommendations();
-        });
+        function showFormInitError(message) {
+            const errorBanner = document.getElementById('recommendationFormError');
+            if (errorBanner) {
+                errorBanner.textContent = message;
+                errorBanner.classList.add('show');
+            }
 
-        document.getElementById('location').addEventListener('change', autoUpdateSoilFromLocation);
-        document.getElementById('farmSize').addEventListener('input', updateBudgetEstimate);
-        document.getElementById('soilType').addEventListener('change', updateBudgetEstimate);
-        document.getElementById('waterSource').addEventListener('change', updateBudgetEstimate);
+            if (typeof showToast === 'function') {
+                showToast(message, 'error');
+            }
+        }
+
+        let recommendationFormBound = false;
+        let recommendationSubmitInFlight = false;
+        let lastMobileSubmitAt = 0;
+
+        async function submitRecommendationForm() {
+            if (recommendationSubmitInFlight) {
+                return;
+            }
+
+            recommendationSubmitInFlight = true;
+            try {
+                await getRecommendations();
+            } finally {
+                recommendationSubmitInFlight = false;
+            }
+        }
+
+        function bindRecommendationForm() {
+            if (recommendationFormBound) {
+                return;
+            }
+
+            const form = document.getElementById('recommendationForm');
+            const submitButton = document.getElementById('generateRecommendationsBtn');
+
+            if (!form || !submitButton) {
+                showFormInitError('Recommendation controls did not finish loading. Please refresh this page.');
+                return;
+            }
+
+            recommendationFormBound = true;
+            submitButton.disabled = false;
+
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await submitRecommendationForm();
+            });
+
+            submitButton.addEventListener('touchend', (e) => {
+                if (submitButton.disabled) {
+                    return;
+                }
+
+                const now = Date.now();
+                if (now - lastMobileSubmitAt < 800) {
+                    e.preventDefault();
+                    return;
+                }
+
+                lastMobileSubmitAt = now;
+                e.preventDefault();
+
+                if (typeof form.requestSubmit === 'function') {
+                    form.requestSubmit(submitButton);
+                } else {
+                    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+                }
+            }, { passive: false });
+        }
 
         async function getRecommendations() {
             const cachedUser = getCachedUser();
@@ -910,10 +975,14 @@
                 return;
             }
             
-            const btn = document.querySelector('[type="submit"]');
-            const spinner = btn.querySelector('.spinner');
-            btn.disabled = true;
-            spinner.style.display = 'inline-block';
+            const btn = document.getElementById('generateRecommendationsBtn') || document.querySelector('#recommendationForm [type="submit"]');
+            const spinner = btn?.querySelector('.spinner');
+            if (btn) {
+                btn.disabled = true;
+            }
+            if (spinner) {
+                spinner.style.display = 'inline-block';
+            }
             
             try {
                 const response = await fetch('/api/analyze-farm', {
@@ -969,8 +1038,12 @@
                 console.error('Error generating recommendations:', error);
                 showToast(error.message || 'Error generating recommendations', 'error');
             } finally {
-                btn.disabled = false;
-                spinner.style.display = 'none';
+                if (btn) {
+                    btn.disabled = false;
+                }
+                if (spinner) {
+                    spinner.style.display = 'none';
+                }
             }
         }
 
@@ -1027,6 +1100,7 @@
             }
             loadUserData();
             loadRecommendationHistory();
+            bindRecommendationForm();
             autoUpdateSoilFromLocation();
             updateBudgetEstimate();
 
