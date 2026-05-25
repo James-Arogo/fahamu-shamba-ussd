@@ -253,6 +253,26 @@ function closenessScore(actual, expected, tolerance, weight) {
   return Math.max(0, 1 - (distance / tolerance)) * weight;
 }
 
+function formatNumber(value, digits = 1) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return null;
+  return Number(number.toFixed(digits));
+}
+
+function describeNutrient(value, low, high, label, unit = '') {
+  const number = formatNumber(value, 2);
+  if (number == null) return '';
+  if (number < low) return `${label} is low at ${number}${unit}`;
+  if (number > high) return `${label} is strong at ${number}${unit}`;
+  return `${label} is adequate at ${number}${unit}`;
+}
+
+function normalizeRainfallForModel(value, fallback = 540) {
+  const rainfall = Number(value);
+  if (!Number.isFinite(rainfall) || rainfall <= 0) return fallback;
+  return rainfall > 1500 ? Math.round(rainfall / 90) : rainfall;
+}
+
 class RecommendationEngine {
   constructor() {
     this.cropInputs = farmInputsData.cropInputs;
@@ -544,9 +564,7 @@ class RecommendationEngine {
     const soilMetrics = this.getDefaultSoilMetrics(normalizedInput.subCounty, normalizedInput.soilType);
     const marketPrice = this.getMarketPrice('Maize', normalizedInput.subCounty);
 
-    const rainfallMm = Number.isFinite(Number(weather.totalRainfall))
-      ? Number(weather.totalRainfall)
-      : 540;
+    const rainfallMm = normalizeRainfallForModel(weather.totalRainfall);
     const temperatureC = Number.isFinite(Number(weather.avgTemperature))
       ? Number(weather.avgTemperature)
       : 24.5;
@@ -638,6 +656,38 @@ class RecommendationEngine {
     return this.modelTrainingRows;
   }
 
+  buildAgronomicReason(cropName, normalizedInput, payload, profile, weather, marketPrice = null) {
+    const soilParts = [
+      `the mapped ${normalizedInput.soilType || payload.Soil_Texture} soil`,
+      describeNutrient(payload.pH, 5.8, 7.2, 'pH'),
+      describeNutrient(payload.Nitrogen, 0.12, 0.22, 'nitrogen'),
+      describeNutrient(payload.Phosphorus, 10, 25, 'phosphorus'),
+      describeNutrient(payload.Potassium, 100, 180, 'potassium'),
+      describeNutrient(payload.Organic_Carbon, 1.5, 2.8, 'organic carbon')
+    ].filter(Boolean);
+
+    const rainfall = formatNumber(normalizeRainfallForModel(weather?.totalRainfall ?? payload.Rainfall_mm), 0);
+    const temperature = formatNumber(weather?.avgTemperature ?? payload.Temperature_C, 1);
+    const humidity = formatNumber(weather?.avgHumidity ?? payload.Humidity_pct, 0);
+    const climateParts = [
+      rainfall != null ? `${rainfall} mm rainfall` : '',
+      temperature != null ? `${temperature}°C average temperature` : '',
+      humidity != null ? `${humidity}% humidity` : ''
+    ].filter(Boolean);
+
+    const cropParts = [
+      profile?.waterReq ? `${cropName} has ${String(profile.waterReq).toLowerCase()} water demand` : '',
+      profile?.plantingWindow ? `its planting window is ${profile.plantingWindow}` : '',
+      profile?.yieldRange ? `expected yield is ${profile.yieldRange}` : '',
+      marketPrice?.price ? `current market price is KES ${marketPrice.price}/kg` : ''
+    ].filter(Boolean);
+
+    return {
+      english: `${cropName} is selected because ${soilParts.join(', ')} create suitable soil conditions for its nutrient needs. The ${String(normalizedInput.season || '').replace('_', ' ')} climate profile${climateParts.length ? ` (${climateParts.join(', ')})` : ''} fits this crop type, and ${cropParts.join(', ')}.`,
+      swahili: `${cropName} imechaguliwa kwa sababu hali ya udongo, virutubisho, msimu na mahitaji ya maji ya zao hili yanaendana na shamba lako.`
+    };
+  }
+
   getRecommendationsFromModelTrainingData(normalizedInput) {
     const rows = this.getModelTrainingRows();
     if (!rows.length) {
@@ -645,6 +695,7 @@ class RecommendationEngine {
     }
 
     const payload = this.mapFarmerDataToPythonModelInput(normalizedInput);
+    const weather = this.getWeatherSummary(normalizedInput.subCounty, normalizedInput.season) || {};
     const rankedRows = rows.map((row) => {
       let score = 0;
       if (normalizeKey(row.Sub_County) === normalizeKey(payload.Sub_County)) score += 24;
@@ -680,6 +731,8 @@ class RecommendationEngine {
     const recommendations = Array.from(cropScores.values())
       .map((item) => {
         const confidence = Math.max(35, Math.min(99, Math.round((item.best * 0.75) + ((item.total / item.count) * 0.25))));
+        const profile = this.getCropProfile(item.crop);
+        const marketPrice = this.getMarketPrice(item.crop, normalizedInput.subCounty);
         return {
           name: item.crop,
           crop: item.crop,
@@ -690,10 +743,26 @@ class RecommendationEngine {
             season: normalizedInput.season,
             subcounty: normalizeKey(normalizedInput.subCounty)
           },
-          reasons: {
-            english: `${item.crop} is recommended from the new Model Training dataset for similar farm conditions.`,
-            swahili: `${item.crop} imependekezwa kutoka data mpya ya Model Training kwa hali zinazofanana za shamba.`
-          }
+          marketPrice,
+          yieldRange: profile.yieldRange,
+          waterReq: profile.waterReq,
+          plantingWindow: profile.plantingWindow,
+          risk: profile.risk,
+          budgetRange: profile.budgetRange,
+          farmSizeRange: profile.farmSizeRange,
+          soilMetrics: {
+            pH: formatNumber(payload.pH, 2),
+            nitrogen: formatNumber(payload.Nitrogen, 2),
+            phosphorus: formatNumber(payload.Phosphorus, 1),
+            potassium: formatNumber(payload.Potassium, 1),
+            organicCarbon: formatNumber(payload.Organic_Carbon, 2)
+          },
+          climate: {
+            rainfallMm: formatNumber(normalizeRainfallForModel(weather.totalRainfall ?? payload.Rainfall_mm), 0),
+            temperatureC: formatNumber(weather.avgTemperature ?? payload.Temperature_C, 1),
+            humidityPct: formatNumber(weather.avgHumidity ?? payload.Humidity_pct, 0)
+          },
+          reasons: this.buildAgronomicReason(item.crop, normalizedInput, payload, profile, weather, marketPrice)
         };
       })
       .sort((a, b) => b.score - a.score)

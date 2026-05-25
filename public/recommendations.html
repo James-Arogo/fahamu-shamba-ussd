@@ -487,6 +487,14 @@
             }
         }
 
+        function getCachedUser() {
+            try {
+                return JSON.parse(localStorage.getItem('user') || '{}');
+            } catch {
+                return {};
+            }
+        }
+
         function logout() {
             localStorage.removeItem('token');
             localStorage.removeItem('user');
@@ -831,23 +839,34 @@
         document.getElementById('waterSource').addEventListener('change', updateBudgetEstimate);
 
         async function getRecommendations() {
-            const location = document.getElementById('location').value;
-            const apiLocation = normalizeRecommendationLocation(location);
-            const soilType = document.getElementById('soilType').value;
+            const cachedUser = getCachedUser();
+            let location = document.getElementById('location').value || cachedUser.location || cachedUser.subCounty || cachedUser.sub_county || '';
+            let soilType = document.getElementById('soilType').value;
             const season = document.getElementById('season').value;
             const farmSize = parseFloat(document.getElementById('farmSize').value);
             const waterSource = document.getElementById('waterSource').value;
             const budget = estimateBudgetFromFarmSize(farmSize, soilType, waterSource || 'Rainfall') || 5000;
             const selectedWard = document.getElementById('selectedWardDisplay')?.textContent || '';
-            const selectedVillage = document.getElementById('selectedVillageDisplay')?.textContent || '';
+            const rawSelectedVillage = document.getElementById('selectedVillageDisplay')?.textContent || '';
+            const selectedVillage = rawSelectedVillage && rawSelectedVillage !== 'No village selected'
+                ? rawSelectedVillage
+                : '';
             const selectedRegionLabel = document.getElementById('regionReadout')?.value || '';
             const climateSnapshot = window.recommendationMapState?.climateSnapshot || null;
             const phoneNumber = getCurrentUserPhone();
             const farmerEmail = getCurrentUserEmail();
             const farmerName = getCurrentUserName();
+
+            if (!location && selectedRegionLabel) {
+                const regionParts = selectedRegionLabel.split(',').map(part => part.trim()).filter(Boolean);
+                location = regionParts[regionParts.length - 1] || '';
+            }
+
+            const apiLocation = normalizeRecommendationLocation(location);
+            soilType = soilType || resolveLocalSoilTypeFallback(apiLocation);
             
-            if (!location || !soilType || !season || !farmSize || !waterSource || !selectedVillage || selectedVillage === 'No village selected') {
-                showToast('Please choose a village within the selected ward before generating recommendations.', 'error');
+            if (!location || !soilType || !season || !farmSize || !waterSource) {
+                showToast('Please complete location, soil, season, farm size, and water source before generating recommendations.', 'error');
                 return;
             }
             
@@ -860,7 +879,21 @@
                 const response = await fetch('/api/analyze-farm', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ subCounty: apiLocation, soilType, season, farmSize, budget, waterSource, selectedWard, selectedVillage, selectedRegionLabel, climateSnapshot, phoneNumber, farmerEmail, farmerName })
+                    body: JSON.stringify({
+                        subCounty: apiLocation,
+                        soilType,
+                        season,
+                        farmSize,
+                        budget,
+                        waterSource,
+                        selectedWard: selectedWard && selectedWard !== 'No ward selected' ? selectedWard : null,
+                        selectedVillage: selectedVillage || selectedRegionLabel || apiLocation,
+                        selectedRegionLabel: selectedRegionLabel || apiLocation,
+                        climateSnapshot,
+                        phoneNumber,
+                        farmerEmail,
+                        farmerName
+                    })
                 });
 
                 const text = await response.text();
