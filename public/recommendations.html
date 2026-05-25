@@ -74,6 +74,9 @@
         .auto-badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; background: rgba(45,118,73,0.1); color: var(--primary-dark); border-radius: 999px; font-size: 0.78rem; font-weight: 700; margin-top: 8px; }
         .manual-selection-group { display: none; }
         .map-selection-panel { margin-bottom: 24px; background: linear-gradient(180deg, rgba(247,250,248,0.98), rgba(239,246,241,0.95)); border: 1px solid rgba(45,118,73,0.12); border-radius: 18px; padding: 18px; }
+        .location-method-selector { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 16px; }
+        .location-method-btn { justify-content: center; border: 2px solid rgba(45,118,73,0.22); background: #fff; color: var(--primary-dark); }
+        .location-method-btn.active { background: var(--primary-dark); border-color: var(--primary-dark); color: #fff; box-shadow: var(--shadow-sm); }
         .map-selection-top { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-bottom: 16px; }
         .map-selection-wrap { background: #f4f8f5; border: 1px solid rgba(45,118,73,0.12); border-radius: 18px; padding: 14px; }
         .map-selection-stage { width: 100%; min-height: 400px; }
@@ -100,6 +103,11 @@
         .legend-chip { display: inline-flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 999px; background: rgba(255,255,255,0.82); border: 1px solid rgba(45,118,73,0.1); font-size: 0.8rem; }
         .legend-swatch { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
         .readout-input { background: #f7faf8 !important; color: var(--primary-dark) !important; font-weight: 600; }
+        .map-selection-panel[data-location-method="gps"] .map-manual-control,
+        .map-selection-panel[data-location-method="gps"] .map-selection-wrap,
+        .map-selection-panel[data-location-method="gps"] .map-legend,
+        .map-selection-panel[data-location-method="gps"] .map-village-list { display: none; }
+        .map-selection-panel[data-location-method="map"] .gps-location-group .form-note { color: var(--text-light); }
         
         .btn { padding: 12px 24px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; display: inline-flex; align-items: center; gap: 8px; font-size: 0.95rem; }
         .btn-primary { background: var(--primary); color: white; }
@@ -183,6 +191,12 @@
             .page-header { padding: 16px; }
             .page-header h1 { font-size: 1.3rem; }
             .form-container { padding: 16px; }
+            .insight-grid,
+            .water-source-group,
+            .location-readout-group,
+            .soil-readout-group { display: none; }
+            .location-method-selector { grid-template-columns: 1fr; }
+            .form-actions .btn { width: 100%; justify-content: center; }
         }
     </style>
     <link rel="stylesheet" href="/css/sidebar.css">
@@ -193,7 +207,7 @@
     <script src="/js/siaya-soil-map-data.js?v=20260409-mobile-fix" defer></script>
     <script src="/js/siaya-boundaries.js?v=20260409-mobile-fix" defer></script>
     <script src="/js/siaya-villages.js?v=20260523-village-only" defer></script>
-    <script src="/js/recommendations-map-integration.js?v=20260523-village-only" defer></script>
+    <script src="/js/recommendations-map-integration.js?v=20260525-location-method" defer></script>
     <link rel="stylesheet" href="/css/mobile-responsiveness-fixes.css?v=20260525-mobile-submit">
     <script src="/js/chatbot-widget.js" defer></script>
 </head>
@@ -249,34 +263,42 @@
                     </div>
                 </div>
                 <div id="recommendationFormError" class="form-error-banner" role="alert"></div>
-                <form id="recommendationForm">
-                    <div class="map-selection-panel">
-                        <div class="section-title"><i class="fas fa-map-location-dot"></i> Select Your Farm Location From The Map</div>
+                <form id="recommendationForm" novalidate>
+                    <div class="map-selection-panel" id="recommendationLocationPanel" data-location-method="map">
+                        <div class="section-title"><i class="fas fa-map-location-dot"></i> Choose Farm Location</div>
+                        <div class="location-method-selector" id="locationMethodSelector" role="group" aria-label="Location method">
+                            <button type="button" class="btn location-method-btn active" data-location-method="map" aria-pressed="true">
+                                <i class="fas fa-map"></i> Soil Map
+                            </button>
+                            <button type="button" class="btn location-method-btn" data-location-method="gps" aria-pressed="false">
+                                <i class="fas fa-location-crosshairs"></i> Phone GPS
+                            </button>
+                        </div>
                         <div class="map-selection-top">
-                            <div class="form-group">
+                            <div class="form-group map-manual-control">
                                 <label>📍 Filter Sub-County</label>
                                 <select id="mapSubCountyFilter">
                                     <option value="">All Siaya County</option>
                                 </select>
                             </div>
-                            <div class="form-group">
+                            <div class="form-group map-manual-control">
                                 <label>🧭 Specific Ward</label>
                                 <select id="mapWardSelect">
                                     <option value="">Select a ward from the map...</option>
                                 </select>
                             </div>
-                            <div class="form-group">
+                            <div class="form-group map-manual-control">
                                 <label>🏘️ Village Within Ward</label>
                                 <select id="mapVillageSelect">
                                     <option value="">Select a ward first...</option>
                                 </select>
                             </div>
-                            <div class="form-group">
-                                <label>📡 GPS Mapping</label>
+                            <div class="form-group gps-location-group">
+                                <label>📡 Phone GPS</label>
                                 <button type="button" class="btn btn-secondary" id="gpsLocateRecommendationBtn">
-                                    <i class="fas fa-location-crosshairs"></i> Use My Location
+                                    <i class="fas fa-location-crosshairs"></i> Use Phone GPS
                                 </button>
-                                <div class="form-note" id="gpsPermissionHint">Allow location access when prompted to auto-map your nearest ward.</div>
+                                <div class="form-note" id="gpsPermissionHint">GPS status appears here.</div>
                             </div>
                         </div>
                         <div class="map-selection-wrap">
@@ -335,12 +357,12 @@
                             </select>
                             <div class="form-note" id="soilHelper">📍 This field auto-updates when you select a sub-county based on geological soil profiles.</div>
                         </div>
-                        <div class="form-group">
+                        <div class="form-group location-readout-group">
                             <label>📍 Selected Region</label>
                             <input type="text" id="regionReadout" class="readout-input" placeholder="Pick a ward on the map above" readonly>
                             <div class="form-note">🗺️ The recommendation engine uses the selected village, ward, and mapped sub-county automatically.</div>
                         </div>
-                        <div class="form-group">
+                        <div class="form-group soil-readout-group">
                             <label>🌱 Soil Type</label>
                             <input type="text" id="soilTypeReadout" class="readout-input" placeholder="Auto-filled from selected region" readonly>
                             <div class="form-note" id="soilHelperReadout">📍 Soil type is filled from the selected region’s geological soil profile.</div>
@@ -359,11 +381,11 @@
                             <input type="number" id="farmSize" placeholder="e.g., 2.5" step="0.1" min="0.1" required>
                             <div class="form-note" id="budgetHelper">💰 We will estimate setup cost inside each recommended crop card based on farm size and crop inputs.</div>
                         </div>
-                        <div class="form-group">
+                        <div class="form-group water-source-group">
                             <label>💧 Water Source</label>
                             <select id="waterSource" required>
                                 <option value="">Select water source...</option>
-                                <option value="Rainfall">Rainfall</option>
+                                <option value="Rainfall" selected>Rainfall</option>
                                 <option value="Well">Well</option>
                                 <option value="Borehole">Borehole</option>
                                 <option value="Irrigation">Irrigation</option>
@@ -949,7 +971,11 @@
             let soilType = document.getElementById('soilType').value;
             const season = document.getElementById('season').value;
             const farmSize = parseFloat(document.getElementById('farmSize').value);
-            const waterSource = document.getElementById('waterSource').value;
+            const waterSourceInput = document.getElementById('waterSource');
+            const waterSource = waterSourceInput?.value || 'Rainfall';
+            if (waterSourceInput && !waterSourceInput.value) {
+                waterSourceInput.value = waterSource;
+            }
             const budget = estimateBudgetFromFarmSize(farmSize, soilType, waterSource || 'Rainfall') || 5000;
             const selectedWard = document.getElementById('selectedWardDisplay')?.textContent || '';
             const rawSelectedVillage = document.getElementById('selectedVillageDisplay')?.textContent || '';
@@ -970,8 +996,8 @@
             const apiLocation = normalizeRecommendationLocation(location);
             soilType = soilType || resolveLocalSoilTypeFallback(apiLocation);
             
-            if (!location || !soilType || !season || !farmSize || !waterSource) {
-                showToast('Please complete location, soil, season, farm size, and water source before generating recommendations.', 'error');
+            if (!location || !soilType || !season || !farmSize) {
+                showToast('Please choose Soil Map or Phone GPS, then enter season and land size before generating recommendations.', 'error');
                 return;
             }
             

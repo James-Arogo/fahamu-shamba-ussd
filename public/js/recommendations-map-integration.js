@@ -49,6 +49,7 @@
     document.addEventListener('DOMContentLoaded', () => {
         buildMap();
         bindGpsLocator();
+        bindLocationMethodSelector();
         patchDemoLoader();
         const profileLocation = document.getElementById('location')?.value;
         const matchedFeature = features.find((feature) => normalizeSubCountyForPrediction(feature.subCounty) === profileLocation);
@@ -141,6 +142,51 @@
 
     function bindGpsLocator() {
         const gpsButton = document.getElementById('gpsLocateRecommendationBtn');
+        if (!gpsButton) return;
+
+        gpsButton.addEventListener('click', requestGpsLocation);
+    }
+
+    function bindLocationMethodSelector() {
+        const panel = document.getElementById('recommendationLocationPanel');
+        const buttons = document.querySelectorAll('.location-method-btn[data-location-method]');
+        if (!panel || !buttons.length) return;
+
+        buttons.forEach((button) => {
+            button.addEventListener('click', () => {
+                const method = button.dataset.locationMethod || 'map';
+                setLocationMethod(method);
+
+                if (method === 'gps') {
+                    requestGpsLocation();
+                }
+            });
+        });
+
+        setLocationMethod(panel.dataset.locationMethod || 'map');
+    }
+
+    function setLocationMethod(method) {
+        const panel = document.getElementById('recommendationLocationPanel');
+        const nextMethod = method === 'gps' ? 'gps' : 'map';
+        if (panel) {
+            panel.dataset.locationMethod = nextMethod;
+        }
+
+        document.querySelectorAll('.location-method-btn[data-location-method]').forEach((button) => {
+            const isActive = button.dataset.locationMethod === nextMethod;
+            button.classList.toggle('active', isActive);
+            button.setAttribute('aria-pressed', String(isActive));
+        });
+
+        const gpsHint = document.getElementById('gpsPermissionHint');
+        if (gpsHint && nextMethod === 'map') {
+            gpsHint.textContent = 'Soil map selected.';
+        }
+    }
+
+    async function requestGpsLocation() {
+        const gpsButton = document.getElementById('gpsLocateRecommendationBtn');
         const gpsHint = document.getElementById('gpsPermissionHint');
         if (!gpsButton) return;
 
@@ -160,95 +206,93 @@
             }
         };
 
-        gpsButton.addEventListener('click', async () => {
-            if (!navigator.geolocation) {
-                setGpsHint('GPS is not supported on this device/browser.');
-                if (typeof window.showToast === 'function') {
-                    window.showToast('GPS is not supported on this device/browser.', 'error');
-                }
-                return;
+        if (!navigator.geolocation) {
+            setGpsHint('GPS is not supported on this device/browser.');
+            if (typeof window.showToast === 'function') {
+                window.showToast('GPS is not supported on this device/browser.', 'error');
             }
+            return;
+        }
 
-            const permissionState = await checkPermissionState();
-            if (permissionState === 'denied') {
-                setGpsHint(deniedHelpText);
-                if (typeof window.showToast === 'function') {
-                    window.showToast('Location permission is currently blocked in browser settings.', 'error');
-                }
-                return;
+        const permissionState = await checkPermissionState();
+        if (permissionState === 'denied') {
+            setGpsHint(deniedHelpText);
+            if (typeof window.showToast === 'function') {
+                window.showToast('Location permission is currently blocked in browser settings.', 'error');
             }
+            return;
+        }
 
-            gpsButton.disabled = true;
-            const originalText = gpsButton.innerHTML;
-            gpsButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Locating...';
-            setGpsHint('Requesting your GPS location...');
+        gpsButton.disabled = true;
+        const originalText = gpsButton.innerHTML;
+        gpsButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Locating...';
+        setGpsHint('Requesting your GPS location...');
 
-            navigator.geolocation.getCurrentPosition(
-                async (position) => {
-                    try {
-                        const nearestFeature = findNearestWard(
-                            position.coords.latitude,
-                            position.coords.longitude
-                        );
+        navigator.geolocation.getCurrentPosition(
+            async (position) => {
+                try {
+                    const nearestFeature = findNearestWard(
+                        position.coords.latitude,
+                        position.coords.longitude
+                    );
 
-                        if (!nearestFeature) {
-                            throw new Error('No nearby ward found');
-                        }
-
-                        await selectWard(nearestFeature.id);
-                        const distanceKm = haversineDistanceKm(
-                            position.coords.latitude,
-                            position.coords.longitude,
-                            nearestFeature.centroid.lat,
-                            nearestFeature.centroid.lng
-                        );
-
-                        if (typeof window.showToast === 'function') {
-                            window.showToast(
-                                `Mapped via GPS to ${nearestFeature.ward}, ${nearestFeature.subCounty} (${distanceKm.toFixed(1)} km).`,
-                                'success'
-                            );
-                        }
-                        setGpsHint(`GPS mapped successfully to ${nearestFeature.ward}, ${nearestFeature.subCounty}.`);
-                    } catch (error) {
-                        setGpsHint('Could not map GPS to a ward. You can still select a ward manually from the map.');
-                        if (typeof window.showToast === 'function') {
-                            window.showToast('Could not map your GPS location to a ward right now.', 'error');
-                        }
-                    } finally {
-                        gpsButton.disabled = false;
-                        gpsButton.innerHTML = originalText;
+                    if (!nearestFeature) {
+                        throw new Error('No nearby ward found');
                     }
-                },
-                (error) => {
-                    gpsButton.disabled = false;
-                    gpsButton.innerHTML = originalText;
 
-                    const message = error?.code === 1
-                        ? 'Location permission denied. Enable GPS permission and try again.'
-                        : 'Unable to fetch GPS location right now.';
-
-                    if (error?.code === 1) {
-                        setGpsHint(deniedHelpText);
-                    } else if (error?.code === 2) {
-                        setGpsHint('Location signal unavailable. Ensure GPS/location services are turned on and try again.');
-                    } else if (error?.code === 3) {
-                        setGpsHint('GPS lookup timed out. Move to an open area and try again.');
-                    } else {
-                        setGpsHint('GPS lookup failed. You can continue by selecting a ward manually.');
-                    }
+                    await selectWard(nearestFeature.id);
+                    const distanceKm = haversineDistanceKm(
+                        position.coords.latitude,
+                        position.coords.longitude,
+                        nearestFeature.centroid.lat,
+                        nearestFeature.centroid.lng
+                    );
 
                     if (typeof window.showToast === 'function') {
-                        window.showToast(message, 'error');
+                        window.showToast(
+                            `Mapped via GPS to ${nearestFeature.ward}, ${nearestFeature.subCounty} (${distanceKm.toFixed(1)} km).`,
+                            'success'
+                        );
                     }
-                },
-                {
-                    enableHighAccuracy: true,
-                    timeout: 15000,
-                    maximumAge: 120000
+                    setGpsHint(`GPS mapped successfully to ${nearestFeature.ward}, ${nearestFeature.subCounty}.`);
+                } catch (error) {
+                    setGpsHint('Could not map GPS to a ward. You can still select a ward manually from the map.');
+                    if (typeof window.showToast === 'function') {
+                        window.showToast('Could not map your GPS location to a ward right now.', 'error');
+                    }
+                } finally {
+                    gpsButton.disabled = false;
+                    gpsButton.innerHTML = originalText;
                 }
-            );
-        });
+            },
+            (error) => {
+                gpsButton.disabled = false;
+                gpsButton.innerHTML = originalText;
+
+                const message = error?.code === 1
+                    ? 'Location permission denied. Enable GPS permission and try again.'
+                    : 'Unable to fetch GPS location right now.';
+
+                if (error?.code === 1) {
+                    setGpsHint(deniedHelpText);
+                } else if (error?.code === 2) {
+                    setGpsHint('Location signal unavailable. Ensure GPS/location services are turned on and try again.');
+                } else if (error?.code === 3) {
+                    setGpsHint('GPS lookup timed out. Move to an open area and try again.');
+                } else {
+                    setGpsHint('GPS lookup failed. You can continue by selecting a ward manually.');
+                }
+
+                if (typeof window.showToast === 'function') {
+                    window.showToast(message, 'error');
+                }
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 15000,
+                maximumAge: 120000
+            }
+        );
     }
 
     function projectPoint([lng, lat]) {
