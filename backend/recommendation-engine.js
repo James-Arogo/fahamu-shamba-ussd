@@ -197,6 +197,10 @@ function getPythonCommand() {
   return 'python3';
 }
 
+function shouldUsePythonModel() {
+  return Boolean(process.env.PYTHON_BIN || !process.env.VERCEL);
+}
+
 function assertPythonModelArtifacts() {
   const missing = [PYTHON_RECOMMENDER_SCRIPT, PYTHON_MODEL_PATH, PYTHON_LABEL_ENCODER_PATH]
     .filter((artifactPath) => !existsSync(artifactPath));
@@ -806,13 +810,15 @@ class RecommendationEngine {
       waterSource: farmerData.waterSource || 'Rainfall'
     };
 
-    try {
-      const pythonResult = this.getRecommendationsFromPython(normalizedInput);
-      if (pythonResult.recommendations.length > 0) {
-        return pythonResult;
+    if (shouldUsePythonModel()) {
+      try {
+        const pythonResult = this.getRecommendationsFromPython(normalizedInput);
+        if (pythonResult.recommendations.length > 0) {
+          return pythonResult;
+        }
+      } catch (error) {
+        console.error('[RecommendationEngine] Python predictor failed, using Model Training dataset fallback:', error.message);
       }
-    } catch (error) {
-      console.error('[RecommendationEngine] Python predictor failed, using Model Training dataset fallback:', error.message);
     }
 
     try {
