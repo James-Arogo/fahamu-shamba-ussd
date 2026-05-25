@@ -88,6 +88,14 @@ button, a, .btn, .nav-item, .clickable,
 
     body.sidebar-is-open .sidebar {
         transform: translateX(0) !important;
+        visibility: visible !important;
+        pointer-events: auto !important;
+    }
+
+    body:not(.sidebar-is-open) .sidebar,
+    .sidebar:not(.mobile-open):not(.active) {
+        visibility: hidden !important;
+        pointer-events: none !important;
     }
     
     /* CRITICAL FIX: Sidebar overlay - MUST be hidden when sidebar is closed */
@@ -132,6 +140,7 @@ button, a, .btn, .nav-item, .clickable,
     .main-content,
     .page-container,
     .form-container,
+    .map-selection-panel,
     input, select, textarea, button {
         pointer-events: auto !important;
         position: relative !important;

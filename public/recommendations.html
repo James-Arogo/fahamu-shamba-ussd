@@ -186,13 +186,13 @@
     <link rel="stylesheet" href="/css/sidebar.css">
     <link rel="stylesheet" href="/css/navbar.css">
     <script src="/language-utils.js?v=20260409-mobile-fix"></script>
-    <script src="/js/sidebar.js?v=20260525-mobile-taps" defer></script>
+    <script src="/js/sidebar.js?v=20260525-mobile-taps-2" defer></script>
     <script src="/js/navbar.js?v=20260409-mobile-fix" defer></script>
     <script src="/js/siaya-soil-map-data.js?v=20260409-mobile-fix" defer></script>
     <script src="/js/siaya-boundaries.js?v=20260409-mobile-fix" defer></script>
     <script src="/js/siaya-villages.js?v=20260523-village-only" defer></script>
     <script src="/js/recommendations-map-integration.js?v=20260523-village-only" defer></script>
-    <link rel="stylesheet" href="/css/mobile-responsiveness-fixes.css?v=20260525-mobile-taps">
+    <link rel="stylesheet" href="/css/mobile-responsiveness-fixes.css?v=20260525-mobile-taps-2">
     <script src="/js/chatbot-widget.js" defer></script>
 </head>
 <body>
@@ -519,6 +519,21 @@
             };
         }
 
+        const CROP_PRICE_FALLBACKS = {
+            Maize: 55,
+            Beans: 130,
+            Sorghum: 65,
+            Millet: 85,
+            Rice: 120,
+            Groundnuts: 180,
+            Cassava: 35,
+            'Sweet Potatoes': 45,
+            Vegetables: 70,
+            Tomatoes: 85,
+            Kale: 55,
+            Onions: 95
+        };
+
         function estimateBudgetFromFarmSize(farmSize, soilType, waterSource) {
             const numericSize = parseFloat(farmSize);
             if (!numericSize || numericSize <= 0) return '';
@@ -698,7 +713,7 @@
         }
 
         function buildReturnEstimate(rec, farmSize) {
-            const pricePerKg = rec.marketPrice?.price;
+            const pricePerKg = rec.marketPrice?.price || CROP_PRICE_FALLBACKS[rec.name] || CROP_PRICE_FALLBACKS[rec.crop];
             const yieldRange = parseYieldRange(rec.yieldRange);
             const size = parseFloat(farmSize) || 1;
 
@@ -707,6 +722,26 @@
             const minValue = yieldRange.min * 1000 * pricePerKg * size;
             const maxValue = yieldRange.max * 1000 * pricePerKg * size;
             return `KES ${formatCurrency(minValue)}-${formatCurrency(maxValue)}`;
+        }
+
+        function buildShortReason(rec) {
+            const soil = rec.conditions?.soil || 'selected';
+            const season = String(rec.conditions?.season || 'selected season').replace('_', ' ');
+            const metrics = rec.soilMetrics || {};
+            const climate = rec.climate || {};
+            const nutrients = [];
+
+            if (metrics.pH) nutrients.push(`pH ${metrics.pH}`);
+            if (metrics.nitrogen) nutrients.push(`N ${metrics.nitrogen}`);
+            if (metrics.phosphorus) nutrients.push(`P ${metrics.phosphorus}`);
+            if (metrics.potassium) nutrients.push(`K ${metrics.potassium}`);
+
+            const climateText = climate.rainfallMm || climate.temperatureC
+                ? `${climate.rainfallMm ? `${climate.rainfallMm}mm rain` : 'local rainfall'}${climate.temperatureC ? ` and ${climate.temperatureC}°C` : ''}`
+                : `${season} conditions`;
+            const nutrientText = nutrients.length ? nutrients.slice(0, 4).join(', ') : `${soil} soil nutrients`;
+
+            return `${rec.name} fits the ${soil} soil (${nutrientText}), ${climateText}, and its crop needs: ${rec.waterReq || 'moderate water'} with a ${rec.plantingWindow || season} planting window.`;
         }
 
         function buildRecommendationSummary(recommendations, analysis) {
@@ -761,10 +796,15 @@
                 const confClass = confidence >= 80 ? 'confidence-high' : confidence >= 60 ? 'confidence-medium' : 'confidence-low';
                 const returns = buildReturnEstimate(rec, farmSize);
                 const cropBudget = buildCropBudgetEstimate({ ...rec, estimatedBudget: budgetEstimates[rec.name] }, farmSize, fallbackEstimate);
-                const marketPrice = rec.marketPrice?.price ? `KES ${formatCurrency(rec.marketPrice.price)}/kg` : 'Not available';
+                const fallbackPrice = CROP_PRICE_FALLBACKS[rec.name] || CROP_PRICE_FALLBACKS[rec.crop];
+                const marketPrice = rec.marketPrice?.price
+                    ? `KES ${formatCurrency(rec.marketPrice.price)}/kg`
+                    : fallbackPrice
+                        ? `KES ${formatCurrency(fallbackPrice)}/kg estimate`
+                        : 'Not available';
                 const marketTrend = rec.marketPrice?.trend ? capitalize(rec.marketPrice.trend) : 'Stable';
                 const risk = rec.risk || 'Medium';
-                const why = rec.reasons?.english || 'Strong fit for your selected soil, season, and farm setup.';
+                const why = buildShortReason(rec);
 
                 return `
                     <div class="recommendation-card">

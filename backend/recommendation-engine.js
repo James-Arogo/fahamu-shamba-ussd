@@ -657,33 +657,28 @@ class RecommendationEngine {
   }
 
   buildAgronomicReason(cropName, normalizedInput, payload, profile, weather, marketPrice = null) {
-    const soilParts = [
-      `the mapped ${normalizedInput.soilType || payload.Soil_Texture} soil`,
-      describeNutrient(payload.pH, 5.8, 7.2, 'pH'),
-      describeNutrient(payload.Nitrogen, 0.12, 0.22, 'nitrogen'),
-      describeNutrient(payload.Phosphorus, 10, 25, 'phosphorus'),
-      describeNutrient(payload.Potassium, 100, 180, 'potassium'),
-      describeNutrient(payload.Organic_Carbon, 1.5, 2.8, 'organic carbon')
-    ].filter(Boolean);
-
     const rainfall = formatNumber(normalizeRainfallForModel(weather?.totalRainfall ?? payload.Rainfall_mm), 0);
     const temperature = formatNumber(weather?.avgTemperature ?? payload.Temperature_C, 1);
-    const humidity = formatNumber(weather?.avgHumidity ?? payload.Humidity_pct, 0);
-    const climateParts = [
-      rainfall != null ? `${rainfall} mm rainfall` : '',
-      temperature != null ? `${temperature}°C average temperature` : '',
-      humidity != null ? `${humidity}% humidity` : ''
-    ].filter(Boolean);
-
-    const cropParts = [
-      profile?.waterReq ? `${cropName} has ${String(profile.waterReq).toLowerCase()} water demand` : '',
-      profile?.plantingWindow ? `its planting window is ${profile.plantingWindow}` : '',
-      profile?.yieldRange ? `expected yield is ${profile.yieldRange}` : '',
-      marketPrice?.price ? `current market price is KES ${marketPrice.price}/kg` : ''
-    ].filter(Boolean);
+    const soilType = normalizedInput.soilType || payload.Soil_Texture || 'selected';
+    const nutrientText = [
+      payload.pH ? `pH ${formatNumber(payload.pH, 1)}` : '',
+      payload.Nitrogen ? `N ${formatNumber(payload.Nitrogen, 2)}` : '',
+      payload.Phosphorus ? `P ${formatNumber(payload.Phosphorus, 0)}` : '',
+      payload.Potassium ? `K ${formatNumber(payload.Potassium, 0)}` : ''
+    ].filter(Boolean).join(', ');
+    const climateText = [
+      rainfall != null ? `${rainfall} mm rain` : '',
+      temperature != null ? `${temperature}°C` : ''
+    ].filter(Boolean).join(' and ') || String(normalizedInput.season || '').replace('_', ' ');
+    const cropFit = [
+      profile?.waterReq || 'moderate water need',
+      profile?.plantingWindow ? `${profile.plantingWindow} planting` : '',
+      profile?.yieldRange ? `${profile.yieldRange} yield` : '',
+      marketPrice?.price ? `KES ${marketPrice.price}/kg market price` : ''
+    ].filter(Boolean).join(', ');
 
     return {
-      english: `${cropName} is selected because the soil profile shows ${soilParts.join(', ')}, which fits its nutrient needs. The ${String(normalizedInput.season || '').replace('_', ' ')} climate profile${climateParts.length ? ` (${climateParts.join(', ')})` : ''} fits this crop type, and ${cropParts.join(', ')}.`,
+      english: `${cropName} fits ${soilType} soil${nutrientText ? ` (${nutrientText})` : ''}, ${climateText}, and the crop profile: ${cropFit}.`,
       swahili: `${cropName} imechaguliwa kwa sababu hali ya udongo, virutubisho, msimu na mahitaji ya maji ya zao hili yanaendana na shamba lako.`
     };
   }
