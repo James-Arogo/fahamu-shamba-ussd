@@ -7,7 +7,10 @@
       "config": {
         "maxLambdaSize": "50mb",
         "nodeVersion": "24.x",
-        "includeFiles": "../public/**"
+        "includeFiles": [
+          "../public/**",
+          "../Model Training/**"
+        ]
       }
     }
   ],

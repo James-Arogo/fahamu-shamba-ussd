@@ -7,8 +7,7 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ROOT_DIR = path.resolve(__dirname, '..');
-const PYTHON_RECOMMENDER_SCRIPT = path.join(ROOT_DIR, 'ML TRAINING', 'predict_service.py');
-const TRAINING_VENV_PYTHON = path.join(ROOT_DIR, 'backend', 'training', '.venv', 'bin', 'python');
+const PYTHON_RECOMMENDER_SCRIPT = path.join(ROOT_DIR, 'Model Training', 'predict_service.py');
 
 const DEFAULT_CROP_PROFILES = {
   Maize: {
@@ -186,6 +185,11 @@ function deriveFarmerProfile(farmSize, budget, waterSource) {
   if (size < 1.2 && spend < 9000 && source.includes('rain')) return 'Subsistence';
   if (spend >= 12000 && (source.includes('irrig') || source.includes('borehole'))) return 'Progressive';
   return 'Mixed';
+}
+
+function getPythonCommand() {
+  if (process.env.PYTHON_BIN) return process.env.PYTHON_BIN;
+  return 'python3';
 }
 
 class RecommendationEngine {
@@ -518,7 +522,7 @@ class RecommendationEngine {
 
   getRecommendationsFromPython(normalizedInput) {
     const payload = this.mapFarmerDataToPythonModelInput(normalizedInput);
-    const command = process.env.PYTHON_BIN || (process.env.VERCEL ? 'python3' : TRAINING_VENV_PYTHON);
+    const command = getPythonCommand();
     const run = spawnSync(command, [PYTHON_RECOMMENDER_SCRIPT, '--json', JSON.stringify(payload)], {
       encoding: 'utf-8',
       cwd: ROOT_DIR,
@@ -527,7 +531,7 @@ class RecommendationEngine {
 
     if (run.error && run.status == null) throw run.error;
     if (run.status !== 0) {
-      throw new Error((run.stderr || run.stdout || 'ML TRAINING predictor failed').trim());
+      throw new Error((run.stderr || run.stdout || 'Model Training predictor failed').trim());
     }
 
     const parsed = JSON.parse((run.stdout || '').trim());
@@ -558,8 +562,8 @@ class RecommendationEngine {
         season: normalizedInput.season,
         budget: normalizedInput.budget,
         farmSize: normalizedInput.farmSize,
-        engine: 'ml_training_xgb',
-        script: 'ML TRAINING/predict_service.py'
+        engine: 'model_training_xgb',
+        script: 'Model Training/predict_service.py'
       }
     };
   }

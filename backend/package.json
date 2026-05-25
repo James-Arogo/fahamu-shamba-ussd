@@ -11,7 +11,7 @@
     "cleanup:dummy": "node remove-dummy-data.js",
     "training:download": "node training/real-data-pipeline.js",
     "training:train": "node training/real-data-pipeline.js",
-    "training:model": "./training/.venv/bin/python ../ML TRAINING/predict_service.py"
+    "training:model": "${PYTHON_BIN:-python3} \"../Model Training/predict_service.py\""
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
