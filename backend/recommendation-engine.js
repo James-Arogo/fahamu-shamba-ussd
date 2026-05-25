@@ -1,7 +1,7 @@
 import farmInputsData from './farm-inputs-data.js';
 import realDataStore from './real-data-store.js';
 import { spawnSync } from 'child_process';
-import { existsSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -12,6 +12,7 @@ const PYTHON_MODEL_DIR = path.join(ROOT_DIR, 'Model Training');
 const PYTHON_RECOMMENDER_SCRIPT = path.join(PYTHON_MODEL_DIR, 'predict_service.py');
 const PYTHON_MODEL_PATH = path.join(PYTHON_MODEL_DIR, 'best_xgb_model.joblib');
 const PYTHON_LABEL_ENCODER_PATH = path.join(PYTHON_MODEL_DIR, 'label_encoder.joblib');
+const MODEL_TRAINING_DATASET_PATH = path.join(PYTHON_MODEL_DIR, 'ensemble_training_dataset_rebuilt.csv');
 
 const DEFAULT_CROP_PROFILES = {
   Maize: {
@@ -204,11 +205,56 @@ function assertPythonModelArtifacts() {
   }
 }
 
+function parseCsvLine(line) {
+  const values = [];
+  let current = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i += 1) {
+    const char = line[i];
+    const next = line[i + 1];
+    if (char === '"' && inQuotes && next === '"') {
+      current += '"';
+      i += 1;
+    } else if (char === '"') {
+      inQuotes = !inQuotes;
+    } else if (char === ',' && !inQuotes) {
+      values.push(current);
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+
+  values.push(current);
+  return values.map((value) => value.trim());
+}
+
+function parseModelTrainingDataset() {
+  if (!existsSync(MODEL_TRAINING_DATASET_PATH)) return [];
+  const lines = readFileSync(MODEL_TRAINING_DATASET_PATH, 'utf8').split(/\r?\n/).filter(Boolean);
+  if (lines.length < 2) return [];
+  const headers = parseCsvLine(lines[0]);
+  return lines.slice(1).map((line) => {
+    const values = parseCsvLine(line);
+    return Object.fromEntries(headers.map((header, index) => [header, values[index] || '']));
+  });
+}
+
+function closenessScore(actual, expected, tolerance, weight) {
+  const actualNumber = Number(actual);
+  const expectedNumber = Number(expected);
+  if (!Number.isFinite(actualNumber) || !Number.isFinite(expectedNumber)) return 0;
+  const distance = Math.abs(actualNumber - expectedNumber);
+  return Math.max(0, 1 - (distance / tolerance)) * weight;
+}
+
 class RecommendationEngine {
   constructor() {
     this.cropInputs = farmInputsData.cropInputs;
     this.essentialTools = farmInputsData.essentialTools;
     this.costSavingStrategies = farmInputsData.costSavingStrategies;
+    this.modelTrainingRows = null;
   }
 
   get data() {
@@ -581,6 +627,90 @@ class RecommendationEngine {
     };
   }
 
+  getModelTrainingRows() {
+    if (!this.modelTrainingRows) {
+      this.modelTrainingRows = parseModelTrainingDataset();
+    }
+    return this.modelTrainingRows;
+  }
+
+  getRecommendationsFromModelTrainingData(normalizedInput) {
+    const rows = this.getModelTrainingRows();
+    if (!rows.length) {
+      throw new Error('Model Training dataset is unavailable');
+    }
+
+    const payload = this.mapFarmerDataToPythonModelInput(normalizedInput);
+    const rankedRows = rows.map((row) => {
+      let score = 0;
+      if (normalizeKey(row.Sub_County) === normalizeKey(payload.Sub_County)) score += 24;
+      if (normalizeKey(row.Season) === normalizeKey(payload.Season)) score += 20;
+      if (normalizeKey(row.Soil_Texture) === normalizeKey(payload.Soil_Texture)) score += 18;
+      if (normalizeKey(row.Farmer_Profile) === normalizeKey(payload.Farmer_Profile)) score += 8;
+      if (String(row.Irrigation) === String(payload.Irrigation)) score += 6;
+      if (normalizeKey(row.market_signal) === normalizeKey(payload.market_signal)) score += 5;
+      score += closenessScore(row.pH, payload.pH, 1.5, 7);
+      score += closenessScore(row.Rainfall_mm, payload.Rainfall_mm, 650, 4);
+      score += closenessScore(row.Temperature_C, payload.Temperature_C, 8, 4);
+      score += closenessScore(row.Humidity_pct, payload.Humidity_pct, 30, 2);
+      score += closenessScore(row.Input_Budget_KES, payload.Input_Budget_KES, 18000, 6);
+      score += closenessScore(row.Farm_Size_ha, payload.Farm_Size_ha, 4, 4);
+      score += closenessScore(row.Market_Price_KES, payload.Market_Price_KES, 12000, 2);
+
+      return {
+        crop: row.Recommended_Crop,
+        score
+      };
+    }).filter((row) => row.crop);
+
+    const cropScores = new Map();
+    rankedRows.forEach((row) => {
+      const key = row.crop;
+      const current = cropScores.get(key) || { crop: key, total: 0, best: 0, count: 0 };
+      current.total += row.score;
+      current.best = Math.max(current.best, row.score);
+      current.count += 1;
+      cropScores.set(key, current);
+    });
+
+    const recommendations = Array.from(cropScores.values())
+      .map((item) => {
+        const confidence = Math.max(35, Math.min(99, Math.round((item.best * 0.75) + ((item.total / item.count) * 0.25))));
+        return {
+          name: item.crop,
+          crop: item.crop,
+          confidence,
+          score: confidence,
+          conditions: {
+            soil: normalizedInput.soilType,
+            season: normalizedInput.season,
+            subcounty: normalizeKey(normalizedInput.subCounty)
+          },
+          reasons: {
+            english: `${item.crop} is recommended from the new Model Training dataset for similar farm conditions.`,
+            swahili: `${item.crop} imependekezwa kutoka data mpya ya Model Training kwa hali zinazofanana za shamba.`
+          }
+        };
+      })
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 3);
+
+    return {
+      recommendations,
+      allScores: recommendations,
+      metadata: {
+        timestamp: new Date().toISOString(),
+        location: normalizedInput.subCounty,
+        soil: normalizedInput.soilType,
+        season: normalizedInput.season,
+        budget: normalizedInput.budget,
+        farmSize: normalizedInput.farmSize,
+        engine: 'model_training_dataset',
+        source: 'Model Training/ensemble_training_dataset_rebuilt.csv'
+      }
+    };
+  }
+
   scoreCrop(cropName, farmerData) {
     const profile = this.getCropProfile(cropName);
     const weather = this.getWeatherSummary(farmerData.subCounty, farmerData.season);
@@ -682,7 +812,16 @@ class RecommendationEngine {
         return pythonResult;
       }
     } catch (error) {
-      console.error('[RecommendationEngine] Python predictor failed, using JS fallback:', error.message);
+      console.error('[RecommendationEngine] Python predictor failed, using Model Training dataset fallback:', error.message);
+    }
+
+    try {
+      const modelTrainingResult = this.getRecommendationsFromModelTrainingData(normalizedInput);
+      if (modelTrainingResult.recommendations.length > 0) {
+        return modelTrainingResult;
+      }
+    } catch (error) {
+      console.error('[RecommendationEngine] Model Training dataset fallback failed, using JS fallback:', error.message);
     }
 
     const candidates = this.getCropCatalog()
