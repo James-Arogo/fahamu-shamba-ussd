@@ -85,6 +85,10 @@ button, a, .btn, .nav-item, .clickable,
         transform: translateX(0) !important;
         z-index: 2000 !important;
     }
+
+    body.sidebar-is-open .sidebar {
+        transform: translateX(0) !important;
+    }
     
     /* CRITICAL FIX: Sidebar overlay - MUST be hidden when sidebar is closed */
     .sidebar-overlay,
@@ -98,11 +102,23 @@ button, a, .btn, .nav-item, .clickable,
         pointer-events: none !important;
         position: fixed !important;
     }
+
+    body:not(.sidebar-is-open) .sidebar-overlay,
+    body:not(.sidebar-is-open) #sidebarOverlay,
+    body:not(.sidebar-is-open) div[class*="sidebar-overlay"],
+    body:not(.sidebar-is-open) div[id*="sidebarOverlay"] {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+    }
     
     .sidebar-overlay.mobile-open,
     .sidebar-overlay.active,
     #sidebarOverlay.mobile-open,
     #sidebarOverlay.active,
+    body.sidebar-is-open .sidebar-overlay,
+    body.sidebar-is-open #sidebarOverlay,
     div[class*="sidebar-overlay"].mobile-open,
     div[class*="sidebar-overlay"].active {
         z-index: 1500 !important;
@@ -120,6 +136,16 @@ button, a, .btn, .nav-item, .clickable,
         pointer-events: auto !important;
         position: relative !important;
         z-index: 1 !important;
+    }
+
+    .map-selection-panel,
+    .map-selection-stage,
+    .map-ward-shape,
+    .map-village-marker,
+    .village-chip,
+    #recommendationForm {
+        pointer-events: auto !important;
+        touch-action: manipulation;
     }
     
     /* CRITICAL FIX: Remove left margin and ensure full width on mobile/tablet */

@@ -39,17 +39,7 @@
             
             // ENSURE SIDEBAR IS CLOSED ON INITIAL LOAD
             // This fixes the "dull screen" issue where old states might persist
-            const sidebar = document.getElementById('sidebar');
-            const overlay = document.getElementById('sidebarOverlay');
-            if (sidebar) {
-                sidebar.classList.remove('mobile-open');
-                sidebar.classList.remove('active');
-            }
-            if (overlay) {
-                overlay.classList.remove('mobile-open');
-                overlay.classList.remove('active');
-            }
-            document.body.style.overflow = '';
+            setMobileSidebarState(false);
             
             // Set active menu item based on current URL
             setActiveMenuItem();
@@ -191,58 +181,51 @@
     }
 
     // ===== CENTRALIZED TOGGLE FUNCTIONS =====
+
+    function setMobileSidebarState(isOpen) {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+
+        document.body.classList.toggle('sidebar-is-open', Boolean(isOpen));
+        document.body.style.overflow = isOpen ? 'hidden' : '';
+
+        if (sidebar) {
+            sidebar.classList.toggle('mobile-open', Boolean(isOpen));
+            sidebar.classList.toggle('active', Boolean(isOpen));
+        }
+
+        if (overlay) {
+            overlay.classList.toggle('mobile-open', Boolean(isOpen));
+            overlay.classList.toggle('active', Boolean(isOpen));
+            overlay.style.display = isOpen ? 'block' : 'none';
+            overlay.style.visibility = isOpen ? 'visible' : 'hidden';
+            overlay.style.opacity = isOpen ? '1' : '0';
+            overlay.style.pointerEvents = isOpen ? 'auto' : 'none';
+            overlay.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+        }
+
+        const hamburger = document.getElementById('hamburger') ||
+                         document.querySelector('.nav-hamburger') ||
+                         document.querySelector('.mobile-menu-btn');
+        if (hamburger) {
+            hamburger.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        }
+    }
     
     function toggleMobileSidebar() {
         const sidebar = document.getElementById('sidebar');
-        const overlay = document.getElementById('sidebarOverlay');
         
         if (!sidebar) {
             console.warn('Sidebar not ready yet');
             return;
         }
         
-        const isOpen = sidebar.classList.toggle('mobile-open');
-        sidebar.classList.toggle('active'); // Dual-class support for safety
-        
-        if (overlay) {
-            if (isOpen) {
-                overlay.classList.add('mobile-open', 'active');
-            } else {
-                overlay.classList.remove('mobile-open', 'active');
-            }
-        }
-        
-        const hamburger = document.getElementById('hamburger') || 
-                         document.querySelector('.nav-hamburger') || 
-                         document.querySelector('.mobile-menu-btn');
-        if (hamburger) {
-            hamburger.setAttribute('aria-expanded', isOpen);
-        }
-        
-        // Prevent background scrolling while menu is open
-        document.body.style.overflow = isOpen ? 'hidden' : '';
+        const isOpen = !sidebar.classList.contains('mobile-open');
+        setMobileSidebarState(isOpen);
     }
     
     function closeMobileSidebar() {
-        const sidebar = document.getElementById('sidebar');
-        const overlay = document.getElementById('sidebarOverlay');
-        
-        if (sidebar) {
-            sidebar.classList.remove('mobile-open', 'active');
-        }
-        
-        if (overlay) {
-            overlay.classList.remove('mobile-open', 'active');
-        }
-        
-        const hamburger = document.getElementById('hamburger') || 
-                         document.querySelector('.nav-hamburger') || 
-                         document.querySelector('.mobile-menu-btn');
-        if (hamburger) {
-            hamburger.setAttribute('aria-expanded', 'false');
-        }
-        
-        document.body.style.overflow = '';
+        setMobileSidebarState(false);
     }
 
     function toggleSidebar() {
@@ -358,6 +341,12 @@
         window.addEventListener('resize', () => {
             if (window.innerWidth > 992) {
                 closeMobileSidebar();
+            }
+        });
+
+        window.addEventListener('pageshow', () => {
+            if (window.innerWidth <= 992) {
+                setMobileSidebarState(false);
             }
         });
     }
