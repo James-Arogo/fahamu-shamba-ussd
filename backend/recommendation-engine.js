@@ -1,13 +1,17 @@
 import farmInputsData from './farm-inputs-data.js';
 import realDataStore from './real-data-store.js';
 import { spawnSync } from 'child_process';
+import { existsSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ROOT_DIR = path.resolve(__dirname, '..');
-const PYTHON_RECOMMENDER_SCRIPT = path.join(ROOT_DIR, 'Model Training', 'predict_service.py');
+const PYTHON_MODEL_DIR = path.join(ROOT_DIR, 'Model Training');
+const PYTHON_RECOMMENDER_SCRIPT = path.join(PYTHON_MODEL_DIR, 'predict_service.py');
+const PYTHON_MODEL_PATH = path.join(PYTHON_MODEL_DIR, 'best_xgb_model.joblib');
+const PYTHON_LABEL_ENCODER_PATH = path.join(PYTHON_MODEL_DIR, 'label_encoder.joblib');
 
 const DEFAULT_CROP_PROFILES = {
   Maize: {
@@ -190,6 +194,14 @@ function deriveFarmerProfile(farmSize, budget, waterSource) {
 function getPythonCommand() {
   if (process.env.PYTHON_BIN) return process.env.PYTHON_BIN;
   return 'python3';
+}
+
+function assertPythonModelArtifacts() {
+  const missing = [PYTHON_RECOMMENDER_SCRIPT, PYTHON_MODEL_PATH, PYTHON_LABEL_ENCODER_PATH]
+    .filter((artifactPath) => !existsSync(artifactPath));
+  if (missing.length) {
+    throw new Error(`Missing Model Training artifacts: ${missing.map((filePath) => path.basename(filePath)).join(', ')}`);
+  }
 }
 
 class RecommendationEngine {
@@ -521,6 +533,7 @@ class RecommendationEngine {
   }
 
   getRecommendationsFromPython(normalizedInput) {
+    assertPythonModelArtifacts();
     const payload = this.mapFarmerDataToPythonModelInput(normalizedInput);
     const command = getPythonCommand();
     const run = spawnSync(command, [PYTHON_RECOMMENDER_SCRIPT, '--json', JSON.stringify(payload)], {
