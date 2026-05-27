@@ -198,17 +198,17 @@ app.post('/api/login', (req, res) => {
       });
     }
 
-    // User-requested demo credentials
-    if (loginIdLower === 'jemo' && password === 'FahamuShamba01') {
+    // Official system admin credentials for the lightweight serverless fallback.
+    if (loginIdLower === 'fahamushamba@gmail.com' && password === 'FahamuShamba01') {
       return res.json({
         success: true,
         message: 'Login successful',
         user: {
-          id: 3,
-          username: 'Jemo',
-          email: 'jemo@fahamu-shamba.com',
-          role: 'farmer',
-          name: 'Jemo'
+          id: 1,
+          username: 'fahamushamba',
+          email: 'fahamushamba@gmail.com',
+          role: 'admin',
+          name: 'System Administrator'
         },
         token: 'jwt-token-' + Date.now()
       });

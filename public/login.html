@@ -300,6 +300,7 @@
         </div>
     </div>
 
+    <script src="/language-utils.js"></script>
     <script>
         const loginForm = document.getElementById('loginForm');
         const resetForm = document.getElementById('resetForm');
@@ -511,6 +512,9 @@
 
         // Prefill username after successful signup
         document.addEventListener('DOMContentLoaded', () => {
+            if (typeof initializeLanguage === 'function') {
+                initializeLanguage();
+            }
             const urlParams = new URLSearchParams(window.location.search);
             const username = urlParams.get('username');
             const emailInput = document.getElementById('email');

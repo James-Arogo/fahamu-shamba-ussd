@@ -304,6 +304,7 @@
         </div>
     </div>
 
+    <script src="/language-utils.js"></script>
     <script>
         const registerForm = document.getElementById('registerForm');
         const registerBtn = document.getElementById('registerBtn');
@@ -565,6 +566,13 @@
                 // Reset button state
                 registerBtn.disabled = false;
                 registerBtn.textContent = 'Create Account';
+            }
+        });
+
+        // Form field validation
+        document.addEventListener('DOMContentLoaded', () => {
+            if (typeof initializeLanguage === 'function') {
+                initializeLanguage();
             }
         });
 

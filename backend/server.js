@@ -43,6 +43,14 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 const IS_VERCEL = process.env.VERCEL === '1' || process.env.VERCEL === 'true';
+const translationCache = new Map();
+const TRANSLATION_LANGUAGE_CODES = {
+  swahili: 'sw',
+  kiswahili: 'sw',
+  sw: 'sw',
+  luo: 'luo',
+  dholuo: 'luo'
+};
 const normalizePostgresUrl = (value) => {
   const raw = (value || '').trim().replace(/^['"]|['"]$/g, '');
   if (!raw) return '';
@@ -203,6 +211,97 @@ app.use(express.static(PUBLIC_DIR, {
     }
   }
 }));
+
+async function translateWithLibreTranslate(text, targetCode) {
+  const baseUrl = (process.env.LIBRETRANSLATE_URL || process.env.TRANSLATE_API_URL || '').trim().replace(/\/$/, '');
+  if (!baseUrl) return null;
+
+  const response = await fetch(`${baseUrl}/translate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      q: text,
+      source: 'en',
+      target: targetCode,
+      format: 'text',
+      api_key: process.env.LIBRETRANSLATE_API_KEY || process.env.TRANSLATE_API_KEY || undefined
+    })
+  });
+
+  if (!response.ok) return null;
+  const payload = await response.json();
+  return payload.translatedText || payload.translation || null;
+}
+
+async function translateWithMyMemory(text, targetCode) {
+  const email = (process.env.TRANSLATE_CONTACT_EMAIL || process.env.EMAIL_FROM || 'fahamushamba@gmail.com').trim();
+  const url = new URL('https://api.mymemory.translated.net/get');
+  url.searchParams.set('q', text);
+  url.searchParams.set('langpair', `en|${targetCode}`);
+  if (email) url.searchParams.set('de', email);
+
+  const response = await fetch(url);
+  if (!response.ok) return null;
+  const payload = await response.json();
+  const translated = payload?.responseData?.translatedText;
+  if (!translated || translated === 'INVALID TARGET LANGUAGE') return null;
+  return translated;
+}
+
+async function translateText(text, targetCode) {
+  const cleanText = String(text || '').replace(/\s+/g, ' ').trim();
+  if (!cleanText) return '';
+
+  const cacheKey = `${targetCode}:${cleanText}`;
+  if (translationCache.has(cacheKey)) {
+    return translationCache.get(cacheKey);
+  }
+
+  let translated = null;
+  try {
+    translated = await translateWithLibreTranslate(cleanText, targetCode);
+  } catch (error) {
+    console.warn(`LibreTranslate unavailable for ${targetCode}: ${error.message}`);
+  }
+
+  if (!translated) {
+    try {
+      translated = await translateWithMyMemory(cleanText, targetCode);
+    } catch (error) {
+      console.warn(`MyMemory translation unavailable for ${targetCode}: ${error.message}`);
+    }
+  }
+
+  const finalText = translated || cleanText;
+  translationCache.set(cacheKey, finalText);
+  if (translationCache.size > 1000) {
+    translationCache.delete(translationCache.keys().next().value);
+  }
+  return finalText;
+}
+
+app.post('/api/translate', async (req, res) => {
+  try {
+    const targetLanguage = String(req.body?.targetLanguage || '').toLowerCase();
+    const targetCode = TRANSLATION_LANGUAGE_CODES[targetLanguage];
+    const texts = Array.isArray(req.body?.texts) ? req.body.texts : [];
+
+    if (!targetCode) {
+      return res.status(400).json({ success: false, message: 'Unsupported target language' });
+    }
+
+    const uniqueTexts = [...new Set(texts.map(text => String(text || '').replace(/\s+/g, ' ').trim()).filter(Boolean))].slice(0, 80);
+    const translations = {};
+    for (const text of uniqueTexts) {
+      translations[text] = await translateText(text.slice(0, 220), targetCode);
+    }
+
+    res.json({ success: true, targetLanguage, provider: process.env.LIBRETRANSLATE_URL ? 'libretranslate' : 'mymemory', translations });
+  } catch (error) {
+    console.error('Translation API error:', error);
+    res.status(500).json({ success: false, message: 'Translation service temporarily unavailable' });
+  }
+});
 
 // Initialize email service
 console.log('📧 Initializing email service...');

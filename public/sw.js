@@ -1,5 +1,5 @@
 // Fahamu Shamba Service Worker for PWA
-const CACHE_NAME = 'fahamu-shamba-v1';
+const CACHE_NAME = 'fahamu-shamba-v20260528';
 const urlsToCache = [
   '/',
   '/dashboard',
@@ -21,14 +21,34 @@ self.addEventListener('install', event => {
 
 // Fetch event - serve from cache, fallback to network
 self.addEventListener('fetch', event => {
+  const request = event.request;
+  const url = new URL(request.url);
+  const shouldPreferNetwork =
+    request.mode === 'navigate' ||
+    ['script', 'style'].includes(request.destination) ||
+    /\.(html|js|css)$/i.test(url.pathname);
+
+  if (shouldPreferNetwork) {
+    event.respondWith(
+      fetch(request)
+        .then(response => {
+          const responseToCache = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(request, responseToCache));
+          return response;
+        })
+        .catch(() => caches.match(request))
+    );
+    return;
+  }
+
   event.respondWith(
-    caches.match(event.request)
+    caches.match(request)
       .then(response => {
         // Return cache if found, otherwise fetch from network
         if (response) {
           return response;
         }
-        return fetch(event.request).then(response => {
+        return fetch(request).then(response => {
           // Don't cache non-successful responses
           if (!response || response.status !== 200 || response.type !== 'basic') {
             return response;
@@ -37,7 +57,7 @@ self.addEventListener('fetch', event => {
           const responseToCache = response.clone();
           caches.open(CACHE_NAME)
             .then(cache => {
-              cache.put(event.request, responseToCache);
+              cache.put(request, responseToCache);
             });
           return response;
         });
@@ -60,4 +80,3 @@ self.addEventListener('activate', event => {
     })
   );
 });
-
