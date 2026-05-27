@@ -24,11 +24,12 @@ function formatRecommendationList(recommendations = []) {
     const confidence = Math.round(Number(recommendation.confidence || recommendation.score || 0));
     const reason = recommendation.reasons?.english || recommendation.reason || recommendation.summary || 'Suitable for the selected farm conditions.';
     return `
-      <tr>
-        <td style="padding:14px;border-bottom:1px solid #e8efe7;font-weight:700;color:#163425;">${index + 1}. ${escapeHtml(crop)}</td>
-        <td style="padding:14px;border-bottom:1px solid #e8efe7;color:#255f38;font-weight:700;">${confidence}%</td>
-        <td style="padding:14px;border-bottom:1px solid #e8efe7;color:#4f6255;">${escapeHtml(reason)}</td>
-      </tr>
+      <div style="margin:0 0 12px;background:#ffffff;border:1px solid #dfeadd;border-radius:14px;padding:14px;">
+        <div style="font-size:12px;line-height:1.4;color:#7a5230;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;margin:0 0 6px;">Recommendation ${index + 1}</div>
+        <div style="font-size:20px;line-height:1.25;color:#163425;font-weight:900;margin:0 0 8px;">${escapeHtml(crop)}</div>
+        <div style="display:inline-block;background:#e8f5e8;color:#255f38;border-radius:999px;padding:6px 10px;font-size:13px;line-height:1;font-weight:800;margin:0 0 10px;">${confidence}% match</div>
+        <div style="font-size:14px;line-height:1.6;color:#4f6255;margin-top:8px;">${escapeHtml(reason)}</div>
+      </div>
     `;
   }).join('');
 }
@@ -326,7 +327,8 @@ export async function sendRecommendationEmail(email, payload = {}) {
   const seasonLabel = String(payload.season || 'selected season').replace(/_/g, ' ');
   const farmerName = payload.farmerName || 'Farmer';
   const soilLabel = payload.soilType || 'Selected soil profile';
-  const farmSizeLabel = payload.farmSize ? `${payload.farmSize} acres` : 'Not specified';
+  const farmSizeUnit = payload.farmSizeUnit || payload.farm_size_unit || 'ha';
+  const farmSizeLabel = payload.farmSize ? `${payload.farmSize} ${farmSizeUnit}` : 'Not specified';
 
   if (!transporter) {
     console.log(`\n📧 Recommendation email for ${recipient}: ${topCrop} at ${locationLabel}\n`);
@@ -350,28 +352,26 @@ export async function sendRecommendationEmail(email, payload = {}) {
         <head>
           <meta charset="UTF-8">
           <style>
-            body { margin:0; padding:0; background:#edf5ef; font-family:Arial, sans-serif; color:#17231b; }
+            body { margin:0; padding:0; background:#edf5ef; font-family:Arial, sans-serif; color:#17231b; -webkit-text-size-adjust:100%; }
             .preheader { display:none; max-height:0; overflow:hidden; opacity:0; color:transparent; }
-            .wrapper { max-width:720px; margin:0 auto; padding:28px 18px; }
-            .card { background:#ffffff; border-radius:26px; overflow:hidden; border:1px solid #dfeadd; box-shadow:0 18px 46px rgba(22,52,37,0.14); }
-            .hero { background:linear-gradient(135deg,#143320 0%,#255f38 58%,#e7a73f 140%); color:white; padding:34px 30px; }
+            .wrapper { max-width:640px; margin:0 auto; padding:20px 12px; }
+            .card { background:#ffffff; border-radius:18px; overflow:hidden; border:1px solid #dfeadd; }
+            .hero { background:#255f38; color:white; padding:26px 20px; }
             .brand { font-size:13px; text-transform:uppercase; letter-spacing:0.14em; color:#cfe8c8; font-weight:800; }
-            .hero h1 { margin:12px 0 10px; font-size:30px; line-height:1.1; }
+            .hero h1 { margin:12px 0 10px; font-size:26px; line-height:1.15; }
             .hero p { margin:0; line-height:1.65; color:#e6f3e7; font-size:15px; }
-            .content { padding:28px; }
-            .top-crop { background:#f8f1df; border:1px solid #f0dbad; border-radius:20px; padding:20px; margin-bottom:20px; }
+            .content { padding:20px; }
+            .top-crop { background:#f8f1df; border:1px solid #f0dbad; border-radius:16px; padding:16px; margin-bottom:16px; }
             .top-crop-label { color:#7a5230; font-size:12px; text-transform:uppercase; letter-spacing:0.12em; font-weight:800; }
-            .top-crop-name { color:#163425; font-size:28px; font-weight:900; margin-top:6px; }
-            .summary-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin:18px 0 22px; }
-            .summary-item { background:#f4faf3; border:1px solid #dfeadd; border-radius:16px; padding:14px; }
-            .summary-item span { display:block; color:#6f7f73; font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:0.08em; }
-            .summary-item strong { display:block; margin-top:6px; color:#163425; font-size:15px; }
-            table { width:100%; border-collapse:collapse; margin-top:18px; }
-            th { text-align:left; background:#edf5ef; padding:12px 14px; color:#163425; font-size:13px; }
-            .next { margin-top:22px; background:#163425; color:#eef8ed; border-radius:18px; padding:18px; line-height:1.6; }
+            .top-crop-name { color:#163425; font-size:26px; line-height:1.2; font-weight:900; margin-top:6px; }
+            .summary-item { background:#f4faf3; border:1px solid #dfeadd; border-radius:14px; padding:12px; margin:0 0 10px; }
+            .summary-item span { display:block; color:#6f7f73; font-size:11px; line-height:1.4; font-weight:800; text-transform:uppercase; letter-spacing:0.08em; }
+            .summary-item strong { display:block; margin-top:4px; color:#163425; font-size:15px; line-height:1.45; }
+            .section-title { color:#163425; font-size:18px; line-height:1.3; font-weight:900; margin:20px 0 12px; }
+            .next { margin-top:18px; background:#163425; color:#eef8ed; border-radius:16px; padding:16px; line-height:1.6; font-size:14px; }
             .next strong { color:#f8d68e; }
-            .footer { color:#6f7f73; font-size:12px; line-height:1.5; padding:0 28px 26px; }
-            @media (max-width:620px) { .summary-grid { grid-template-columns:1fr; } .hero h1 { font-size:24px; } }
+            .footer { color:#6f7f73; font-size:12px; line-height:1.5; padding:0 20px 22px; }
+            @media (max-width:480px) { .wrapper { padding:10px 6px !important; } .content { padding:16px !important; } .hero { padding:22px 16px !important; } .hero h1 { font-size:23px !important; } }
           </style>
         </head>
         <body>
@@ -388,24 +388,16 @@ export async function sendRecommendationEmail(email, payload = {}) {
                   <div class="top-crop-label">Top crop match</div>
                   <div class="top-crop-name">${escapeHtml(topCrop)}</div>
                 </div>
-                <div class="summary-grid">
+                <div>
                   <div class="summary-item"><span>Location</span><strong>${escapeHtml(locationLabel)}</strong></div>
                   <div class="summary-item"><span>Season</span><strong>${escapeHtml(seasonLabel)}</strong></div>
                   <div class="summary-item"><span>Soil profile</span><strong>${escapeHtml(soilLabel)}</strong></div>
                   <div class="summary-item"><span>Farm size</span><strong>${escapeHtml(farmSizeLabel)}</strong></div>
                 </div>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Crop</th>
-                      <th>Match</th>
-                      <th>Why it fits</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    ${formatRecommendationList(recommendations)}
-                  </tbody>
-                </table>
+                <div class="section-title">Top crop options</div>
+                <div>
+                  ${formatRecommendationList(recommendations)}
+                </div>
                 <div class="next">
                   <strong>Next step:</strong> Open the Fahamu Shamba dashboard for detailed input quantities, budget planning, soil notes, and market context before planting.
                 </div>
