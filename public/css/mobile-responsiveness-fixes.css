@@ -1085,13 +1085,20 @@ select:focus-visible {
 }
 
 /* Toast Notifications - Mobile */
+.toast {
+    pointer-events: none !important;
+}
+
 @media (max-width: 480px) {
     .toast {
         top: 60px !important;
         right: 10px !important;
         left: 10px !important;
+        bottom: auto !important;
         padding: 12px 16px !important;
         font-size: 0.9rem !important;
+        max-height: calc(100vh - 80px) !important;
+        overflow-wrap: anywhere !important;
     }
 }
 

@@ -168,7 +168,7 @@
         .progress-container { background: #ecf0f1; border-radius: 10px; height: 10px; width: 100%; overflow: hidden; margin: 15px 0; }
         .progress-bar { height: 100%; background: linear-gradient(90deg, var(--primary), #4caf50); border-radius: 10px; transition: width 0.5s ease; }
         
-        .toast { position: fixed; bottom: 30px; right: 30px; padding: 15px 25px; border-radius: 8px; background: #27ae60; color: white; font-weight: 600; box-shadow: var(--shadow-md); transition: all 0.3s ease; opacity: 0; transform: translateY(100px); z-index: 2000; }
+        .toast { position: fixed; bottom: 30px; right: 30px; padding: 15px 25px; border-radius: 8px; background: #27ae60; color: white; font-weight: 600; box-shadow: var(--shadow-md); transition: all 0.3s ease; opacity: 0; transform: translateY(100px); z-index: 2000; pointer-events: none; }
         .toast.show { opacity: 1; transform: translateY(0); }
         .toast.error { background: #e74c3c; }
         .toast.warning { background: #d97706; }
@@ -208,7 +208,7 @@
     <script src="/js/siaya-boundaries.js?v=20260409-mobile-fix" defer></script>
     <script src="/js/siaya-villages.js?v=20260523-village-only" defer></script>
     <script src="/js/recommendations-map-integration.js?v=20260525-location-method" defer></script>
-    <link rel="stylesheet" href="/css/mobile-responsiveness-fixes.css?v=20260525-mobile-submit">
+    <link rel="stylesheet" href="/css/mobile-responsiveness-fixes.css?v=20260528-toast-tap-fix">
     <script src="/js/chatbot-widget.js" defer></script>
 </head>
 <body>
